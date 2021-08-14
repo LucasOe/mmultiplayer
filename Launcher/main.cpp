@@ -136,10 +136,10 @@ bool GetDllPath(std::wstring &path, HANDLE &process) {
     //MessageBox(0, filename, L"Debug", 0);
 
     // filename to path without filename
-    wchar_t drive[200];
+    wchar_t drive[5];
     wchar_t dir[200];
     wchar_t fname[200];
-    wchar_t ext[200];
+    wchar_t ext[3];
     _wsplitpath_s(filename, drive, dir, fname, ext);
 
     // Concat drive and dir
@@ -147,9 +147,6 @@ bool GetDllPath(std::wstring &path, HANDLE &process) {
     outpath += dir;
     
     path = outpath + L"mmultiplayer.dll";
-
-    MessageBox(0, path.c_str(), L"Debug", 0);
-
     return true;
 }
 
