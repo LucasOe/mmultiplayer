@@ -1,4 +1,5 @@
 ﻿#include "stdafx.h"
+#include <Psapi.h>
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, char *, int) {
     if (!AdjustCurrentPrivilege(SE_DEBUG_NAME)) {
@@ -13,7 +14,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, char *, int) {
             continue;
         }
 
-        const auto process = OpenProcess(PROCESS_ALL_ACCESS, false, processInfo.th32ProcessID);
+        const HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, false, processInfo.th32ProcessID);
         if (!process) {
             TerminateThread(thread, 0);
             MessageBox(0, L"Failed to open a handle to the process", L"Failure", 0);
@@ -40,21 +41,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, char *, int) {
 
 bool LoadClient(HANDLE process) {
     std::wstring path;
-    if (!GetDllPath(path)) {
+    if (!GetDllPath(path, process)) {
         MessageBox(0, L"Failed to get temp path", L"Failure", 0);
         return false;
-    }
+    } else {       
+        // Download Client.dll if it's not existing
+        const auto url = L"https://github.com/LucasOe/mmultiplayer/raw/master/Client/binary/Client.dll";
+        if (URLDownloadToFile(nullptr, url, path.c_str(), 0, nullptr) != S_OK &&
+            !PathFileExists(path.c_str())) {
 
-    // Commented out to disable dll download on each start
-    /*
-    const auto url = L"https://github.com/btbd/mmultiplayer/raw/master/Client/binary/Client.dll";
-    if (URLDownloadToFile(nullptr, url, path.c_str(), 0, nullptr) != S_OK &&
-        !PathFileExists(path.c_str())) {
-
-        MessageBox(0, L"Failed to download the latest version", L"Failure", 0);
-        return false;
+            MessageBox(0, L"Failed to download the latest version", L"Failure", 0);
+            return false;
+        }
     }
-    */
 
     bool status = false;
 
@@ -125,13 +124,32 @@ bool HasModule(HANDLE process, const wchar_t *module) {
     return false;
 }
 
-bool GetDllPath(std::wstring &path) {
+bool GetDllPath(std::wstring &path, HANDLE &process) {
     wchar_t buffer[0x200] = {0};
-    if (!GetTempPath(sizeof(buffer) / sizeof(buffer[0]), buffer)) {
+    TCHAR filename[MAX_PATH];
+
+    // Get process file name
+    if (GetModuleFileNameEx(process, NULL, filename, MAX_PATH) == 0) {
         return false;
     }
 
-    path = std::wstring(buffer) + L"mmultiplayer.dll";
+    //MessageBox(0, filename, L"Debug", 0);
+
+    // filename to path without filename
+    wchar_t drive[200];
+    wchar_t dir[200];
+    wchar_t fname[200];
+    wchar_t ext[200];
+    _wsplitpath_s(filename, drive, dir, fname, ext);
+
+    // Concat drive and dir
+    std::wstring outpath = drive;
+    outpath += dir;
+    
+    path = outpath + L"mmultiplayer.dll";
+
+    MessageBox(0, path.c_str(), L"Debug", 0);
+
     return true;
 }
 
