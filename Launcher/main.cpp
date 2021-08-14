@@ -45,6 +45,8 @@ bool LoadClient(HANDLE process) {
         return false;
     }
 
+    // Commented out to disable dll download on each start
+    /*
     const auto url = L"https://github.com/btbd/mmultiplayer/raw/master/Client/binary/Client.dll";
     if (URLDownloadToFile(nullptr, url, path.c_str(), 0, nullptr) != S_OK &&
         !PathFileExists(path.c_str())) {
@@ -52,6 +54,7 @@ bool LoadClient(HANDLE process) {
         MessageBox(0, L"Failed to download the latest version", L"Failure", 0);
         return false;
     }
+    */
 
     bool status = false;
 
