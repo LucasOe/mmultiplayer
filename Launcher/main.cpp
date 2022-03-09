@@ -9,7 +9,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, char *, int) {
 
     const auto thread = CreateDialogThread();
     for (;; Sleep(200)) {
-        const auto processInfo = GetProcessInfoByName(L"mirrorsedge.exe");
+        const auto processInfo = GetProcessInfoByName(L"MirrorsEdge.exe");
         if (!processInfo.th32ProcessID) {
             continue;
         }
