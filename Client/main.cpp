@@ -10,7 +10,7 @@
 #include "addons/trainer.h"
 
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID reserved) {
-    if (reason == DLL_PROCESS_ATTACH && GetModuleHandle(L"MirrorsEdge.exe")) {
+    if (reason == DLL_PROCESS_ATTACH) {
 		Debug::Initialize();
 
 		while (!GetModuleHandle(L"d3d9.dll")) {
