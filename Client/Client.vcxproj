@@ -23,6 +23,7 @@
     <ProjectGuid>{92F0D99C-4569-427A-AA72-E7003ABA50EB}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Client</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -34,7 +35,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -165,6 +166,7 @@
   <ItemGroup>
     <ClInclude Include="addons\client.h" />
     <ClInclude Include="addons\dolly.h" />
+    <ClInclude Include="addons\tag.h" />
     <ClInclude Include="addons\trainer.h" />
     <ClInclude Include="engine.h" />
     <ClInclude Include="addon.h" />
@@ -239,6 +241,7 @@
   <ItemGroup>
     <ClCompile Include="addons\client.cpp" />
     <ClCompile Include="addons\dolly.cpp" />
+    <ClCompile Include="addons\tag.cpp" />
     <ClCompile Include="addons\trainer.cpp" />
     <ClCompile Include="engine.cpp" />
     <ClCompile Include="hook.cpp" />
