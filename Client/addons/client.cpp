@@ -53,6 +53,8 @@ static Client::Player *GetPlayerById(unsigned int id) {
     return nullptr;
 }
 
+std::vector<Client::Player *> Client::GetPlayerList() { return players.List; }
+
 static bool Setup() {
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa)) {
