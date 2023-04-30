@@ -4,6 +4,8 @@
 #include "../sdk.h"
 #include <string>
 #include <windows.h>
+#include <vector>
+#include "../engine.h"
 
 static int CompressedBoneOffsets[] = {
     0x14,  0x20,  0x24,  0x28,  0x2C,  0x30,  0x34,  0x38,  0x40,  0x44,  0x48,
@@ -68,4 +70,6 @@ class Client : public Addon {
         float MaxZ;
         PACKET LastPacket;
     };
+
+    static std::vector<Client::Player *> GetPlayerList();
 };
