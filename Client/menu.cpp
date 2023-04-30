@@ -107,7 +107,7 @@ static void EngineTab() {
 	}
 
 	ImGui::SameLine();
-	if (ImGui::Button("Execute Comamnd##engine-execute-command")) {
+	if (ImGui::Button("Execute Command##engine-execute-command")) {
 		commandInputCallback();
 	}
 
