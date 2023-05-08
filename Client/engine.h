@@ -45,6 +45,8 @@ void ExecuteCommand(const wchar_t *command);
 Classes::AWorldInfo *GetWorld(const bool update = false);
 Classes::ATdPlayerController *GetPlayerController(bool update = false);
 Classes::ATdPlayerPawn *GetPlayerPawn(bool update = false);
+Classes::ATdSPTimeTrialGame *GetTimeTrialGame(bool update = false);
+Classes::ATdSPLevelRace *GetLevelRace(bool update = false);
 void SpawnCharacter(Character character,
                     Classes::ASkeletalMeshActorSpawnable *&spawned);
 void Despawn(Classes::ASkeletalMeshActorSpawnable *actor);
