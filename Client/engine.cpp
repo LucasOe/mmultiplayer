@@ -699,6 +699,46 @@ Classes::ATdPlayerPawn *Engine::GetPlayerPawn(bool update) {
     return cache;
 }
 
+Classes::ATdSPTimeTrialGame* Engine::GetTimeTrialGame(bool update) {
+    static Classes::ATdSPTimeTrialGame *cache = nullptr;
+
+    if (levelLoad.Loading) {
+        return nullptr;
+    }
+
+    if (!cache || update) {
+        auto world = GetWorld(update);
+
+        if (world) {
+            auto timetrial = static_cast<Classes::ATdSPTimeTrialGame *>(world->Game);
+            cache = timetrial;
+            return cache;
+        }
+    }
+
+    return cache;
+}
+
+Classes::ATdSPLevelRace *Engine::GetLevelRace(bool update) {
+    static Classes::ATdSPLevelRace *cache = nullptr;
+
+    if (levelLoad.Loading) {
+        return nullptr;
+    }
+
+    if (!cache || update) {
+        auto world = GetWorld(update);
+
+        if (world) {
+            auto levelrace = static_cast<Classes::ATdSPLevelRace *>(world->Game);
+            cache = levelrace;
+            return cache;
+        }
+    }
+
+    return cache;
+}
+
 void Engine::SpawnCharacter(Character character,
                             Classes::ASkeletalMeshActorSpawnable *&spawned) {
     spawned = nullptr;
