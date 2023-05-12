@@ -10,7 +10,7 @@
 #include "imgui/imgui_internal.h"
 #include "menu.h"
 
-static auto show = false, showPlayerInfo = false;
+static auto show = false, showPlayerInfo = false, showExtraPlayerInfo = false;
 static std::vector<MenuTab> tabs;
 static int showKeybind = 0;
 static std::wstring levelName;
@@ -45,7 +45,7 @@ static void RenderMenu(IDirect3DDevice9 *device) {
 			auto width = io.DisplaySize.x - padding;
 
 			auto yIncrement = ImGui::GetTextLineHeight();
-			auto y = io.DisplaySize.y - (7 * yIncrement) - padding;
+			auto y = io.DisplaySize.y - ((showExtraPlayerInfo ? 10 : 7) * yIncrement) - padding;
 			auto color = ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 
 			window->DrawList->AddRectFilled(ImVec2(width - rightPadding - padding, y - padding), io.DisplaySize, ImColor(ImVec4(0, 0, 0, 0.4f)));
@@ -79,6 +79,23 @@ static void RenderMenu(IDirect3DDevice9 *device) {
 			sprintf_s(buffer, "%d", pawn->MovementState.GetValue());
 			window->DrawList->AddText(ImVec2(width - ImGui::CalcTextSize(buffer, nullptr, false).x, y += yIncrement), color, buffer);
 			window->DrawList->AddText(ImVec2(width - rightPadding, y), color, "S");
+
+			if (showExtraPlayerInfo) 
+			{
+				auto world = Engine::GetWorld();
+
+				sprintf_s(buffer, "%d", pawn->Health);
+				window->DrawList->AddText(ImVec2(width - ImGui::CalcTextSize(buffer, nullptr, false).x, y += yIncrement), color, buffer);
+				window->DrawList->AddText(ImVec2(width - rightPadding, y), color, "H");
+
+				sprintf_s(buffer, "%.2f", min(100.00f, controller->ReactionTimeEnergy));
+				window->DrawList->AddText(ImVec2(width - ImGui::CalcTextSize(buffer, nullptr, false).x, y += yIncrement), color, buffer);
+				window->DrawList->AddText(ImVec2(width - rightPadding, y), color, "RT");
+
+				sprintf_s(buffer, "%.2f", world->TimeDilation);
+				window->DrawList->AddText(ImVec2(width - ImGui::CalcTextSize(buffer, nullptr, false).x, y += yIncrement), color, buffer);
+				window->DrawList->AddText(ImVec2(width - rightPadding, y), color, "TD");
+			}
 
 			ImGui::EndRawScene();
 		}
@@ -171,6 +188,20 @@ static void WorldTab() {
 void PlayerTab() {
 	if (ImGui::Checkbox("Show Player Info", &showPlayerInfo)) {
 		Settings::SetSetting("player", "showInfo", showPlayerInfo);
+    }
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+        ImGui::SetTooltip("X = Location X\nY = Location Y\nZ = Location Z\nV = Velocity (km/h)\nRX = Rotation Pitch\nRY = Rotation Yaw\nS = Movement State (Enum)\n");
+    }
+
+	if (showPlayerInfo) {
+        if (ImGui::Checkbox("Show Extra Info", &showExtraPlayerInfo)) {
+            Settings::SetSetting("player", "showExtraPlayerInfo", showExtraPlayerInfo);
+        }
+
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+            ImGui::SetTooltip("H = Health\nRT = Reaction Time Energy\nTD = Time Dilation (Game Speed)");
+		}
 	}
 }
 
@@ -190,7 +221,8 @@ void Menu::Show() {
 
 bool Menu::Initialize() {
 	showKeybind = Settings::GetSetting("menu", "showKeybind", VK_INSERT);
-	showPlayerInfo = Settings::GetSetting("player", "showInfo", false);
+    showPlayerInfo = Settings::GetSetting("player", "showInfo", false);
+    showExtraPlayerInfo = Settings::GetSetting("player", "showExtraPlayerInfo", false);
 
 	Engine::OnRenderScene(RenderMenu);
 
