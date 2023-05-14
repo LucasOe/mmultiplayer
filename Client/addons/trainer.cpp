@@ -390,6 +390,10 @@ static void OnTick(float) {
         return;
     }
 
+    if (pawn->Health <= 0) {
+        return;
+    }
+
     static Trainer::Save save;
     static auto hasSave = false;
 
