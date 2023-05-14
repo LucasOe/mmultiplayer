@@ -163,6 +163,10 @@ static void Save(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
 
 static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
                  Classes::ATdPlayerController *controller) {
+    
+    if (pawn->bCutsceneIsSkippable) {
+        return;
+    }
 
     if (fly.Enabled) {
         fly.Location = save.Pawn.Location;
