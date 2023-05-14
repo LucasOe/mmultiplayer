@@ -180,6 +180,9 @@ static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
         controller->ForceFullReactionTimeEnergy();
     }
 
+    pawn->LeftHandWorldIKController->StrengthTarget = 0.0f;
+    pawn->RightHandWorldIKController->StrengthTarget = 0.0f;
+
     pawn->StopAllCustomAnimations(0.0f);
     pawn->SetMove(save.Pawn.MovementState, false, false);
 
