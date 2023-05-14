@@ -699,7 +699,7 @@ Classes::ATdPlayerPawn *Engine::GetPlayerPawn(bool update) {
     return cache;
 }
 
-Classes::ATdSPTimeTrialGame* Engine::GetTimeTrialGame(bool update) {
+Classes::ATdSPTimeTrialGame *Engine::GetTimeTrialGame(bool update) {
     static Classes::ATdSPTimeTrialGame *cache = nullptr;
 
     if (levelLoad.Loading) {
@@ -711,8 +711,11 @@ Classes::ATdSPTimeTrialGame* Engine::GetTimeTrialGame(bool update) {
 
         if (world) {
             auto timetrial = static_cast<Classes::ATdSPTimeTrialGame *>(world->Game);
-            cache = timetrial;
-            return cache;
+
+            if (timetrial->IsA(Classes::ATdSPTimeTrialGame::StaticClass())) {
+                cache = timetrial;
+                return cache;
+            }
         }
     }
 
@@ -731,8 +734,11 @@ Classes::ATdSPLevelRace *Engine::GetLevelRace(bool update) {
 
         if (world) {
             auto levelrace = static_cast<Classes::ATdSPLevelRace *>(world->Game);
-            cache = levelrace;
-            return cache;
+
+            if (levelrace->IsA(Classes::ATdSPLevelRace::StaticClass())) {
+                cache = levelrace;
+                return cache;
+            }
         }
     }
 
