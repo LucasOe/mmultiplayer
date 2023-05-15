@@ -7,6 +7,16 @@ class Trainer : public Addon {
   public:
     typedef struct {
         struct {
+            struct {
+                float PPCurrentStrengthCharged;
+            } TdHudEffectReactionTime;
+        } TdHud;
+
+        struct {
+            float TimeDilation; 
+        } WorldInfo;
+
+        struct {
             unsigned long bExludeHandMoves;
             unsigned long bExludeFootMoves;
             unsigned long bPhysXMutatable;
