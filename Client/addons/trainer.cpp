@@ -7,8 +7,10 @@
 #include "../pattern.h"
 #include "../settings.h"
 
+#include <WinUser.h>
+
 static auto enabled = false, overlay = true, god = false, kg = false,
-            beamer = false, strang = false;
+            beamer = false, strang = false, resetFlyingSpeed = true;
 
 static int saveKeybind = 0, loadKeybind = 0, godKeybind = 0, kgKeybind = 0,
            beamerKeybind = 0, strangKeybind = 0;
@@ -19,6 +21,7 @@ static struct {
         SlowerKeybind = 0;
     Classes::FVector Location, Velocity;
     float Speed = 3.0f;
+    float DefaultSpeed = Speed;
 } fly;
 
 static void(__thiscall *StateHandlerOriginal)(void *, float, int) = nullptr;
@@ -315,6 +318,14 @@ static void TrainerTab() {
         return;
     }
 
+    if (ImGui::Checkbox("Reset Flying Speed##trainer-reset-flyspeed", &resetFlyingSpeed)) {
+        Settings::SetSetting("trainer", "resetFlyingSpeed", resetFlyingSpeed);
+    }
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+        ImGui::SetTooltip("Resets the flying speed back to normal once flying has been reactivated.\nIf set to false, the speed will not be reset");
+    }
+        
     if (ImGui::Checkbox("Overlay##trainer-overlay", &overlay)) {
         Settings::SetSetting("trainer", "overlay", overlay);
     }
@@ -618,6 +629,10 @@ bool Trainer::Initialize() {
 
                         fly.Velocity = {0};
                         fly.Location = pawn->Location;
+                        
+                        if (resetFlyingSpeed) {
+                            fly.Speed = fly.DefaultSpeed;
+                        }
                     }
                 } else {
                     const auto pawn = Engine::GetPlayerPawn();
