@@ -12,13 +12,13 @@ namespace Classes
 //Constants
 //---------------------------------------------------------------------------
 
-#define CONST_INDEX_NONE                                         -1
-#define CONST_RadToUnrRot                                        10430.3783504704527f
-#define CONST_UnrRotToRad                                        0.00009587379924285f
 #define CONST_DegToRad                                           0.017453292519943296f
-#define CONST_RadToDeg                                           57.295779513082321600f
+#define CONST_INDEX_NONE                                         -1
 #define CONST_MaxInt                                             0x7fffffff
 #define CONST_Pi                                                 3.1415926535897932f
+#define CONST_RadToDeg                                           57.295779513082321600f
+#define CONST_RadToUnrRot                                        10430.3783504704527f
+#define CONST_UnrRotToRad                                        0.00009587379924285f
 
 //---------------------------------------------------------------------------
 //Enums
