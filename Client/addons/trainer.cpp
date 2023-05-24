@@ -9,20 +9,34 @@
 
 #include <WinUser.h>
 
-static auto enabled = false, overlay = true, god = false, kg = false,
-            beamer = false, strang = false, resetFlyingSpeed = true;
+static auto enabled = false, overlay = true, tooltip = true, god = false, kg = false,
+            beamer = false, sidestepBeamer = false, sidestepBeamerForMe = false, strang = false, 
+            resetFlyingSpeed = true, sidestepBeamerLeft = true;
 
-static int saveKeybind = 0, loadKeybind = 0, godKeybind = 0, kgKeybind = 0,
-           beamerKeybind = 0, strangKeybind = 0;
+static int saveKeybind = 0, loadKeybind = 0, godKeybind = 0, kgKeybind = 0, beamerKeybind = 0,
+           strangKeybind = 0;
 
 static struct {
     bool Enabled = false;
     int Keybind = 0, UpKeybind = 0, DownKeybind = 0, FasterKeybind = 0,
         SlowerKeybind = 0;
     Classes::FVector Location, Velocity;
-    float Speed = 3.0f;
+    float Speed = 2.0f;
     float DefaultSpeed = Speed;
 } fly;
+
+static INPUT input = {0};
+
+static void PressKey() {
+    input.ki.wVk = sidestepBeamerLeft ? 0x41 : 0x44; // virtual-key code
+    input.ki.dwFlags = 0; // 0 for key press
+    SendInput(1, &input, sizeof(INPUT));
+}
+
+static void ReleaseKey() {
+    input.ki.dwFlags = KEYEVENTF_KEYUP; // KEYEVENTF_KEYUP for key release
+    SendInput(1, &input, sizeof(INPUT));
+}
 
 static void(__thiscall *StateHandlerOriginal)(void *, float, int) = nullptr;
 
@@ -318,17 +332,59 @@ static void TrainerTab() {
         return;
     }
 
+    if (ImGui::Checkbox("Overlay##trainer-overlay", &overlay)) {
+        Settings::SetSetting("trainer", "overlay", overlay);
+    }
+
+    if (ImGui::Checkbox("Tooltip##trainer-tooltip", &tooltip)) {
+        Settings::SetSetting("trainer", "tooltip", tooltip);
+    }
+
+    ImGui::SeperatorWithPadding(2.5f);
+
     if (ImGui::Checkbox("Reset Flying Speed##trainer-reset-flyspeed", &resetFlyingSpeed)) {
         Settings::SetSetting("trainer", "resetFlyingSpeed", resetFlyingSpeed);
     }
 
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("Resets the flying speed back to normal once flying has been reactivated.\nIf set to false, the speed will not be reset");
+    if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+        ImGui::SetTooltip("Resets the flying speed back to normal once flying has been activated.\nIf set to false, the speed will not be reset.");
     }
-        
-    if (ImGui::Checkbox("Overlay##trainer-overlay", &overlay)) {
-        Settings::SetSetting("trainer", "overlay", overlay);
+
+    if (ImGui::Checkbox("Sidestep Beamer##trainer-beamer-sidestep", &sidestepBeamer)) {
+        Settings::SetSetting("trainer", "sidestepBeamer", sidestepBeamer);
     }
+
+    if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+        ImGui::SetTooltip("Instead of it quickturning, it will jump");
+    } 
+    
+    if (sidestepBeamer) {
+        ImGui::Dummy(ImVec2(12.0f, 0.0f));
+        ImGui::SameLine();
+
+        if (ImGui::Checkbox("Auto Sidestep Beamer##trainer-beamer-sidestepForMe", &sidestepBeamerForMe)) {
+            Settings::SetSetting("trainer", "sidestepBeamerForMe", sidestepBeamerForMe);
+        }
+
+        if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+            ImGui::SetTooltip("If set to false, you need to manually hold A or D when beamer is active.");
+        } 
+
+        if (sidestepBeamerForMe) {
+            ImGui::Dummy(ImVec2(24.0f, 0.0f));
+            ImGui::SameLine();
+
+            if (ImGui::Checkbox("Press A##trainer-beamer-sidestepLeft", &sidestepBeamerLeft)) {
+                Settings::SetSetting("trainer", "sidestepBeamerLeft", sidestepBeamerLeft);
+            }
+
+            if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+                ImGui::SetTooltip("Presses A if true or D if false.");
+            } 
+        }
+    }
+
+    ImGui::SeperatorWithPadding(2.5f);
 
     if (ImGui::Hotkey("Save##trainer-save", &saveKeybind)) {
         Settings::SetSetting("trainer", "saveKeybind", saveKeybind);
@@ -362,7 +418,9 @@ static void TrainerTab() {
         Settings::SetSetting("trainer", "flySlowerKeybind", fly.SlowerKeybind);
     }
 
-    if (ImGui::Hotkey("KickGlitch##trainer-kickglitch", &kgKeybind)) {
+    ImGui::SeperatorWithPadding(2.5f);
+
+    if (ImGui::Hotkey("Kickglitch##trainer-kickglitch", &kgKeybind)) {
         Settings::SetSetting("trainer", "kgKeybind", kgKeybind);
     }
 
@@ -381,7 +439,7 @@ static void OnRender(IDirect3DDevice9 *) {
     }
 
     std::string text = strang ? "Strang " : "";
-    text += beamer ? "Beamer " : "";
+    text += beamer ? sidestepBeamer ? "Sidestep Beamer " : "Beamer " : "";
     text += kg ? "KG " : "";
     text += fly.Enabled ? "Fly " : "";
     text += god ? "God " : "";
@@ -433,6 +491,9 @@ static void OnTick(float) {
     }
 
     if (hasSave && Engine::IsKeyDown(loadKeybind)) {
+        if (sidestepBeamer && sidestepBeamerForMe) {
+            ReleaseKey();
+        }
         Load(save, pawn, controller);
     }
 
@@ -490,6 +551,9 @@ static void OnTick(float) {
         fly.Velocity.X *= 0.90f;
         fly.Velocity.Y *= 0.90f;
         fly.Velocity.Z *= 0.90f;
+
+        pawn->LeftHandWorldIKController->StrengthTarget = 0.0f;
+        pawn->RightHandWorldIKController->StrengthTarget = 0.0f;
     }
 
     if (kg) {
@@ -504,12 +568,23 @@ static void OnTick(float) {
 
     if (beamer) {
         if (pawn->MovementState != Classes::EMovement::MOVE_WallClimbing) {
+            if (sidestepBeamer && sidestepBeamerForMe) {
+                ReleaseKey();
+            }
             beamer = false;
 
         } else if (sqrt(powf(pawn->Velocity.X, 2) + powf(pawn->Velocity.Y, 2)) >
                    1000.0f) {
 
-            controller->LookBehind();
+            if (sidestepBeamer) {
+                controller->PlayerInput->Jump();
+                if (sidestepBeamerForMe) {
+                    ReleaseKey();
+                }
+            } else {
+                controller->LookBehind();
+            }
+
             beamer = false;
         }
     }
@@ -532,9 +607,16 @@ void __fastcall StateHandlerHook(void *pawn, void *idle, float delta,
 }
 
 bool Trainer::Initialize() {
+    // Input
+    input.type = INPUT_KEYBOARD;
+    input.ki.wScan = 0;
+    input.ki.time = 0;
+    input.ki.dwExtraInfo = 0;
+
     // Settings
     enabled = Settings::GetSetting("trainer", "enabled", false);
     overlay = Settings::GetSetting("trainer", "overlay", true);
+    tooltip = Settings::GetSetting("trainer", "tooltip", true);
     saveKeybind = Settings::GetSetting("trainer", "saveKeybind", 0x34);
     loadKeybind = Settings::GetSetting("trainer", "loadKeybind", 0x35);
     godKeybind = Settings::GetSetting("trainer", "godKeybind", 0x31);
@@ -549,9 +631,15 @@ bool Trainer::Initialize() {
     fly.SlowerKeybind =
         Settings::GetSetting("trainer", "flySlowerKeybind", 0x51);
 
-    kgKeybind = Settings::GetSetting("trainer", "kgKeybind", 0x45);
-    beamerKeybind = Settings::GetSetting("trainer", "beamerKeybind", 0x54);
-    strangKeybind = Settings::GetSetting("trainer", "strangKeybind", 0x52);
+    kgKeybind = Settings::GetSetting("trainer", "kgKeybind", 0);
+    beamerKeybind = Settings::GetSetting("trainer", "beamerKeybind", 0);
+    strangKeybind = Settings::GetSetting("trainer", "strangKeybind", 0);
+
+    resetFlyingSpeed = Settings::GetSetting("trainer", "resetFlyingSpeed", true);
+
+    sidestepBeamer = Settings::GetSetting("trainer", "sidestepBeamer", false);
+    sidestepBeamerForMe = Settings::GetSetting("trainer", "sidestepBeamerForMe", false);
+    sidestepBeamerLeft = Settings::GetSetting("trainer", "sidestepBeamerLeft", true);
 
     // Functions
     Menu::AddTab("Trainer", TrainerTab);
@@ -663,7 +751,9 @@ bool Trainer::Initialize() {
 
                     if (pawn && pawn->MovementState ==
                                     Classes::EMovement::MOVE_WallClimbing) {
-
+                        if (sidestepBeamer && sidestepBeamerForMe) {
+                            PressKey();
+                        }
                         beamer = true;
                     }
                 }
