@@ -17,7 +17,7 @@ static std::wstring levelName;
 
 static void RenderMenu(IDirect3DDevice9 *device) {
 	if (show) {
-		ImGui::Begin("MMultiplayer");
+		ImGui::Begin("MMultiplayer 2.1");
 		ImGui::BeginTabBar("");
 
 		for (auto tab : tabs) {
@@ -165,6 +165,8 @@ static void WorldTab() {
 		levelName = world->GetMapName(false).c_str();
 	}
 
+	ImGui::SeperatorWithPadding(2.5f);
+
 	auto levels = world->StreamingLevels;
 	if (ImGui::TreeNode("world##world-levels", "%ws (%d)", levelName.c_str(), levels.Num())) {
 		for (auto i = 0UL; i < levels.Num(); ++i) {
@@ -202,6 +204,34 @@ void PlayerTab() {
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
             ImGui::SetTooltip("H = Health\nRT = Reaction Time Energy\nTD = Time Dilation (Game Speed)");
 		}
+	}
+
+	auto player = Engine::GetPlayerPawn();
+	auto controller = Engine::GetPlayerController();
+
+	if (!player || !controller) {
+        return;
+	}
+
+	if (Engine::GetTimeTrialGame() || Engine::GetLevelRace()) {
+        return;    
+	}
+
+    if (controller->ReactionTimeEnergy >= 100.0f || controller->bReactionTime || player->MovementState == Classes::EMovement::MOVE_FallingUncontrolled) {
+        return;
+	}
+
+	ImGui::SeperatorWithPadding(2.5f);
+
+	if (ImGui::Button("Refill ReactionTimeEnergy##controller-reactiontime")) { 
+		auto tdhud = static_cast<Classes::ATdHUD *>(controller->myHUD);
+                    
+		controller->ReactionTimeEnergy = 100.0f;
+		tdhud->EffectManager->ActivateReactionTimeTeaser();
+	}
+
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+        ImGui::SetTooltip("Refills your reaction time energy to 100 instantly");
 	}
 }
 
