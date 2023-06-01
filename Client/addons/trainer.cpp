@@ -6,15 +6,17 @@
 #include "../menu.h"
 #include "../pattern.h"
 #include "../settings.h"
+#include "../util.h"
 
 #include <WinUser.h>
 
 static auto enabled = false, overlay = true, tooltip = true, god = false, kg = false,
             beamer = false, sidestepBeamer = false, sidestepBeamerForMe = false, strang = false, 
-            resetFlyingSpeed = true, sidestepBeamerLeft = true;
+            resetFlyingSpeed = true, sidestepBeamerPressLeftKeybind = true,
+            sidestepBeamerPressRightKeybind = false;
 
 static int saveKeybind = 0, loadKeybind = 0, godKeybind = 0, kgKeybind = 0, beamerKeybind = 0,
-           strangKeybind = 0;
+           strangKeybind = 0, sidestepBeamerLeftKeybind = 0, sidestepBeamerRightKeybind = 0;
 
 static struct {
     bool Enabled = false;
@@ -28,13 +30,13 @@ static struct {
 static INPUT input = {0};
 
 static void PressKey() {
-    input.ki.wVk = sidestepBeamerLeft ? 0x41 : 0x44; // virtual-key code
-    input.ki.dwFlags = 0; // 0 for key press
+    input.ki.wVk = sidestepBeamerPressLeftKeybind ? sidestepBeamerLeftKeybind : sidestepBeamerRightKeybind;
+    input.ki.dwFlags = 0;
     SendInput(1, &input, sizeof(INPUT));
 }
 
 static void ReleaseKey() {
-    input.ki.dwFlags = KEYEVENTF_KEYUP; // KEYEVENTF_KEYUP for key release
+    input.ki.dwFlags = KEYEVENTF_KEYUP;
     SendInput(1, &input, sizeof(INPUT));
 }
 
@@ -326,6 +328,26 @@ static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
 static void TrainerTab() {
     if (ImGui::Checkbox("Enabled##trainer-enabled", &enabled)) {
         Settings::SetSetting("trainer", "enabled", enabled);
+
+        if (!enabled)
+        {
+            kg = false;
+            god = false;
+            beamer = false;
+            strang = false;
+            sidestepBeamer = false;
+            fly.Enabled = false;
+
+            auto pawn = Engine::GetPlayerPawn();
+
+            if (pawn)
+            {
+                pawn->Velocity = fly.Velocity;
+                pawn->bCollideWorld = true;
+                pawn->EnterFallingHeight = -1e30f;
+                pawn->Physics = Classes::EPhysics::PHYS_Falling;
+            }
+        }
     }
 
     if (!enabled) {
@@ -359,28 +381,38 @@ static void TrainerTab() {
     } 
     
     if (sidestepBeamer) {
-        ImGui::Dummy(ImVec2(12.0f, 0.0f));
-        ImGui::SameLine();
+        ImGui::SeperatorWithPadding(2.5f);
 
         if (ImGui::Checkbox("Auto Sidestep Beamer##trainer-beamer-sidestepForMe", &sidestepBeamerForMe)) {
             Settings::SetSetting("trainer", "sidestepBeamerForMe", sidestepBeamerForMe);
         }
 
         if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("If set to false, you need to manually hold A or D when beamer is active.");
+            ImGui::SetTooltip("If set to false, you need to manually hold your left keybind or right keybind when beamer is active.");
         } 
 
         if (sidestepBeamerForMe) {
-            ImGui::Dummy(ImVec2(24.0f, 0.0f));
-            ImGui::SameLine();
+            ImGui::Dummy(ImVec2(0.0f, 6.0f));
 
-            if (ImGui::Checkbox("Press A##trainer-beamer-sidestepLeft", &sidestepBeamerLeft)) {
-                Settings::SetSetting("trainer", "sidestepBeamerLeft", sidestepBeamerLeft);
+            if (ImGui::RadioButton("Press Left Keybind##trainer-sidestepBeamerLeft", sidestepBeamerPressLeftKeybind)) {
+                Settings::SetSetting("trainer", "sidestepBeamerPressRightKeybind", sidestepBeamerPressRightKeybind = false);
+                Settings::SetSetting("trainer", "sidestepBeamerPressLeftKeybind", sidestepBeamerPressLeftKeybind = true);
+            }
+            
+            if (ImGui::RadioButton("Press Right Keybind##trainer-sidestepBeamerRight", sidestepBeamerPressRightKeybind)) {
+                Settings::SetSetting("trainer", "sidestepBeamerPressRightKeybind", sidestepBeamerPressRightKeybind = true);
+                Settings::SetSetting("trainer", "sidestepBeamerPressLeftKeybind", sidestepBeamerPressLeftKeybind = false);
             }
 
-            if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-                ImGui::SetTooltip("Presses A if true or D if false.");
-            } 
+            ImGui::Dummy(ImVec2(0.0f, 6.0f));
+
+            if (ImGui::Hotkey("Left Keybind##trainer-sidestepBeamerLeftKeybind", &sidestepBeamerLeftKeybind)) {
+                Settings::SetSetting("trainer", "sidestepBeamerLeftKeybind", sidestepBeamerLeftKeybind);
+            }
+
+            if (ImGui::Hotkey("Right Keybind##trainer-sidestepBeamerRightKeybind", &sidestepBeamerRightKeybind)) {
+                Settings::SetSetting("trainer", "sidestepBeamerRightKeybind", sidestepBeamerRightKeybind);
+            }
         }
     }
 
@@ -463,7 +495,7 @@ static void OnRender(IDirect3DDevice9 *) {
     }
 }
 
-static void OnTick(float) {
+static void OnTick(float deltaTime) {
     if (!enabled) {
         return;
     }
@@ -494,6 +526,11 @@ static void OnTick(float) {
         if (sidestepBeamer && sidestepBeamerForMe) {
             ReleaseKey();
         }
+
+        if (strang) {
+            strang = false;
+        }
+
         Load(save, pawn, controller);
     }
 
@@ -617,29 +654,30 @@ bool Trainer::Initialize() {
     enabled = Settings::GetSetting("trainer", "enabled", false);
     overlay = Settings::GetSetting("trainer", "overlay", true);
     tooltip = Settings::GetSetting("trainer", "tooltip", true);
-    saveKeybind = Settings::GetSetting("trainer", "saveKeybind", 0x34);
-    loadKeybind = Settings::GetSetting("trainer", "loadKeybind", 0x35);
-    godKeybind = Settings::GetSetting("trainer", "godKeybind", 0x31);
-    fly.Keybind = Settings::GetSetting("trainer", "flyKeybind", 0x32);
+    saveKeybind = Settings::GetSetting("trainer", "saveKeybind", VK_4);
+    loadKeybind = Settings::GetSetting("trainer", "loadKeybind", VK_5);
+    godKeybind = Settings::GetSetting("trainer", "godKeybind", VK_1);
+
+    // Flying Settings
+    fly.Keybind = Settings::GetSetting("trainer", "flyKeybind", VK_2);
     fly.UpKeybind = Settings::GetSetting("trainer", "flyUpKeybind", VK_SPACE);
-    fly.DownKeybind =
-        Settings::GetSetting("trainer", "flyDownKeybind", VK_SHIFT);
-
-    fly.FasterKeybind =
-        Settings::GetSetting("trainer", "flyFasterKeybind", 0x45);
-
-    fly.SlowerKeybind =
-        Settings::GetSetting("trainer", "flySlowerKeybind", 0x51);
-
-    kgKeybind = Settings::GetSetting("trainer", "kgKeybind", 0);
-    beamerKeybind = Settings::GetSetting("trainer", "beamerKeybind", 0);
-    strangKeybind = Settings::GetSetting("trainer", "strangKeybind", 0);
-
+    fly.DownKeybind = Settings::GetSetting("trainer", "flyDownKeybind", VK_SHIFT);
+    fly.FasterKeybind = Settings::GetSetting("trainer", "flyFasterKeybind", VK_E);
+    fly.SlowerKeybind = Settings::GetSetting("trainer", "flySlowerKeybind", VK_Q);
     resetFlyingSpeed = Settings::GetSetting("trainer", "resetFlyingSpeed", true);
 
+    // Cheating Tools
+    kgKeybind = Settings::GetSetting("trainer", "kgKeybind", VK_NONE);
+    beamerKeybind = Settings::GetSetting("trainer", "beamerKeybind", VK_NONE);
+    strangKeybind = Settings::GetSetting("trainer", "strangKeybind", VK_NONE);
+
+    // Sidestep Beamer Settings
     sidestepBeamer = Settings::GetSetting("trainer", "sidestepBeamer", false);
     sidestepBeamerForMe = Settings::GetSetting("trainer", "sidestepBeamerForMe", false);
-    sidestepBeamerLeft = Settings::GetSetting("trainer", "sidestepBeamerLeft", true);
+    sidestepBeamerPressLeftKeybind = Settings::GetSetting("trainer", "sidestepBeamerPressLeftKeybind", true);
+    sidestepBeamerPressRightKeybind = Settings::GetSetting("trainer", "sidestepBeamerPressRightKeybind", false);
+    sidestepBeamerLeftKeybind = Settings::GetSetting("trainer", "sidestepBeamerLeftKeybind", VK_A);
+    sidestepBeamerRightKeybind = Settings::GetSetting("trainer", "sidestepBeamerRightKeybind", VK_D);
 
     // Functions
     Menu::AddTab("Trainer", TrainerTab);
