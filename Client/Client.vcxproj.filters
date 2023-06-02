@@ -255,9 +255,6 @@
     <ClInclude Include="debug.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="addons\tag.h">
-      <Filter>Header Files\addons</Filter>
-    </ClInclude>
     <ClInclude Include="util.h">
       <Filter>Header Files\util</Filter>
     </ClInclude>
@@ -361,9 +358,6 @@
     </ClCompile>
     <ClCompile Include="debug.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="addons\tag.cpp">
-      <Filter>Source Files\addons</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
