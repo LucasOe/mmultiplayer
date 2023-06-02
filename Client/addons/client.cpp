@@ -16,6 +16,7 @@
 #include "../settings.h"
 
 #include "client.h"
+#include "../util.h"
 
 static char roomInput[0xFF] = {0};
 static char nameInput[0xFF] = {0};
@@ -364,19 +365,23 @@ static void ClientListener() {
             }
 
             if (msgType == "connect") {
+                // New player connected to the room, the server sent these details about them
                 const auto msgId = msg["id"];
                 const auto msgName = msg["name"];
                 const auto msgCharacter = msg["character"];
                 const auto msgLevel = msg["level"];
 
+                // If any of the details isn't the correct type, it will fail
                 if (!msgId.is_number_integer() || !msgName.is_string() ||
                     !msgCharacter.is_number_integer() ||
                     !msgLevel.is_string()) {
                     continue;
                 }
 
+                // Locks the thread?
                 players.Mutex.lock();
 
+                // Player has successfully connected and we create a new player and fill it in with the details from the server
                 const auto player = new Client::Player();
                 player->Id = msgId;
                 player->Name = msgName.get<std::string>();
@@ -560,18 +565,24 @@ static void ClientListener() {
                     0x3f7fffff, 0x3a049678, 0x3d3ec44a, 0x3bb2a169, 0x3f7fb7e6,
                     0x0,        0x37800000, 0xb5800000, 0x3f7fffff};
 
+                // Copy the packet bones to the default bones
                 memcpy(player->LastPacket.Bones, defaultBones,
                        sizeof(defaultBones));
 
+                // Spawn character if you're in the same level and if you're not in a loading screen
                 if (player->Level == client.Level && !loading) {
                     Engine::SpawnCharacter(player->Character, player->Actor);
                 } else {
                     player->Actor = nullptr;
                 }
 
+                // Add chat message of who joined
                 AddChatMessage(player->Name + " joined the room");
 
+                // Add them to the players list
                 players.List.push_back(player);
+
+                // Unlocks the thread?
                 players.Mutex.unlock();
             } else if (msgType == "name") {
                 const auto msgId = msg["id"];
@@ -850,7 +861,8 @@ static void OnRender(IDirect3DDevice9 *device) {
 }
 
 static void MultiplayerTab() {
-    ImGui::Text("Status: %s", connected ? "Connected" : "Connecting");
+    ImGui::Text("Status: %s", connected ? "Connected" : disabled ? "Multiplayer Disabled" : "Connecting");
+    ImGui::SeperatorWithPadding(2.5f);
 
     const auto nameInputCallback = []() {
         if (client.Name != nameInput) {
@@ -955,9 +967,7 @@ static void MultiplayerTab() {
         roomInputCallback();
     }
 
-    if (ImGui::Hotkey("Chat Keybind##client-chat-keybind", &chat.Keybind)) {
-        Settings::SetSetting("client", "chatKeybind", chat.Keybind);
-    }
+    ImGui::SeperatorWithPadding(2.5f);
 
     if (ImGui::Checkbox("Show Nametags##client-show-nametags",
                         &players.ShowNameTags)) {
@@ -975,7 +985,7 @@ static void MultiplayerTab() {
 
     ImGui::SameLine();
 
-    if (ImGui::Checkbox("Disabled##client-disabled", &disabled)) {
+    if (ImGui::Checkbox("Disable Multiplayer##client-disabled", &disabled)) {
         if (disabled) {
             Disconnect();
         }
@@ -983,6 +993,7 @@ static void MultiplayerTab() {
         Settings::SetSetting("client", "disabled", disabled);
     }
 
+    ImGui::SeperatorWithPadding(2.5f);
     ImGui::Text("Chat");
 
     chat.Mutex.lock();
@@ -1001,6 +1012,12 @@ static void MultiplayerTab() {
     if (ImGui::Button("Send##client-chat-send")) {
         SendChatInput();
     }
+
+    if (ImGui::Hotkey("Chat Keybind##client-chat-keybind", &chat.Keybind)) {
+        Settings::SetSetting("client", "chatKeybind", chat.Keybind);
+    }
+
+    ImGui::SeperatorWithPadding(2.5f);
 
     players.Mutex.lock_shared();
     if (ImGui::TreeNode("##client-players", "Players (%d)",
@@ -1040,7 +1057,7 @@ bool Client::Initialize() {
         Settings::GetSetting("client", "character", Engine::Character::Faith)
             .get<Engine::Character>();
 
-    chat.Keybind = Settings::GetSetting("client", "chatKeybind", 0x54);
+    chat.Keybind = Settings::GetSetting("client", "chatKeybind", VK_T);
 
     players.ShowNameTags = Settings::GetSetting("client", "showNameTags", true);
     chat.ShowOverlay = Settings::GetSetting("client", "showChatOverlay", true);
