@@ -64,7 +64,7 @@ static bool Setup() {
     }
 
     addrinfo *result = nullptr;
-    if (getaddrinfo("soaphub.org", nullptr, nullptr, &result)) {
+    if (getaddrinfo("176.58.101.83", nullptr, nullptr, &result)) {
         printf("client: getaddrinfo failed\n");
         return false;
     }
