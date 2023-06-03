@@ -1017,6 +1017,12 @@ static void MultiplayerTab() {
         Settings::SetSetting("client", "chatKeybind", chat.Keybind);
     }
 
+    ImGui::SameLine();
+
+    if (ImGui::Button("Reset##chatKeybind")) {
+        Settings::SetSetting("client", "chatKeybind", chat.Keybind = VK_T);
+    }
+
     ImGui::SeperatorWithPadding(2.5f);
 
     players.Mutex.lock_shared();
