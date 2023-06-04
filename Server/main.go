@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net"
@@ -52,8 +53,66 @@ func (client *Client) SendMessage(msg interface{}) {
 }
 
 type Room struct {
-	Name    string
-	Clients []*Client
+	Name           string
+	Clients        []*Client
+	taggedPlayerId uint32
+	canTag         bool
+	cancelTag      func()
+}
+
+func (room *Room) CurrentTaggedPlayerId() uint32 {
+	return room.taggedPlayerId
+}
+
+func (room *Room) IsTaggingEnabled() bool {
+	return room.canTag
+}
+
+func (room *Room) CanPlayerTag(c *Client) bool {
+	return c.Id == room.taggedPlayerId
+}
+
+func (room *Room) OnPlayerDisconnect(disconnectedPlayer *Client) {
+	go room.SendMessageExcept(disconnectedPlayer.Id, map[string]interface{}{
+		"type": "disconnect",
+		"id":   disconnectedPlayer.Id,
+	})
+
+	if disconnectedPlayer.Id == room.taggedPlayerId {
+		if room.cancelTag != nil {
+			room.cancelTag()
+		}
+
+		for _, client := range room.Clients {
+			// TODO make this random
+			if disconnectedPlayer.Id != client.Id {
+				room.SetTaggedPlayer(client.Id)
+				break
+			}
+		}
+	}
+
+	log.Printf("timed out %x \"%s\"\n", disconnectedPlayer.Id, disconnectedPlayer.Name)
+}
+
+func (room *Room) EnableCanTag() {
+	room.canTag = true
+}
+
+func (room *Room) SetTaggedPlayer(id uint32) {
+	room.canTag = false
+	room.taggedPlayerId = id
+
+	// TODO should we use sendMessageExcept instead?
+	room.SendMessage(map[string]interface{}{
+		"type":           "tagged",
+		"taggedPlayerId": id,
+	})
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	room.cancelTag = cancelFn
+
+	go canTagNotifier(ctx, room, time.Second*10)
 }
 
 func (room *Room) SendMessage(msg interface{}) {
@@ -120,12 +179,7 @@ func main() {
 				if time.Since(c.LastSeen) < 5*time.Second {
 					newClients = append(newClients, c)
 				} else {
-					go r.SendMessageExcept(c.Id, map[string]interface{}{
-						"type": "disconnect",
-						"id":   c.Id,
-					})
-
-					log.Printf("timed out %x \"%s\"\n", c.Id, c.Name)
+					r.OnPlayerDisconnect(c)
 				}
 			}
 
@@ -140,6 +194,15 @@ func main() {
 		system.Rooms = newRooms
 		system.Unlock()
 	}
+}
+
+func getUint32Field(obj map[string]interface{}, field string) (uint32, bool) {
+	vf, ok := obj[field].(float64)
+	if !ok {
+		return 0, false
+	}
+
+	return uint32(vf), true
 }
 
 func getTrimStringField(obj map[string]interface{}, field string) (string, bool) {
@@ -232,14 +295,19 @@ func tcpHandler(c net.Conn) {
 
 			// Tell the client the existing clients
 			system.RLock()
+			taggedPlayerId := room.CurrentTaggedPlayerId()
+			canTag := room.IsTaggingEnabled()
+
 			for _, c := range room.Clients {
 				if c.Id != client.Id {
 					go client.SendMessage(map[string]interface{}{
-						"type":      "connect",
-						"id":        c.Id,
-						"name":      c.Name,
-						"character": c.Character,
-						"level":     c.Level,
+						"type":           "connect",
+						"id":             c.Id,
+						"name":           c.Name,
+						"character":      c.Character,
+						"level":          c.Level,
+						"taggedPlayerId": taggedPlayerId,
+						"canTag":         canTag,
 					})
 				}
 			}
@@ -349,6 +417,38 @@ func tcpHandler(c net.Conn) {
 			}
 
 			client.LastSeen = time.Now()
+		case "tagged":
+			id, ok := msg["id"].(float64)
+			if !ok {
+				continue
+			}
+
+			taggedPlayerId, ok := getUint32Field(msg, "taggedPlayerId")
+			if !ok {
+				continue
+			}
+
+			client := system.GetClientById(uint32(id))
+			if client == nil {
+				continue
+			}
+			client.LastSeen = time.Now()
+
+			if !client.Room.IsTaggingEnabled() {
+				continue
+			}
+
+			if !client.Room.IsTaggingEnabled() {
+				continue
+			}
+
+			newTaggedPlayer := system.GetClientById(taggedPlayerId)
+			if newTaggedPlayer == nil {
+				continue
+			}
+
+			client.Room.SetTaggedPlayer(newTaggedPlayer.Id)
+
 		case "disconnect":
 			id, ok := msg["id"].(float64)
 			if !ok {
@@ -372,19 +472,27 @@ func tcpHandler(c net.Conn) {
 			}
 
 			room.Clients = newClients
+			room.OnPlayerDisconnect(client)
 			system.Unlock()
-
-			// Notify the other clients who disconnected
-			room.SendMessageExcept(client.Id, map[string]interface{}{
-				"type": "disconnect",
-				"id":   client.Id,
-			})
 
 			log.Printf("room \"%s\": \"%s\" disconnected\n", room.Name, client.Name)
 		}
 	}
 
 	c.Close()
+}
+
+func canTagNotifier(ctx context.Context, room *Room, duration time.Duration) {
+	countdown := time.NewTimer(duration)
+	select {
+	case <-ctx.Done():
+		return
+	case <-countdown.C:
+		room.SendMessage(map[string]interface{}{
+			"type": "canTag",
+		})
+		room.EnableCanTag()
+	}
 }
 
 func tcpListener() {
