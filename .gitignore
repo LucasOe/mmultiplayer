@@ -353,8 +353,5 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 
-# Golang
-Server/*.mod
-Server/*.sum
-Server/*.go
-!Server/main.go
+# Jetbrains
+.idea/
