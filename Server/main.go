@@ -176,7 +176,7 @@ func main() {
 		for name, r := range system.Rooms {
 			var newClients []*Client
 			for _, c := range r.Clients {
-				if time.Since(c.LastSeen) < 5*time.Second {
+				if time.Since(c.LastSeen) < 30*time.Second {
 					newClients = append(newClients, c)
 				} else {
 					r.OnPlayerDisconnect(c)
