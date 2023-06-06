@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"log"
+	mathrand "math/rand"
 	"net"
 	"strings"
 	"sync"
@@ -55,9 +58,48 @@ func (client *Client) SendMessage(msg interface{}) {
 type Room struct {
 	Name           string
 	Clients        []*Client
+	gameMode       string
 	taggedPlayerId uint32
 	canTag         bool
 	cancelTag      func()
+}
+
+func (room *Room) StartTagGameMode() {
+	room.gameMode = "tag"
+
+	room.SendMessage(map[string]interface{}{
+		"type":     "gameMode",
+		"gameMode": "tag",
+	})
+
+	room.TagRandomPlayer()
+}
+
+func (room *Room) TagRandomPlayer() {
+	numPlayers := len(room.Clients)
+	switch numPlayers {
+	case 0:
+		return
+	case 1:
+		room.SetTaggedPlayer(room.Clients[0])
+	default:
+		room.SetTaggedPlayer(room.Clients[system.rng.Intn(numPlayers)])
+	}
+}
+
+func (room *Room) EndGameMode() {
+	room.gameMode = ""
+
+	room.taggedPlayerId = 0
+	room.canTag = false
+	if room.cancelTag != nil {
+		room.cancelTag()
+	}
+
+	room.SendMessage(map[string]interface{}{
+		"type":     "gameMode",
+		"gameMode": "",
+	})
 }
 
 func (room *Room) CurrentTaggedPlayerId() uint32 {
@@ -83,13 +125,7 @@ func (room *Room) OnPlayerDisconnect(disconnectedPlayer *Client) {
 			room.cancelTag()
 		}
 
-		for _, client := range room.Clients {
-			// TODO make this random
-			if disconnectedPlayer.Id != client.Id {
-				room.SetTaggedPlayer(client.Id)
-				break
-			}
-		}
+		room.TagRandomPlayer()
 	}
 
 	log.Printf("timed out %x \"%s\"\n", disconnectedPlayer.Id, disconnectedPlayer.Name)
@@ -99,14 +135,14 @@ func (room *Room) EnableCanTag() {
 	room.canTag = true
 }
 
-func (room *Room) SetTaggedPlayer(id uint32) {
+func (room *Room) SetTaggedPlayer(client *Client) {
 	room.canTag = false
-	room.taggedPlayerId = id
+	room.taggedPlayerId = client.Id
 
 	// TODO should we use sendMessageExcept instead?
 	room.SendMessage(map[string]interface{}{
 		"type":           "tagged",
-		"taggedPlayerId": id,
+		"taggedPlayerId": client.Id,
 	})
 
 	ctx, cancelFn := context.WithCancel(context.Background())
@@ -136,6 +172,7 @@ func (room *Room) SendMessageExcept(id uint32, msg interface{}) {
 type System struct {
 	sync.RWMutex
 	Rooms map[string]*Room
+	rng   *rng
 }
 
 func (system *System) GetClientById(id uint32) *Client {
@@ -156,6 +193,13 @@ func (system *System) GetClientById(id uint32) *Client {
 var system = System{Rooms: map[string]*Room{}}
 
 func main() {
+	randomNumberGenerator, err := newRng()
+	if err != nil {
+		log.Fatalf("failed to create random number - %s", err)
+	}
+
+	system.rng = randomNumberGenerator
+
 	go tcpListener()
 	go udpListener()
 
@@ -194,6 +238,30 @@ func main() {
 		system.Rooms = newRooms
 		system.Unlock()
 	}
+}
+
+func newRng() (*rng, error) {
+	buh := make([]byte, 8)
+	_, err := rand.Read(buh)
+	if err != nil {
+		return nil, err
+	}
+
+	return &rng{
+		r: mathrand.New(mathrand.NewSource(int64(binary.LittleEndian.Uint64(buh)))),
+	}, nil
+}
+
+type rng struct {
+	mu sync.Mutex
+	r  *mathrand.Rand
+}
+
+func (o *rng) Intn(n int) int {
+	o.mu.Lock()
+	result := o.r.Intn(n)
+	o.mu.Unlock()
+	return result
 }
 
 func getUint32Field(obj map[string]interface{}, field string) (uint32, bool) {
@@ -417,6 +485,30 @@ func tcpHandler(c net.Conn) {
 			}
 
 			client.LastSeen = time.Now()
+		case "startTagGameMode":
+			id, ok := getUint32Field(msg, "id")
+			if !ok {
+				continue
+			}
+
+			client := system.GetClientById(id)
+			if client == nil {
+				continue
+			}
+
+			client.Room.StartTagGameMode()
+		case "endGameMode":
+			id, ok := getUint32Field(msg, "id")
+			if !ok {
+				continue
+			}
+
+			client := system.GetClientById(id)
+			if client == nil {
+				continue
+			}
+
+			client.Room.EndGameMode()
 		case "tagged":
 			id, ok := msg["id"].(float64)
 			if !ok {
@@ -447,8 +539,7 @@ func tcpHandler(c net.Conn) {
 				continue
 			}
 
-			client.Room.SetTaggedPlayer(newTaggedPlayer.Id)
-
+			client.Room.SetTaggedPlayer(newTaggedPlayer)
 		case "disconnect":
 			id, ok := msg["id"].(float64)
 			if !ok {
