@@ -249,9 +249,6 @@
     <ClInclude Include="addons\dolly.h">
       <Filter>Header Files\addons</Filter>
     </ClInclude>
-    <ClInclude Include="addons\tag.h">
-      <Filter>Header Files\addons</Filter>
-    </ClInclude>
     <ClInclude Include="addons\trainer.h">
       <Filter>Header Files\addons</Filter>
     </ClInclude>
@@ -354,9 +351,6 @@
       <Filter>Source Files\addons</Filter>
     </ClCompile>
     <ClCompile Include="addons\dolly.cpp">
-      <Filter>Source Files\addons</Filter>
-    </ClCompile>
-    <ClCompile Include="addons\tag.cpp">
       <Filter>Source Files\addons</Filter>
     </ClCompile>
     <ClCompile Include="addons\trainer.cpp">

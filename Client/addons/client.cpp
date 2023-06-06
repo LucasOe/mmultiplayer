@@ -25,6 +25,8 @@ static char chatInput[0x200] = {0};
 static auto connected = false, loading = false, disabled = false;
 static std::string room;
 
+static auto showOverlay = true;
+
 static sockaddr_in server = {0};
 static SOCKET tcpSocket = 0, udpSocket = 0;
 
@@ -674,7 +676,42 @@ static void ClientListener() {
                     })) {
                     lastPing = GetTickCount64();
                 }
-            } else if (msgType == "disconnect") {
+            } else if (msgType == "gameMode") {
+                const auto msgGameMode = msg["gameMode"];
+
+                if (msgGameMode.is_null()) {
+                    client.CanTag = false;
+                    client.TaggedPlayerId = 0;
+                    client.GameMode = "";
+                    continue;
+                }
+
+                client.GameMode = msgGameMode.get<std::string>();
+            } else if (msgType == "canTag") {
+                if (client.Id == client.TaggedPlayerId) {
+                    client.CanTag = true;
+                }
+            } else if (msgType == "tagged") {
+                const auto msgTaggedPlayerId = msg["taggedPlayerId"];
+
+                if (!msgTaggedPlayerId.is_number_integer()) {
+                    continue;
+                }
+
+                int taggedId = client.Id;
+                if (msgTaggedPlayerId != client.Id) {
+                    const auto player = GetPlayerById(msgTaggedPlayerId);
+                    if (!player) {
+                        continue;
+                    } 
+
+                    taggedId = player->Id;
+                }
+
+                client.TaggedPlayerId = taggedId;
+                client.CanTag = false;
+            }
+            else if (msgType == "disconnect") {
                 const auto msgId = msg["id"];
                 if (!msgId.is_number_integer()) {
                     continue;
@@ -743,6 +780,48 @@ static void OnTick(float delta) {
 
             sum = 0;
         }
+
+        if (pawn && client.GameMode == "tag" && client.Id == client.TaggedPlayerId && client.CanTag) {
+            int playersInTheSameLevel = 0;
+
+            for (const auto &p : players.List) {
+                if (p->Level == client.Level && p->Actor) {
+                    playersInTheSameLevel++;
+                }
+            }
+
+            if (playersInTheSameLevel == 0) {
+                return;
+            }
+
+            for (const auto &p : players.List) {
+                if (!p->Actor || p->Level != client.Level) {
+                    continue;
+                }
+
+                float dist = Distance(p->Actor->Location, pawn->Location);
+
+                if (dist < 1.0f) {
+                    SendJsonMessage({
+                        {"type", "tagged"},
+                        {"id", client.Id},
+                        {"taggedPlayerId", p->Id},
+                    });
+
+                    char buffer[0xFF];
+                    sprintf_s(buffer, sizeof(buffer), "[Tag] %s tagged %s", client.Name.c_str(), p->Name.c_str());
+                    //AddChatMessage(buffer);
+
+                    SendJsonMessage({
+                        {"type", "chat"},
+                        {"id", client.Id},
+                        {"body", buffer},
+                    });
+
+                    client.CanTag = false;
+                }
+            }
+        }
     }
 }
 
@@ -771,8 +850,12 @@ static void OnRender(IDirect3DDevice9 *device) {
                         ImVec2(pos.X + size.x / 2.0f, pos.Y) +
                             ImVec2(3.0f, 1.0f),
                         ImColor(ImVec4(0, 0, 0, 0.4f)));
-                    window->DrawList->AddText(
-                        topLeft, ImColor(ImVec4(1, 1, 1, 1)), p->Name.c_str());
+
+                    if (client.GameMode == "tag" && p->Id == client.TaggedPlayerId) {
+                        window->DrawList->AddText(topLeft, ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f)), p->Name.c_str());
+                    } else {
+                        window->DrawList->AddText(topLeft, ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), p->Name.c_str());
+                    }
                 }
             }
         }
@@ -858,6 +941,72 @@ static void OnRender(IDirect3DDevice9 *device) {
 
         ImGui::EndRawScene();
     }
+}
+
+static void OnRenderTag(IDirect3DDevice9 *device) {
+    if (!showOverlay) {
+        return;
+    }
+
+    auto pawn = Engine::GetPlayerPawn();
+    auto controller = Engine::GetPlayerController();
+    auto world = Engine::GetWorld();
+
+    if (!pawn || !controller || !world) {
+        return;
+    }
+
+    if (client.Level.empty() || client.Level == "tdmainmenu") {
+        return;
+    }
+
+    int playersInTheSameLevel = 0;
+
+    for (const auto &p : players.List) {
+        if (p->Level == client.Level && p->Actor) {
+            playersInTheSameLevel++;
+        }
+    }
+
+    if (playersInTheSameLevel == 0) {
+        return;
+    }
+
+    auto window = ImGui::BeginRawScene("##tag-info");
+    auto &io = ImGui::GetIO();
+
+    static float padding = 5.0f;
+    static float rightPadding = 90.0f;
+
+    float yIncrement = ImGui::GetTextLineHeight();
+    float y = (playersInTheSameLevel * yIncrement) - yIncrement + (padding / 2);
+    auto color = ImColor(ImVec4(1, 1, 1, 1));
+
+    window->DrawList->AddRectFilled(ImVec2(), ImVec2(256, y + padding + yIncrement),
+                                    ImColor(ImVec4(0, 0, 0, 0.4f)));
+
+    char buffer[0x200] = {0};
+
+    for (const auto &p : players.List) {
+        if (!p->Actor || p->Level != client.Level) {
+            continue;
+        }
+
+        float dist = Distance(p->Actor->Location, pawn->Location);
+
+        if (dist >= 10.0f) {
+            sprintf_s(buffer, "%.0f m", dist);
+        } else {
+            sprintf_s(buffer, "%.1f m", dist);
+        }
+
+        window->DrawList->AddText(ImVec2(padding, y), color, buffer);
+        window->DrawList->AddText(ImVec2(rightPadding, y), color, p->Name.c_str());
+
+        y -= yIncrement;
+    }
+
+    ImGui::EndRawScene();
 }
 
 static void MultiplayerTab() {
@@ -1048,6 +1197,56 @@ static void MultiplayerTab() {
     players.Mutex.unlock_shared();
 }
 
+static void TagTab() {
+    ImGui::Checkbox("Show Overlay##tag-overlay", &showOverlay);
+    ImGui::SameLine();
+
+    if (ImGui::Button("Start Tag")) {
+        SendJsonMessage({
+            {"type", "startTagGameMode"},
+            {"id", client.Id},
+        });
+
+        char buffer[0xFF];
+        sprintf_s(buffer, sizeof(buffer), "[Tag] %s started tag", client.Name.c_str());
+        AddChatMessage(buffer);
+    }
+
+    ImGui::SameLine();
+
+    if (client.GameMode == "tag") {
+        if (ImGui::Button("End Tag")) {
+            SendJsonMessage({
+                {"type", "endGameMode"},
+                {"id", client.Id},
+            });
+
+            char buffer[0xFF];
+            sprintf_s(buffer, sizeof(buffer), "[Tag] %s ended tag", client.Name.c_str());
+            AddChatMessage(buffer);
+        }
+    }
+
+    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Text("Id: %d", client.Id);
+    ImGui::Text("Name: %s", client.Name.c_str());
+    ImGui::Text("Level: %s", client.Level.c_str());
+    ImGui::Text("GameMode: %s", client.GameMode.empty() ? "null" : client.GameMode.c_str());
+
+    std::string taggedPlayerName = "null";
+
+    if (client.Id != client.TaggedPlayerId) {
+        auto player = GetPlayerById(client.TaggedPlayerId);
+
+        if (player) {
+            taggedPlayerName = player->Name;
+        }
+    }
+
+    ImGui::Text("TaggedPlayerId: %d (%s)", client.TaggedPlayerId, client.TaggedPlayerId == client.Id ? client.Name.c_str() : taggedPlayerName.c_str());
+    ImGui::Text("CanTag: %s", client.CanTag ? "true" : "false");
+}
+
 bool Client::Initialize() {
     // Settings
     client.Name =
@@ -1071,8 +1270,11 @@ bool Client::Initialize() {
 
     // Functions
     Menu::AddTab("Multiplayer", MultiplayerTab);
+    Menu::AddTab("Tag", TagTab);
+
     Engine::OnTick(OnTick);
     Engine::OnRenderScene(OnRender);
+    Engine::OnRenderScene(OnRenderTag);
 
     Engine::OnInput([](unsigned int &msg, int keycode) {
         if (!chat.Focused && msg == WM_KEYDOWN && keycode == chat.Keybind) {
