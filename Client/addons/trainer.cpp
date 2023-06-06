@@ -8,12 +8,10 @@
 #include "../settings.h"
 #include "../util.h"
 
-#include <WinUser.h>
-
 static auto enabled = false, overlay = true, tooltip = true, god = false, kg = false,
             beamer = false, sidestepBeamer = false, sidestepBeamerForMe = false, strang = false, 
             resetFlyingSpeed = true, sidestepBeamerPressLeftKeybind = true,
-            sidestepBeamerPressRightKeybind = false;
+            sidestepBeamerPressRightKeybind = false, toggleResetKeybinds = false;
 
 static int saveKeybind = 0, loadKeybind = 0, godKeybind = 0, kgKeybind = 0, beamerKeybind = 0,
            strangKeybind = 0, sidestepBeamerLeftKeybind = 0, sidestepBeamerRightKeybind = 0;
@@ -26,19 +24,6 @@ static struct {
     float Speed = 2.0f;
     float DefaultSpeed = Speed;
 } fly;
-
-static INPUT input = {0};
-
-static void PressKey() {
-    input.ki.wVk = sidestepBeamerPressLeftKeybind ? sidestepBeamerLeftKeybind : sidestepBeamerRightKeybind;
-    input.ki.dwFlags = 0;
-    SendInput(1, &input, sizeof(INPUT));
-}
-
-static void ReleaseKey() {
-    input.ki.dwFlags = KEYEVENTF_KEYUP;
-    SendInput(1, &input, sizeof(INPUT));
-}
 
 static void(__thiscall *StateHandlerOriginal)(void *, float, int) = nullptr;
 
@@ -326,6 +311,12 @@ static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
 }
 
 static void TrainerTab() {
+    auto pawn = Engine::GetPlayerPawn();
+
+    if (!pawn) {
+        return;
+    }
+
     if (ImGui::Checkbox("Enabled##trainer-enabled", &enabled)) {
         Settings::SetSetting("trainer", "enabled", enabled);
 
@@ -338,15 +329,10 @@ static void TrainerTab() {
             sidestepBeamer = false;
             fly.Enabled = false;
 
-            auto pawn = Engine::GetPlayerPawn();
-
-            if (pawn)
-            {
-                pawn->Velocity = fly.Velocity;
-                pawn->bCollideWorld = true;
-                pawn->EnterFallingHeight = -1e30f;
-                pawn->Physics = Classes::EPhysics::PHYS_Falling;
-            }
+            pawn->Velocity = fly.Velocity;
+            pawn->bCollideWorld = true;
+            pawn->EnterFallingHeight = -1e30f;
+            pawn->Physics = Classes::EPhysics::PHYS_Falling;
         }
     }
 
@@ -410,8 +396,24 @@ static void TrainerTab() {
                 Settings::SetSetting("trainer", "sidestepBeamerLeftKeybind", sidestepBeamerLeftKeybind);
             }
 
+            if (toggleResetKeybinds) {
+                ImGui::SameLine();
+
+                if (ImGui::Button("Reset##sidestepBeamerLeftKeybind")) {
+                    Settings::SetSetting("trainer", "sidestepBeamerLeftKeybind", sidestepBeamerLeftKeybind = VK_A);
+                }
+            }
+
             if (ImGui::Hotkey("Right Keybind##trainer-sidestepBeamerRightKeybind", &sidestepBeamerRightKeybind)) {
                 Settings::SetSetting("trainer", "sidestepBeamerRightKeybind", sidestepBeamerRightKeybind);
+            }
+
+            if (toggleResetKeybinds) {
+                ImGui::SameLine();
+
+                if (ImGui::Button("Reset##sidestepBeamerRightKeybind")) {
+                    Settings::SetSetting("trainer", "sidestepBeamerRightKeybind", sidestepBeamerRightKeybind = VK_D);
+                }
             }
         }
     }
@@ -422,32 +424,96 @@ static void TrainerTab() {
         Settings::SetSetting("trainer", "saveKeybind", saveKeybind);
     }
 
+    if (toggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset##saveKeybind")) {
+            Settings::SetSetting("trainer", "saveKeybind", saveKeybind = VK_4);
+        }
+    }
+
     if (ImGui::Hotkey("Load##trainer-load", &loadKeybind)) {
         Settings::SetSetting("trainer", "loadKeybind", loadKeybind);
+    }
+
+    if (toggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset##loadKeybind")) {
+            Settings::SetSetting("trainer", "loadKeybind", loadKeybind = VK_5);
+        }
     }
 
     if (ImGui::Hotkey("God##trainer-god", &godKeybind)) {
         Settings::SetSetting("trainer", "godKeybind", godKeybind);
     }
 
+    if (toggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset##godKeybind")) {
+            Settings::SetSetting("trainer", "godKeybind", godKeybind = VK_1);
+        }
+    }
+
     if (ImGui::Hotkey("Fly##trainer-fly", &fly.Keybind)) {
         Settings::SetSetting("trainer", "flyKeybind", fly.Keybind);
+    }
+
+    if (toggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset##flyKeybind")) {
+            Settings::SetSetting("trainer", "flyKeybind", fly.Keybind = VK_2);
+        }
     }
 
     if (ImGui::Hotkey("Fly Up##trainer-fly-up", &fly.UpKeybind)) {
         Settings::SetSetting("trainer", "flyUpKeybind", fly.UpKeybind);
     }
 
+    if (toggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset##flyUpKeybind")) {
+            Settings::SetSetting("trainer", "flyUpKeybind", fly.UpKeybind = VK_SPACE);
+        }
+    }
+
     if (ImGui::Hotkey("Fly Down##trainer-fly-down", &fly.DownKeybind)) {
         Settings::SetSetting("trainer", "flyDownKeybind", fly.DownKeybind);
+    }
+
+    if (toggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset##flyDownKeybind")) {
+            Settings::SetSetting("trainer", "flyDownKeybind", fly.DownKeybind = VK_SHIFT);
+        }
     }
 
     if (ImGui::Hotkey("Fly Faster##trainer-fly-faster", &fly.FasterKeybind)) {
         Settings::SetSetting("trainer", "flyFasterKeybind", fly.FasterKeybind);
     }
 
+    if (toggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset##flyFasterKeybind")) {
+            Settings::SetSetting("trainer", "flyFasterKeybind", fly.FasterKeybind = VK_E);
+        }
+    }
+
     if (ImGui::Hotkey("Fly Slower##trainer-fly-slower", &fly.SlowerKeybind)) {
         Settings::SetSetting("trainer", "flySlowerKeybind", fly.SlowerKeybind);
+    }
+
+    if (toggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset##flySlowerKeybind")) {
+            Settings::SetSetting("trainer", "flySlowerKeybind", fly.SlowerKeybind = VK_Q);
+        }
     }
 
     ImGui::SeperatorWithPadding(2.5f);
@@ -456,12 +522,42 @@ static void TrainerTab() {
         Settings::SetSetting("trainer", "kgKeybind", kgKeybind);
     }
 
+    if (toggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset##kgKeybind")) {
+            Settings::SetSetting("trainer", "kgKeybind", kgKeybind = VK_NONE);
+        }
+    }
+
     if (ImGui::Hotkey("Beamer##trainer-beamer", &beamerKeybind)) {
         Settings::SetSetting("trainer", "beamerKeybind", beamerKeybind);
     }
 
+    if (toggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset##beamerKeybind")) {
+            Settings::SetSetting("trainer", "beamerKeybind", beamerKeybind = VK_NONE);
+        }
+    }
+
     if (ImGui::Hotkey("Strang##trainer-strang", &strangKeybind)) {
         Settings::SetSetting("trainer", "strangKeybind", strangKeybind);
+    }
+
+    if (toggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset##strangKeybind")) {
+            Settings::SetSetting("trainer", "strangKeybind", strangKeybind = VK_NONE);
+        }
+    }
+
+    ImGui::SeperatorWithPadding(2.5f);
+
+    if (ImGui::Checkbox("Toggle Reset Keybinds##toggleResetKeybinds", &toggleResetKeybinds)) {
+        Settings::SetSetting("trainer", "toggleResetKeybinds", toggleResetKeybinds);
     }
 }
 
@@ -644,12 +740,6 @@ void __fastcall StateHandlerHook(void *pawn, void *idle, float delta,
 }
 
 bool Trainer::Initialize() {
-    // Input
-    input.type = INPUT_KEYBOARD;
-    input.ki.wScan = 0;
-    input.ki.time = 0;
-    input.ki.dwExtraInfo = 0;
-
     // Settings
     enabled = Settings::GetSetting("trainer", "enabled", false);
     overlay = Settings::GetSetting("trainer", "overlay", true);
@@ -657,6 +747,7 @@ bool Trainer::Initialize() {
     saveKeybind = Settings::GetSetting("trainer", "saveKeybind", VK_4);
     loadKeybind = Settings::GetSetting("trainer", "loadKeybind", VK_5);
     godKeybind = Settings::GetSetting("trainer", "godKeybind", VK_1);
+    toggleResetKeybinds = Settings::GetSetting("trainer", "toggleResetKeybinds", false);
 
     // Flying Settings
     fly.Keybind = Settings::GetSetting("trainer", "flyKeybind", VK_2);
@@ -674,10 +765,10 @@ bool Trainer::Initialize() {
     // Sidestep Beamer Settings
     sidestepBeamer = Settings::GetSetting("trainer", "sidestepBeamer", false);
     sidestepBeamerForMe = Settings::GetSetting("trainer", "sidestepBeamerForMe", false);
-    sidestepBeamerPressLeftKeybind = Settings::GetSetting("trainer", "sidestepBeamerPressLeftKeybind", true);
-    sidestepBeamerPressRightKeybind = Settings::GetSetting("trainer", "sidestepBeamerPressRightKeybind", false);
     sidestepBeamerLeftKeybind = Settings::GetSetting("trainer", "sidestepBeamerLeftKeybind", VK_A);
     sidestepBeamerRightKeybind = Settings::GetSetting("trainer", "sidestepBeamerRightKeybind", VK_D);
+    sidestepBeamerPressLeftKeybind = Settings::GetSetting("trainer", "sidestepBeamerPressLeftKeybind", true);
+    sidestepBeamerPressRightKeybind = Settings::GetSetting("trainer", "sidestepBeamerPressRightKeybind", false);
 
     // Functions
     Menu::AddTab("Trainer", TrainerTab);
@@ -790,7 +881,7 @@ bool Trainer::Initialize() {
                     if (pawn && pawn->MovementState ==
                                     Classes::EMovement::MOVE_WallClimbing) {
                         if (sidestepBeamer && sidestepBeamerForMe) {
-                            PressKey();
+                            PressKey(sidestepBeamerPressLeftKeybind ? sidestepBeamerLeftKeybind : sidestepBeamerRightKeybind);
                         }
                         beamer = true;
                     }
