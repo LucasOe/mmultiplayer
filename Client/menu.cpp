@@ -128,6 +128,8 @@ static void EngineTab() {
 		commandInputCallback();
 	}
 
+	ImGui::SeperatorWithPadding(2.5f);
+
 	bool check = engine->bSmoothFrameRate;
 	ImGui::Checkbox("Smooth Framerate##engine-smooth-framerate", &check);
 	engine->bSmoothFrameRate = check;
@@ -141,14 +143,26 @@ static void EngineTab() {
 		ImGui::InputFloat("Gamma##engine-gamma", &client->DisplayGamma);
 	}
 
+	ImGui::SeperatorWithPadding(2.5f);
+
 	if (ImGui::Hotkey("Menu Keybind##menu-show", &showKeybind)) {
 		Settings::SetSetting("menu", "showKeybind", showKeybind);
 	}
 
 	ImGui::SameLine();
 
+	if (ImGui::Button("Reset##showKeybind")) {
+		Settings::SetSetting("menu", "showKeybind", showKeybind = VK_INSERT);
+	}
+
+	ImGui::SameLine();
+
 	if (ImGui::Button("Debug Console##client-show-console")) {
 		Debug::CreateConsole();
+	}
+	
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+		ImGui::SetTooltip("Creates a console window that will display debug info.\nIf you're trying to close the debug console, it will close Mirror's Edge too.");
 	}
 }
 
@@ -206,10 +220,10 @@ void PlayerTab() {
 		}
 	}
 
-	auto player = Engine::GetPlayerPawn();
+	auto pawn = Engine::GetPlayerPawn();
 	auto controller = Engine::GetPlayerController();
 
-	if (!player || !controller) {
+	if (!pawn || !controller) {
         return;
 	}
 
@@ -217,7 +231,7 @@ void PlayerTab() {
         return;    
 	}
 
-    if (controller->ReactionTimeEnergy >= 100.0f || controller->bReactionTime || player->MovementState == Classes::EMovement::MOVE_FallingUncontrolled) {
+    if (controller->ReactionTimeEnergy >= 100.0f || controller->bReactionTime || pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled) {
         return;
 	}
 
