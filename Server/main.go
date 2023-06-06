@@ -530,10 +530,6 @@ func tcpHandler(c net.Conn) {
 				continue
 			}
 
-			if !client.Room.IsTaggingEnabled() {
-				continue
-			}
-
 			newTaggedPlayer := system.GetClientById(taggedPlayerId)
 			if newTaggedPlayer == nil {
 				continue
