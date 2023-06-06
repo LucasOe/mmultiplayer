@@ -69,6 +69,10 @@ class Client : public Addon {
         Classes::ASkeletalMeshActorSpawnable *Actor;
         float MaxZ;
         PACKET LastPacket;
+
+        std::string GameMode;
+        unsigned int TaggedPlayerId;
+        bool CanTag;
     };
 
     static std::vector<Client::Player *> GetPlayerList();
