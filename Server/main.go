@@ -63,6 +63,7 @@ type Room struct {
 	taggedPlayerId uint32
 	canTag         bool
 	cancelTag      func()
+	tagCoolDown    time.Duration
 }
 
 func (room *Room) AddPlayer(client *Client) {
@@ -130,7 +131,7 @@ func (room *Room) tagRandomPlayerUnsafe() {
 		randPlayerId = room.Clients[system.rng.Intn(numPlayers)].Id
 	}
 
-	room.sendTaggedPlayerMessageUnsafe(randPlayerId)
+	room.setTaggedPlayerUnsafe(randPlayerId)
 }
 
 func (room *Room) EndGameMode() {
@@ -149,6 +150,13 @@ func (room *Room) EndGameMode() {
 		"type":     "gameMode",
 		"gameMode": "",
 	})
+}
+
+func (room *Room) SetTagCooldown(coolDown time.Duration) {
+	room.rwMu.Lock()
+	defer room.rwMu.Unlock()
+
+	room.tagCoolDown = coolDown
 }
 
 func (room *Room) CurrentTaggedPlayerId() uint32 {
@@ -253,23 +261,26 @@ func (room *Room) SetTaggedPlayer(currentTaggedPlayer *Client, taggedPlayerId ui
 		return
 	}
 
-	room.sendTaggedPlayerMessageUnsafe(taggedPlayerId)
+	room.setTaggedPlayerUnsafe(taggedPlayerId)
 }
 
-func (room *Room) sendTaggedPlayerMessageUnsafe(taggedPlayerId uint32) {
+func (room *Room) setTaggedPlayerUnsafe(taggedPlayerId uint32) {
 	room.canTag = false
 	room.taggedPlayerId = taggedPlayerId
+	if room.tagCoolDown == 0 {
+		room.tagCoolDown = 10 * time.Second
+	}
 
-	// TODO should we use sendMessageExcept instead?
 	room.sendMessageUnsafe(map[string]interface{}{
 		"type":           "tagged",
 		"taggedPlayerId": taggedPlayerId,
+		"coolDown":       int(room.tagCoolDown.Seconds()),
 	})
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	room.cancelTag = cancelFn
 
-	go canTagNotifier(ctx, room, time.Second*10)
+	go canTagNotifier(ctx, room, room.tagCoolDown)
 }
 
 func (room *Room) SendMessage(msg interface{}) {
@@ -393,6 +404,15 @@ func getUint32Field(obj map[string]interface{}, field string) (uint32, bool) {
 	}
 
 	return uint32(vf), true
+}
+
+func getTimeDurationSecondsField(obj map[string]interface{}, field string) (time.Duration, bool) {
+	v, ok := obj[field].(float64)
+	if !ok {
+		return 0, false
+	}
+
+	return time.Duration(v * float64(time.Second)), true
 }
 
 func getTrimStringField(obj map[string]interface{}, field string) (string, bool) {
@@ -521,6 +541,46 @@ func tcpHandler(c net.Conn) {
 				"type": "chat",
 				"body": client.Name + ": " + body,
 			})
+		case "announce":
+			id, ok := msg["id"].(float64)
+			if !ok {
+				continue
+			}
+
+			body, ok := msg["body"].(string)
+			if !ok {
+				continue
+			}
+
+			client := system.GetClientById(uint32(id))
+			if client == nil {
+				continue
+			}
+
+			client.LastSeen = time.Now()
+			client.Room.SendMessage(map[string]interface{}{
+				"type": "announce",
+				"body": body,
+			})
+		case "cooldown":
+			id, ok := msg["id"].(float64)
+			if !ok {
+				continue
+			}
+
+			cooldown, ok := getTimeDurationSecondsField(msg, "cooldown")
+			if !ok {
+				continue
+			}
+
+			client := system.GetClientById(uint32(id))
+			if client == nil {
+				continue
+			}
+
+			client.Room.SetTagCooldown(cooldown)
+
+			client.LastSeen = time.Now()
 		case "level":
 			id, ok := msg["id"].(float64)
 			if !ok {
