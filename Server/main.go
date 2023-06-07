@@ -184,6 +184,7 @@ func (room *Room) DisconnectIdlePlayers() int {
 	var newClients []*Client
 	for _, c := range room.Clients {
 		if time.Since(c.LastSeen) > 30*time.Second {
+			// TODO need to handle random player tag (slice has not been updated yet)
 			room.removePlayerUnsafe(c)
 			log.Printf("timed out %x \"%s\"\n", c.Id, c.Name)
 		} else {
@@ -425,14 +426,19 @@ func getTrimStringField(obj map[string]interface{}, field string) (string, bool)
 	return v, v != ""
 }
 
-func tcpHandler(c net.Conn) {
-	d := json.NewDecoder(c)
+func (client *Client) tcpHandler() {
+	defer client.Tcp.Close()
+
+	d := json.NewDecoder(client.Tcp)
 
 	for {
 		var msg map[string]interface{}
 		err := d.Decode(&msg)
 		if err != nil {
-			break
+			if client.Room != nil {
+				client.Room.OnPlayerDisconnect(client)
+			}
+			return
 		}
 
 		msgType, ok := getTrimStringField(msg, "type")
@@ -476,16 +482,10 @@ func tcpHandler(c net.Conn) {
 			}
 			system.Unlock()
 
-			client := &Client{
-				Tcp:        c,
-				Id:         uuid.New().ID(),
-				Room:       room,
-				Name:       msgName,
-				Character:  uint32(msgCharacter),
-				Level:      strings.ToLower(msgLevel),
-				LastPacket: nil,
-				LastSeen:   time.Now(),
-			}
+			client.Room = room
+			client.Name = msgName
+			client.Character = uint32(msgCharacter)
+			client.Level = strings.ToLower(msgLevel)
 
 			// Tell the client their UUID
 			client.SendMessage(map[string]interface{}{
@@ -521,18 +521,8 @@ func tcpHandler(c net.Conn) {
 				"name": client.Name,
 			})
 		case "chat":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
 			body, ok := msg["body"].(string)
 			if !ok {
-				continue
-			}
-
-			client := system.GetClientById(uint32(id))
-			if client == nil {
 				continue
 			}
 
@@ -542,18 +532,8 @@ func tcpHandler(c net.Conn) {
 				"body": client.Name + ": " + body,
 			})
 		case "announce":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
 			body, ok := msg["body"].(string)
 			if !ok {
-				continue
-			}
-
-			client := system.GetClientById(uint32(id))
-			if client == nil {
 				continue
 			}
 
@@ -563,37 +543,16 @@ func tcpHandler(c net.Conn) {
 				"body": body,
 			})
 		case "cooldown":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
 			cooldown, ok := getTimeDurationSecondsField(msg, "cooldown")
 			if !ok {
 				continue
 			}
 
-			client := system.GetClientById(uint32(id))
-			if client == nil {
-				continue
-			}
-
 			client.Room.SetTagCooldown(cooldown)
-
 			client.LastSeen = time.Now()
 		case "level":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
 			level, ok := msg["level"].(string)
 			if !ok {
-				continue
-			}
-
-			client := system.GetClientById(uint32(id))
-			if client == nil {
 				continue
 			}
 
@@ -605,18 +564,8 @@ func tcpHandler(c net.Conn) {
 				"level": client.Level,
 			})
 		case "character":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
 			character, ok := msg["character"].(float64)
 			if !ok || character < 0 || character >= CharacterMax {
-				continue
-			}
-
-			client := system.GetClientById(uint32(id))
-			if client == nil {
 				continue
 			}
 
@@ -628,77 +577,25 @@ func tcpHandler(c net.Conn) {
 				"character": client.Character,
 			})
 		case "pong":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
-			client := system.GetClientById(uint32(id))
-			if client == nil {
-				continue
-			}
-
 			client.LastSeen = time.Now()
 		case "startTagGameMode":
-			id, ok := getUint32Field(msg, "id")
-			if !ok {
-				continue
-			}
-
-			client := system.GetClientById(id)
-			if client == nil {
-				continue
-			}
-
 			client.Room.StartTagGameMode()
 		case "endGameMode":
-			id, ok := getUint32Field(msg, "id")
-			if !ok {
-				continue
-			}
-
-			client := system.GetClientById(id)
-			if client == nil {
-				continue
-			}
-
 			client.Room.EndGameMode()
 		case "tagged":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
 			taggedPlayerId, ok := getUint32Field(msg, "taggedPlayerId")
 			if !ok {
 				continue
 			}
 
-			client := system.GetClientById(uint32(id))
-			if client == nil {
-				continue
-			}
 			client.LastSeen = time.Now()
-
 			client.Room.SetTaggedPlayer(client, taggedPlayerId)
 		case "disconnect":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
-			client := system.GetClientById(uint32(id))
-			if client == nil {
-				continue
-			}
-
 			client.Room.OnPlayerDisconnect(client)
 
 			log.Printf("room \"%s\": \"%s\" disconnected\n", client.Room.Name, client.Name)
 		}
 	}
-
-	c.Close()
 }
 
 func canTagNotifier(ctx context.Context, room *Room, duration time.Duration) {
@@ -725,7 +622,14 @@ func tcpListener() {
 			continue
 		}
 
-		go tcpHandler(c)
+		client := &Client{
+			Tcp:      c,
+			Id:       uuid.New().ID(),
+			LastSeen: time.Now(),
+			Room:     &Room{},
+		}
+
+		go client.tcpHandler()
 	}
 }
 
