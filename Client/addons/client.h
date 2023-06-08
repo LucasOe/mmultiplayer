@@ -60,6 +60,13 @@ class Client : public Addon {
         short CompressedBones[ARRAYSIZE(CompressedBoneOffsets)];
     } PACKET_COMPRESSED;
 
+    class Tag {
+      public:
+        bool CanTag;
+        unsigned int TaggedPlayerId;
+        unsigned int CoolDown = 10;
+    };
+
     class Player {
       public:
         unsigned int Id;
@@ -71,8 +78,7 @@ class Client : public Addon {
         PACKET LastPacket;
 
         std::string GameMode;
-        unsigned int TaggedPlayerId;
-        bool CanTag;
+        Tag Tag;
     };
 
     static std::vector<Client::Player *> GetPlayerList();
