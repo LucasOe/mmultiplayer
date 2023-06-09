@@ -38,12 +38,175 @@ type Packet struct {
 type Client struct {
 	Tcp        net.Conn
 	Id         uint32
-	Room       *Room
-	Name       string
-	Character  uint32
-	Level      string
-	LastPacket []byte
-	LastSeen   time.Time
+	rwMu       sync.RWMutex
+	room       *Room
+	name       string
+	character  uint32
+	level      string
+	lastPacket []byte
+	lastSeen   time.Time
+}
+
+func (client *Client) connectMsg(msg map[string]interface{}) {
+	client.rwMu.Lock()
+	defer client.rwMu.Unlock()
+
+	msgRoom, ok := getTrimStringField(msg, "room")
+	if !ok {
+		return
+	}
+
+	msgName, ok := getTrimStringField(msg, "name")
+	if !ok {
+		return
+	}
+
+	msgLevel, ok := getTrimStringField(msg, "level")
+	if !ok {
+		return
+	}
+
+	msgCharacter, ok := msg["character"].(float64)
+	if !ok || msgCharacter < 0 || msgCharacter >= CharacterMax {
+		return
+	}
+
+	// Add the client to the room (create a new room if necessary)
+	// TODO should we differentiate joining a room and creating a new one
+	system.Lock()
+	room, ok := system.Rooms[msgRoom]
+	if !ok {
+		room = &Room{
+			Name: msgRoom,
+		}
+
+		system.Rooms[msgRoom] = room
+		log.Printf("created room \"%s\"\n", room.Name)
+	}
+	system.Unlock()
+
+	client.room = room
+	client.name = msgName
+	client.character = uint32(msgCharacter)
+	client.level = strings.ToLower(msgLevel)
+
+	// Tell the client their UUID
+	// TODO consider calling on a go routine
+	client.SendMessage(map[string]interface{}{
+		"type": "id",
+		"id":   client.Id,
+	})
+
+	room.AddPlayer(client)
+
+	log.Printf("room \"%s\": \"%s\" joined\n", room.Name, client.name)
+}
+
+func (client *Client) nameMsg(msg map[string]interface{}) {
+	client.rwMu.Lock()
+	defer client.rwMu.Unlock()
+
+	name, ok := getTrimStringField(msg, "name")
+	if !ok {
+		return
+	}
+
+	// Update the client's name and tell the other clients
+	client.name = name
+	client.lastSeen = time.Now()
+	client.room.SendMessageExcept(client.Id, map[string]interface{}{
+		"type": "name",
+		"id":   client.Id,
+		"name": client.name,
+	})
+}
+
+func (client *Client) chatMsg(msg map[string]interface{}) {
+	client.rwMu.Lock()
+	defer client.rwMu.Unlock()
+
+	body, ok := msg["body"].(string)
+	if !ok {
+		return
+	}
+
+	client.lastSeen = time.Now()
+	client.room.SendMessage(map[string]interface{}{
+		"type": "chat",
+		"body": client.name + ": " + body,
+	})
+}
+
+func (client *Client) announceMsg(msg map[string]interface{}) {
+	client.rwMu.Lock()
+	defer client.rwMu.Unlock()
+
+	body, ok := msg["body"].(string)
+	if !ok {
+		return
+	}
+
+	client.lastSeen = time.Now()
+	client.room.SendMessage(map[string]interface{}{
+		"type": "announce",
+		"body": body,
+	})
+}
+
+func (client *Client) cooldownMsg(msg map[string]interface{}) {
+	client.rwMu.Lock()
+	defer client.rwMu.Unlock()
+
+	cooldown, ok := getTimeDurationSecondsField(msg, "cooldown")
+	if !ok {
+		return
+	}
+
+	client.room.SetTagCooldown(cooldown)
+	client.lastSeen = time.Now()
+}
+
+func (client *Client) levelMsg(msg map[string]interface{}) {
+	client.rwMu.Lock()
+	defer client.rwMu.Unlock()
+
+	level, ok := msg["level"].(string)
+	if !ok {
+		return
+	}
+
+	client.level = strings.ToLower(level)
+	client.lastSeen = time.Now()
+	client.room.SendMessageExcept(client.Id, map[string]interface{}{
+		"type":  "level",
+		"id":    client.Id,
+		"level": client.level,
+	})
+}
+
+func (client *Client) characterMsg(msg map[string]interface{}) {
+	client.rwMu.Lock()
+	defer client.rwMu.Unlock()
+
+	character, ok := msg["character"].(float64)
+	if !ok || character < 0 || character >= CharacterMax {
+		return
+	}
+
+	client.character = uint32(character)
+	client.lastSeen = time.Now()
+	client.room.SendMessageExcept(client.Id, map[string]interface{}{
+		"type":      "character",
+		"id":        client.Id,
+		"character": client.character,
+	})
+}
+
+func (client *Client) pongMsg() {
+	client.rwMu.Lock()
+	defer client.rwMu.Unlock()
+
+	client.lastSeen = time.Now()
 }
 
 func (client *Client) SendMessage(msg interface{}) {
@@ -76,9 +239,9 @@ func (room *Room) AddPlayer(client *Client) {
 	room.sendMessageExceptUnsafe(client.Id, map[string]interface{}{
 		"type":      "connect",
 		"id":        client.Id,
-		"name":      client.Name,
-		"character": client.Character,
-		"level":     client.Level,
+		"name":      client.name,
+		"character": client.character,
+		"level":     client.level,
 	})
 
 	// Tell the client the existing clients
@@ -87,9 +250,9 @@ func (room *Room) AddPlayer(client *Client) {
 			go client.SendMessage(map[string]interface{}{
 				"type":           "connect",
 				"id":             c.Id,
-				"name":           c.Name,
-				"character":      c.Character,
-				"level":          c.Level,
+				"name":           c.name,
+				"character":      c.character,
+				"level":          c.level,
 				"taggedPlayerId": room.taggedPlayerId,
 				"canTag":         room.canTag,
 			})
@@ -183,10 +346,10 @@ func (room *Room) DisconnectIdlePlayers() int {
 
 	var newClients []*Client
 	for _, c := range room.Clients {
-		if time.Since(c.LastSeen) > 30*time.Second {
+		if time.Since(c.lastSeen) > 30*time.Second {
 			// TODO need to handle random player tag (slice has not been updated yet)
 			room.removePlayerUnsafe(c)
-			log.Printf("timed out %x \"%s\"\n", c.Id, c.Name)
+			log.Printf("timed out %x \"%s\"\n", c.Id, c.name)
 		} else {
 			newClients = append(newClients, c)
 		}
@@ -317,8 +480,8 @@ func (room *Room) SendLastPackets(client *Client, conn net.PacketConn, addr net.
 	defer room.rwMu.RUnlock()
 
 	for _, c := range room.Clients {
-		if c.Id != client.Id && c.LastPacket != nil && c.Level == client.Level {
-			conn.WriteTo(c.LastPacket, addr)
+		if c.Id != client.Id && c.lastPacket != nil && c.level == client.level {
+			conn.WriteTo(c.lastPacket, addr)
 		}
 	}
 }
@@ -435,8 +598,8 @@ func (client *Client) tcpHandler() {
 		var msg map[string]interface{}
 		err := d.Decode(&msg)
 		if err != nil {
-			if client.Room != nil {
-				client.Room.OnPlayerDisconnect(client)
+			if client.room != nil {
+				client.room.OnPlayerDisconnect(client)
 			}
 			return
 		}
@@ -448,152 +611,37 @@ func (client *Client) tcpHandler() {
 
 		switch msgType {
 		case "connect":
-			msgRoom, ok := getTrimStringField(msg, "room")
-			if !ok {
-				continue
-			}
-
-			msgName, ok := getTrimStringField(msg, "name")
-			if !ok {
-				continue
-			}
-
-			msgLevel, ok := getTrimStringField(msg, "level")
-			if !ok {
-				continue
-			}
-
-			msgCharacter, ok := msg["character"].(float64)
-			if !ok || msgCharacter < 0 || msgCharacter >= CharacterMax {
-				continue
-			}
-
-			// Add the client to the room (create a new room if necessary)
-			// TODO should we differentiate joining a room and creating a new one
-			system.Lock()
-			room, ok := system.Rooms[msgRoom]
-			if !ok {
-				room = &Room{
-					Name: msgRoom,
-				}
-
-				system.Rooms[msgRoom] = room
-				log.Printf("created room \"%s\"\n", room.Name)
-			}
-			system.Unlock()
-
-			client.Room = room
-			client.Name = msgName
-			client.Character = uint32(msgCharacter)
-			client.Level = strings.ToLower(msgLevel)
-
-			// Tell the client their UUID
-			client.SendMessage(map[string]interface{}{
-				"type": "id",
-				"id":   client.Id,
-			})
-
-			room.AddPlayer(client)
-
-			log.Printf("room \"%s\": \"%s\" joined\n", room.Name, client.Name)
+			client.connectMsg(msg)
 		case "name":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
-			name, ok := getTrimStringField(msg, "name")
-			if !ok {
-				continue
-			}
-
-			client := system.GetClientById(uint32(id))
-			if client == nil {
-				continue
-			}
-
-			// Update the client's name and tell the other clients
-			client.Name = name
-			client.LastSeen = time.Now()
-			client.Room.SendMessageExcept(client.Id, map[string]interface{}{
-				"type": "name",
-				"id":   client.Id,
-				"name": client.Name,
-			})
+			client.nameMsg(msg)
 		case "chat":
-			body, ok := msg["body"].(string)
-			if !ok {
-				continue
-			}
-
-			client.LastSeen = time.Now()
-			client.Room.SendMessage(map[string]interface{}{
-				"type": "chat",
-				"body": client.Name + ": " + body,
-			})
+			client.chatMsg(msg)
 		case "announce":
-			body, ok := msg["body"].(string)
-			if !ok {
-				continue
-			}
-
-			client.LastSeen = time.Now()
-			client.Room.SendMessage(map[string]interface{}{
-				"type": "announce",
-				"body": body,
-			})
+			client.announceMsg(msg)
 		case "cooldown":
-			cooldown, ok := getTimeDurationSecondsField(msg, "cooldown")
-			if !ok {
-				continue
-			}
-
-			client.Room.SetTagCooldown(cooldown)
-			client.LastSeen = time.Now()
+			client.cooldownMsg(msg)
 		case "level":
-			level, ok := msg["level"].(string)
-			if !ok {
-				continue
-			}
-
-			client.Level = strings.ToLower(level)
-			client.LastSeen = time.Now()
-			client.Room.SendMessageExcept(client.Id, map[string]interface{}{
-				"type":  "level",
-				"id":    client.Id,
-				"level": client.Level,
-			})
+			client.levelMsg(msg)
 		case "character":
-			character, ok := msg["character"].(float64)
-			if !ok || character < 0 || character >= CharacterMax {
-				continue
-			}
-
-			client.Character = uint32(character)
-			client.LastSeen = time.Now()
-			client.Room.SendMessageExcept(client.Id, map[string]interface{}{
-				"type":      "character",
-				"id":        client.Id,
-				"character": client.Character,
-			})
+			client.characterMsg(msg)
 		case "pong":
-			client.LastSeen = time.Now()
+			client.pongMsg()
 		case "startTagGameMode":
-			client.Room.StartTagGameMode()
+			client.room.StartTagGameMode()
 		case "endGameMode":
-			client.Room.EndGameMode()
+			client.room.EndGameMode()
 		case "tagged":
 			taggedPlayerId, ok := getUint32Field(msg, "taggedPlayerId")
 			if !ok {
 				continue
 			}
 
-			client.LastSeen = time.Now()
-			client.Room.SetTaggedPlayer(client, taggedPlayerId)
+			client.lastSeen = time.Now()
+			client.room.SetTaggedPlayer(client, taggedPlayerId)
 		case "disconnect":
-			client.Room.OnPlayerDisconnect(client)
+			client.room.OnPlayerDisconnect(client)
 
-			log.Printf("room \"%s\": \"%s\" disconnected\n", client.Room.Name, client.Name)
+			log.Printf("room \"%s\": \"%s\" disconnected\n", client.room.Name, client.name)
 		}
 	}
 }
@@ -625,8 +673,8 @@ func tcpListener() {
 		client := &Client{
 			Tcp:      c,
 			Id:       uuid.New().ID(),
-			LastSeen: time.Now(),
-			Room:     &Room{},
+			lastSeen: time.Now(),
+			room:     &Room{},
 		}
 
 		go client.tcpHandler()
@@ -658,11 +706,11 @@ func udpListener() {
 				return
 			}
 
-			client.LastPacket = buf[:PacketSize]
-			client.LastSeen = time.Now()
+			client.lastPacket = buf[:PacketSize]
+			client.lastSeen = time.Now()
 
 			// Respond with the last packet of every other client in the same room and level
-			client.Room.SendLastPackets(client, server, addr)
+			client.room.SendLastPackets(client, server, addr)
 		}()
 	}
 }
