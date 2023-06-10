@@ -29,6 +29,7 @@ const (
 	CharacterPersuitCop
 	CharacterGhost
 	CharacterMax
+	TagGameMode = "tag"
 )
 
 type Packet struct {
@@ -44,7 +45,6 @@ type Client struct {
 	character  uint32
 	level      string
 	lastPacket []byte
-	lastSeen   time.Time
 }
 
 func (client *Client) connectMsg(msg map[string]interface{}) {
@@ -113,7 +113,6 @@ func (client *Client) nameMsg(msg map[string]interface{}) {
 
 	// Update the client's name and tell the other clients
 	client.name = name
-	client.lastSeen = time.Now()
 	client.room.SendMessageExcept(client.Id, map[string]interface{}{
 		"type": "name",
 		"id":   client.Id,
@@ -130,7 +129,6 @@ func (client *Client) chatMsg(msg map[string]interface{}) {
 		return
 	}
 
-	client.lastSeen = time.Now()
 	client.room.SendMessage(map[string]interface{}{
 		"type": "chat",
 		"body": client.name + ": " + body,
@@ -146,7 +144,6 @@ func (client *Client) announceMsg(msg map[string]interface{}) {
 		return
 	}
 
-	client.lastSeen = time.Now()
 	client.room.SendMessage(map[string]interface{}{
 		"type": "announce",
 		"body": body,
@@ -163,7 +160,6 @@ func (client *Client) cooldownMsg(msg map[string]interface{}) {
 	}
 
 	client.room.SetTagCooldown(cooldown)
-	client.lastSeen = time.Now()
 }
 
 func (client *Client) levelMsg(msg map[string]interface{}) {
@@ -176,7 +172,6 @@ func (client *Client) levelMsg(msg map[string]interface{}) {
 	}
 
 	client.level = strings.ToLower(level)
-	client.lastSeen = time.Now()
 	client.room.SendMessageExcept(client.Id, map[string]interface{}{
 		"type":  "level",
 		"id":    client.Id,
@@ -194,7 +189,6 @@ func (client *Client) characterMsg(msg map[string]interface{}) {
 	}
 
 	client.character = uint32(character)
-	client.lastSeen = time.Now()
 	client.room.SendMessageExcept(client.Id, map[string]interface{}{
 		"type":      "character",
 		"id":        client.Id,
@@ -202,11 +196,14 @@ func (client *Client) characterMsg(msg map[string]interface{}) {
 	})
 }
 
-func (client *Client) pongMsg() {
+func (client *Client) disconnectMsg() {
 	client.rwMu.Lock()
 	defer client.rwMu.Unlock()
 
-	client.lastSeen = time.Now()
+	log.Printf("room \"%s\": \"%s\" left room\n", client.room.Name, client.name)
+
+	client.room.OnPlayerDisconnect(client)
+	client.room = &Room{}
 }
 
 func (client *Client) SendMessage(msg interface{}) {
@@ -264,19 +261,12 @@ func (room *Room) StartTagGameMode() {
 	room.rwMu.Lock()
 	defer room.rwMu.Unlock()
 
-	room.gameMode = "tag"
+	room.gameMode = TagGameMode
 
 	room.sendMessageUnsafe(map[string]interface{}{
 		"type":     "gameMode",
-		"gameMode": "tag",
+		"gameMode": TagGameMode,
 	})
-
-	room.tagRandomPlayerUnsafe()
-}
-
-func (room *Room) TagRandomPlayer() {
-	room.rwMu.Lock()
-	defer room.rwMu.Unlock()
 
 	room.tagRandomPlayerUnsafe()
 }
@@ -307,6 +297,7 @@ func (room *Room) EndGameMode() {
 	room.canTag = false
 	if room.cancelTag != nil {
 		room.cancelTag()
+		room.cancelTag = nil
 	}
 
 	room.sendMessageUnsafe(map[string]interface{}{
@@ -336,32 +327,14 @@ func (room *Room) IsTaggingEnabled() bool {
 	return room.canTag
 }
 
-func (room *Room) DisconnectIdlePlayers() int {
-	room.rwMu.Lock()
-	defer room.rwMu.Unlock()
-
-	if len(room.Clients) == 0 {
-		return 0
-	}
-
-	var newClients []*Client
-	for _, c := range room.Clients {
-		if time.Since(c.lastSeen) > 30*time.Second {
-			// TODO need to handle random player tag (slice has not been updated yet)
-			room.removePlayerUnsafe(c)
-			log.Printf("timed out %x \"%s\"\n", c.Id, c.name)
-		} else {
-			newClients = append(newClients, c)
-		}
-	}
-
-	room.Clients = newClients
-	return len(newClients)
-}
-
 func (room *Room) OnPlayerDisconnect(disconnectedPlayer *Client) {
 	room.rwMu.Lock()
 	defer room.rwMu.Unlock()
+
+	if room.Name == "" {
+		// If room name is empty string it is a placeholder room
+		return
+	}
 
 	var newClients []*Client
 
@@ -372,16 +345,20 @@ func (room *Room) OnPlayerDisconnect(disconnectedPlayer *Client) {
 	}
 
 	room.Clients = newClients
+	if len(room.Clients) == 0 {
+		system.RemoveRoom(room.Name)
+	}
+
 	room.removePlayerUnsafe(disconnectedPlayer)
 }
 
 func (room *Room) removePlayerUnsafe(player *Client) {
-	go room.SendMessageExcept(player.Id, map[string]interface{}{
+	room.sendMessageExceptUnsafe(player.Id, map[string]interface{}{
 		"type": "disconnect",
 		"id":   player.Id,
 	})
 
-	if player.Id == room.taggedPlayerId {
+	if room.gameMode == TagGameMode && player.Id == room.taggedPlayerId {
 		if room.cancelTag != nil {
 			room.cancelTag()
 		}
@@ -492,6 +469,15 @@ type System struct {
 	rng   *rng
 }
 
+func (system *System) RemoveRoom(roomName string) {
+	system.Lock()
+	defer system.Unlock()
+
+	delete(system.Rooms, roomName)
+
+	log.Printf("deleted room %q", roomName)
+}
+
 func (system *System) GetClientById(id uint32) *Client {
 	system.RLock()
 	defer system.RUnlock()
@@ -523,17 +509,13 @@ func main() {
 	for {
 		time.Sleep(2 * time.Second)
 
-		system.Lock()
-		for name, r := range system.Rooms {
+		system.RLock()
+		for _, r := range system.Rooms {
 			r.SendMessage(map[string]interface{}{
 				"type": "ping",
 			})
-
-			if r.DisconnectIdlePlayers() == 0 {
-				delete(system.Rooms, name)
-			}
 		}
-		system.Unlock()
+		system.RUnlock()
 	}
 }
 
@@ -595,14 +577,21 @@ func (client *Client) tcpHandler() {
 	d := json.NewDecoder(client.Tcp)
 
 	for {
+		client.Tcp.SetReadDeadline(time.Now().Add(30 * time.Second))
+
 		var msg map[string]interface{}
 		err := d.Decode(&msg)
 		if err != nil {
-			if client.room != nil {
-				client.room.OnPlayerDisconnect(client)
+			client.room.OnPlayerDisconnect(client)
+
+			if client.name != "" {
+				log.Printf("\"%s\" disconnected - %s", client.name, err)
 			}
+
 			return
 		}
+
+		client.Tcp.SetReadDeadline(time.Time{})
 
 		msgType, ok := getTrimStringField(msg, "type")
 		if !ok {
@@ -624,8 +613,6 @@ func (client *Client) tcpHandler() {
 			client.levelMsg(msg)
 		case "character":
 			client.characterMsg(msg)
-		case "pong":
-			client.pongMsg()
 		case "startTagGameMode":
 			client.room.StartTagGameMode()
 		case "endGameMode":
@@ -636,12 +623,9 @@ func (client *Client) tcpHandler() {
 				continue
 			}
 
-			client.lastSeen = time.Now()
 			client.room.SetTaggedPlayer(client, taggedPlayerId)
 		case "disconnect":
-			client.room.OnPlayerDisconnect(client)
-
-			log.Printf("room \"%s\": \"%s\" disconnected\n", client.room.Name, client.name)
+			client.disconnectMsg()
 		}
 	}
 }
@@ -671,10 +655,9 @@ func tcpListener() {
 		}
 
 		client := &Client{
-			Tcp:      c,
-			Id:       uuid.New().ID(),
-			lastSeen: time.Now(),
-			room:     &Room{},
+			Tcp:  c,
+			Id:   uuid.New().ID(),
+			room: &Room{},
 		}
 
 		go client.tcpHandler()
@@ -707,7 +690,6 @@ func udpListener() {
 			}
 
 			client.lastPacket = buf[:PacketSize]
-			client.lastSeen = time.Now()
 
 			// Respond with the last packet of every other client in the same room and level
 			client.room.SendLastPackets(client, server, addr)
