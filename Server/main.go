@@ -3,14 +3,13 @@ package main
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"github.com/google/uuid"
 	"log"
+	"math"
 	mathrand "math/rand"
 	"net"
 	"sync"
 	"time"
-	"unsafe"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -114,12 +113,12 @@ func udpListener() {
 		}
 
 		go func() {
-			client := system.GetClientById((*Packet)(unsafe.Pointer(&buf[0])).Id)
+			client := system.GetClientById(binary.LittleEndian.Uint32(buf[0:4]))
 			if client == nil {
 				return
 			}
 
-			client.lastPacket = buf[:packetSize]
+			client.setLastPacketAndPosition(buf[:packetSize])
 
 			// Respond with the last packet of every other client in the same room and level
 			client.room.SendLastPackets(client, server, addr)
@@ -127,6 +126,12 @@ func udpListener() {
 	}
 }
 
-type Packet struct {
-	Id uint32
+type position struct {
+	x float64
+	y float64
+	z float64
+}
+
+func distance(from position, to position) float64 {
+	return math.Sqrt(math.Pow(to.x-from.x, 2)+math.Pow(to.y-from.y, 2)+math.Pow(to.z-from.z, 2)) / 100
 }

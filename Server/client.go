@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"log"
 	"net"
@@ -31,6 +32,7 @@ type Client struct {
 	character  uint32
 	level      string
 	lastPacket []byte
+	position   position
 }
 
 func (client *Client) connectMsg(msg map[string]interface{}) {
@@ -107,8 +109,8 @@ func (client *Client) nameMsg(msg map[string]interface{}) {
 }
 
 func (client *Client) chatMsg(msg map[string]interface{}) {
-	client.rwMu.Lock()
-	defer client.rwMu.Unlock()
+	client.rwMu.RLock()
+	defer client.rwMu.RUnlock()
 
 	body, ok := msg["body"].(string)
 	if !ok {
@@ -122,8 +124,8 @@ func (client *Client) chatMsg(msg map[string]interface{}) {
 }
 
 func (client *Client) announceMsg(msg map[string]interface{}) {
-	client.rwMu.Lock()
-	defer client.rwMu.Unlock()
+	client.rwMu.RLock()
+	defer client.rwMu.RUnlock()
 
 	body, ok := msg["body"].(string)
 	if !ok {
@@ -137,8 +139,8 @@ func (client *Client) announceMsg(msg map[string]interface{}) {
 }
 
 func (client *Client) cooldownMsg(msg map[string]interface{}) {
-	client.rwMu.Lock()
-	defer client.rwMu.Unlock()
+	client.rwMu.RLock()
+	defer client.rwMu.RUnlock()
 
 	cooldown, ok := getTimeDurationSecondsField(msg, "cooldown")
 	if !ok {
@@ -182,6 +184,27 @@ func (client *Client) characterMsg(msg map[string]interface{}) {
 	})
 }
 
+func (client *Client) startTagGameModeMsg() {
+	client.rwMu.RLock()
+	defer client.rwMu.RUnlock()
+
+	client.room.StartTagGameMode()
+}
+
+func (client *Client) endGameModeMsg() {
+	client.rwMu.RLock()
+	defer client.rwMu.RUnlock()
+
+	client.room.EndGameMode()
+}
+
+func (client *Client) deadMsg() {
+	client.rwMu.RLock()
+	defer client.rwMu.RUnlock()
+
+	client.room.PlayerDied(client)
+}
+
 func (client *Client) disconnectMsg() {
 	client.rwMu.Lock()
 	defer client.rwMu.Unlock()
@@ -199,6 +222,25 @@ func (client *Client) SendMessage(msg interface{}) {
 	}
 
 	client.Tcp.Write(append(r, 0))
+}
+
+func (client *Client) getLevelAndPosition() (string, position) {
+	client.rwMu.RLock()
+	defer client.rwMu.RUnlock()
+
+	return client.level, client.position
+}
+
+func (client *Client) setLastPacketAndPosition(buf []byte) {
+	client.rwMu.Lock()
+	defer client.rwMu.Unlock()
+
+	client.lastPacket = buf
+
+	x := float64(binary.LittleEndian.Uint32(buf[4:8]))
+	y := float64(binary.LittleEndian.Uint32(buf[8:12]))
+	z := float64(binary.LittleEndian.Uint32(buf[12:16]))
+	client.position = position{x: x, y: y, z: z}
 }
 
 func getUint32Field(obj map[string]interface{}, field string) (uint32, bool) {
@@ -272,16 +314,11 @@ func (client *Client) tcpHandler() {
 		case "character":
 			client.characterMsg(msg)
 		case "startTagGameMode":
-			client.room.StartTagGameMode()
+			client.startTagGameModeMsg()
 		case "endGameMode":
-			client.room.EndGameMode()
-		case "tagged":
-			taggedPlayerId, ok := getUint32Field(msg, "taggedPlayerId")
-			if !ok {
-				continue
-			}
-
-			client.room.SetTaggedPlayer(client, taggedPlayerId)
+			client.endGameModeMsg()
+		case "dead":
+			client.deadMsg()
 		case "disconnect":
 			client.disconnectMsg()
 		}
