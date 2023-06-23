@@ -25,8 +25,10 @@ static char chatInput[0x200] = {0};
 static auto connected = false, loading = false, disabled = false;
 static std::string room;
 
-static auto showOverlay = true;
-static auto tagCooldown = 10;
+static bool showTagDistanceOverlay = true;
+static bool playerDiedAndSentJsonMessage = false;
+static int tagCooldown = 5;
+//static int previousTaggedId = 0;
 
 static sockaddr_in server = {0};
 static SOCKET tcpSocket = 0, udpSocket = 0;
@@ -380,23 +382,19 @@ static void ClientListener() {
             }
 
             if (msgType == "connect") {
-                // New player connected to the room, the server sent these details about them
                 const auto msgId = msg["id"];
                 const auto msgName = msg["name"];
                 const auto msgCharacter = msg["character"];
                 const auto msgLevel = msg["level"];
 
-                // If any of the details isn't the correct type, it will fail
                 if (!msgId.is_number_integer() || !msgName.is_string() ||
                     !msgCharacter.is_number_integer() ||
                     !msgLevel.is_string()) {
                     continue;
                 }
 
-                // Locks the thread?
                 players.Mutex.lock();
 
-                // Player has successfully connected and we create a new player and fill it in with the details from the server
                 const auto player = new Client::Player();
                 player->Id = msgId;
                 player->Name = msgName.get<std::string>();
@@ -404,7 +402,6 @@ static void ClientListener() {
                 player->Level = msgLevel.get<std::string>();
                 player->LastPacket = {0};
 
-                // Default bones
                 static const unsigned long defaultBones[] = {
                     0x0,        0x0,        0x0,        0x3f800000, 0x0,
                     0x80000000, 0x0,        0x3f800000, 0xbe8605c3, 0x3e813707,
@@ -580,24 +577,18 @@ static void ClientListener() {
                     0x3f7fffff, 0x3a049678, 0x3d3ec44a, 0x3bb2a169, 0x3f7fb7e6,
                     0x0,        0x37800000, 0xb5800000, 0x3f7fffff};
 
-                // Copy the packet bones to the default bones
                 memcpy(player->LastPacket.Bones, defaultBones,
                        sizeof(defaultBones));
 
-                // Spawn character if you're in the same level and if you're not in a loading screen
                 if (player->Level == client.Level && !loading) {
                     Engine::SpawnCharacter(player->Character, player->Actor);
                 } else {
                     player->Actor = nullptr;
                 }
 
-                // Add chat message of who joined
                 AddChatMessage(player->Name + " joined the room");
 
-                // Add them to the players list
                 players.List.push_back(player);
-
-                // Unlocks the thread?
                 players.Mutex.unlock();
             } 
             else if (msgType == "name") {
@@ -720,13 +711,19 @@ static void ClientListener() {
                         return true;
                     }));
                 players.Mutex.unlock();
+
+                if (client.GameMode == GameMode_Tag && players.List.size() == 0) {
+                    SendJsonMessage({
+                        {"type", "endGameMode"},
+                    });
+                }
             }
             else if (msgType == "gameMode") {
                 const auto msgGameMode = msg["gameMode"];
 
                 if (msgGameMode.is_null()) {
-                    client.Tag.CanTag = false;
-                    client.Tag.TaggedPlayerId = 0;
+                    client.CanTag = false;
+                    client.TaggedPlayerId = 0;
                     client.GameMode = "";
                     continue;
                 }
@@ -734,8 +731,8 @@ static void ClientListener() {
                 client.GameMode = msgGameMode.get<std::string>();
             } 
             else if (msgType == "canTag") {
-                if (client.Id == client.Tag.TaggedPlayerId) {
-                    client.Tag.CanTag = true;
+                if (client.Id == client.TaggedPlayerId) {
+                    client.CanTag = true;
 
                     IgnorePlayerInput(false);
                 }
@@ -748,21 +745,33 @@ static void ClientListener() {
                     continue;
                 }
 
-                int taggedId = client.Id;
-                if (msgTaggedPlayerId != taggedId) {
-                    const auto player = GetPlayerById(msgTaggedPlayerId);
-                    if (!player) {
-                        continue;
-                    } 
+                client.TaggedPlayerId = msgTaggedPlayerId;
+                client.CanTag = false;
+                client.CoolDownTag = msgTagCooldown;
 
-                    taggedId = player->Id;
+                /*
+                auto player = GetPlayerById(msgTaggedPlayerId);
+                char buffer[0xFF];
+
+                if (previousTaggedId == 0) {
+                    sprintf_s(buffer, sizeof(buffer), "[Tag] %s was randomly choosen to be tagged", player->Name.c_str());
+                    previousTaggedId = player->Id;
+                } else {
+                    auto previousTaggedPlayer = GetPlayerById(previousTaggedId);
+
+                    if (previousTaggedPlayer) {
+                        sprintf_s(buffer, sizeof(buffer), "[Tag] %s was tagged by %s", player->Name.c_str(), previousTaggedPlayer->Name.c_str());
+                        previousTaggedId = player->Id;
+                    }
                 }
 
-                client.Tag.TaggedPlayerId = taggedId;
-                client.Tag.CanTag = false;
-                client.Tag.CoolDown = msgTagCooldown;
+                SendJsonMessage({
+                    {"type", "announce"},
+                    {"body", buffer},
+                });
+                */
 
-                IgnorePlayerInput(true);
+                IgnorePlayerInput(client.Id == msgTaggedPlayerId);
             }
         }
 
@@ -778,9 +787,9 @@ static void ClientListener() {
     }
 }
 
-static void OnTick(float delta) {
+static void OnTick(float deltaTime) {
     static float sum = 0;
-    sum += delta;
+    sum += deltaTime;
 
     if (!loading && connected && sum > 0.016f) {
         auto pawn = Engine::GetPlayerPawn();
@@ -807,49 +816,48 @@ static void OnTick(float delta) {
 
             sum = 0;
         }
+    }
+}
 
-        if (pawn && client.GameMode == "tag") {
-            if (client.Id != client.Tag.TaggedPlayerId || !client.Tag.CanTag) {
-                return;
+static void OnTickTag(float deltaTime) {
+    if (client.GameMode != GameMode_Tag) {
+        return;
+    }
+
+    static float sum = 0;
+    sum += deltaTime;
+
+    if (!loading && connected && sum > 0.16f) {
+        auto pawn = Engine::GetPlayerPawn();
+
+        if (!pawn) {
+            return;
+        }
+
+        sum = 0;
+
+        if (client.Id != client.TaggedPlayerId) {
+            if (pawn->Health <= 0 && playerDiedAndSentJsonMessage == false) {
+                SendJsonMessage({
+                    {"type", "dead"},
+                });
+
+                char buffer[0xFF];
+                sprintf_s(buffer, sizeof(buffer), "[Tag] %s died and they will chase instead",
+                          client.Name.c_str());
+
+                SendJsonMessage({
+                    {"type", "announce"},
+                    {"body", buffer},
+                });
+
+                playerDiedAndSentJsonMessage = true;
+                client.CanTag = false;
             }
-            int playersInTheSameLevel = 0;
+        }
 
-            for (const auto &p : players.List) {
-                if (p->Level == client.Level && p->Actor) {
-                    playersInTheSameLevel++;
-                }
-            }
-
-            if (playersInTheSameLevel == 0) {
-                return;
-            }
-
-            for (const auto &p : players.List) {
-                if (!p->Actor || p->Level != client.Level) {
-                    continue;
-                }
-
-                float dist = Distance(p->Actor->Location, pawn->Location);
-
-                if (dist < 1.0f) {
-                    SendJsonMessage({
-                        {"type", "tagged"},
-                        {"id", client.Id},
-                        {"taggedPlayerId", p->Id},
-                    });
-
-                    char buffer[0xFF];
-                    sprintf_s(buffer, sizeof(buffer), "[Tag] %s tagged %s", client.Name.c_str(), p->Name.c_str());
-
-                    SendJsonMessage({
-                        {"type", "announce"},
-                        {"id", client.Id},
-                        {"body", buffer},
-                    });
-
-                    client.Tag.CanTag = false;
-                }
-            }
+        if (playerDiedAndSentJsonMessage == true && pawn->Health == 100) {
+            playerDiedAndSentJsonMessage = false;
         }
     }
 }
@@ -880,7 +888,7 @@ static void OnRender(IDirect3DDevice9 *device) {
                             ImVec2(3.0f, 1.0f),
                         ImColor(ImVec4(0, 0, 0, 0.4f)));
 
-                    if (client.GameMode == "tag" && p->Id == client.Tag.TaggedPlayerId) {
+                    if (client.GameMode == GameMode_Tag && p->Id == client.TaggedPlayerId) {
                         window->DrawList->AddText(topLeft, ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f)), p->Name.c_str());
                     } else {
                         window->DrawList->AddText(topLeft, ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), p->Name.c_str());
@@ -973,7 +981,7 @@ static void OnRender(IDirect3DDevice9 *device) {
 }
 
 static void OnRenderTag(IDirect3DDevice9 *device) {
-    if (!showOverlay) {
+    if (!showTagDistanceOverlay) {
         return;
     }
 
@@ -985,7 +993,7 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
         return;
     }
 
-    if (client.Level.empty() || client.Level == "tdmainmenu") {
+    if (client.Level.empty() || client.Level == Map_MainMenu) {
         return;
     }
 
@@ -1005,11 +1013,10 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
     auto &io = ImGui::GetIO();
 
     static float padding = 5.0f;
-    static float rightPadding = 90.0f;
+    static float rightPadding = 80.0f;
 
     float yIncrement = ImGui::GetTextLineHeight();
     float y = (playersInTheSameLevel * yIncrement) - yIncrement + (padding / 2);
-    auto color = ImColor(ImVec4(1, 1, 1, 1));
 
     window->DrawList->AddRectFilled(ImVec2(), ImVec2(256, y + padding + yIncrement),
                                     ImColor(ImVec4(0, 0, 0, 0.4f)));
@@ -1029,8 +1036,13 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
             sprintf_s(buffer, "%.1f m", dist);
         }
 
-        window->DrawList->AddText(ImVec2(padding, y), color, buffer);
-        window->DrawList->AddText(ImVec2(rightPadding, y), color, p->Name.c_str());
+        if (client.GameMode == GameMode_Tag && p->Id == client.TaggedPlayerId) {
+            window->DrawList->AddText(ImVec2(padding, y), ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f)), buffer);
+            window->DrawList->AddText(ImVec2(rightPadding, y), ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f)), p->Name.c_str());
+        } else {
+            window->DrawList->AddText(ImVec2(padding, y), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), buffer);
+            window->DrawList->AddText(ImVec2(rightPadding, y), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), p->Name.c_str());
+        }
 
         y -= yIncrement;
     }
@@ -1227,19 +1239,44 @@ static void MultiplayerTab() {
 }
 
 static void TagTab() {
-    ImGui::Checkbox("Show Overlay##tag-overlay", &showOverlay);
+    ImGui::Checkbox("Show Distance Overlay##tag-overlay", &showTagDistanceOverlay);
     ImGui::SeperatorWithPadding(2.5f);
 
     if (players.List.size() == 0) {
-        ImGui::Text("You can't start Tag when you're alone");
+        ImGui::Text("You can't start tag when you're alone");
+        return;
+    }
+
+    if (client.Level == Map_MainMenu) {
+        ImGui::Text("You can't start tag when you're in the main menu");
         return;
     }
 
     if (client.GameMode == "") {
+        if (ImGui::InputInt("Cooldown##tag-change-cooldown", &tagCooldown, 0, 0,
+                            ImGuiInputTextFlags_EnterReturnsTrue)) {
+            tagCooldown = client.CoolDownTag = max(1, tagCooldown);
+
+            SendJsonMessage({
+                {"type", "cooldown"},
+                {"cooldown", client.CoolDownTag},
+            });
+
+            char buffer[0xFF];
+            sprintf_s(buffer, sizeof(buffer), "[Tag] %s changed the cooldown to be %d second%s",
+                      client.Name.c_str(), tagCooldown, tagCooldown != 1 ? "s" : "");
+
+            SendJsonMessage({
+                {"type", "announce"},
+                {"body", buffer},
+            });
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, 6.0f));
+
         if (ImGui::Button("Start Tag")) {
             SendJsonMessage({
                 {"type", "startTagGameMode"},
-                {"id", client.Id},
             });
 
             char buffer[0xFF];
@@ -1247,39 +1284,15 @@ static void TagTab() {
 
             SendJsonMessage({
                 {"type", "announce"},
-                {"id", client.Id},
-                {"body", buffer},
-            });
-        }
-
-        if (ImGui::InputInt("Cooldown##tag-cooldown", &tagCooldown, 1, 1)) {
-            tagCooldown = client.Tag.CoolDown = max(1, tagCooldown);
-        }
-
-        ImGui::SameLine();
-
-        if (ImGui::Button("Change Cooldown##tag-change-cooldown")) {
-            SendJsonMessage({
-                {"type", "cooldown"},
-                {"cooldown", tagCooldown},
-            });
-
-            char buffer[0xFF];
-            sprintf_s(buffer, sizeof(buffer), "[Tag] %s changed the cooldown to be %d second%s", client.Name.c_str(), tagCooldown, tagCooldown != 1 ? "s" : "");
-
-            SendJsonMessage({
-                {"type", "announce"},
-                {"id", client.Id},
                 {"body", buffer},
             });
         }
     }
 
-    if (client.GameMode == "tag") {
+    if (client.GameMode == GameMode_Tag) {
         if (ImGui::Button("End Tag")) {
             SendJsonMessage({
                 {"type", "endGameMode"},
-                {"id", client.Id},
             });
 
             char buffer[0xFF];
@@ -1287,7 +1300,6 @@ static void TagTab() {
 
             SendJsonMessage({
                 {"type", "announce"},
-                {"id", client.Id},
                 {"body", buffer},
             });
         }
@@ -1295,27 +1307,29 @@ static void TagTab() {
 
     ImGui::SeperatorWithPadding(2.5f);
 
-    ImGui::Text("Id: %d", client.Id);
+    ImGui::Text("Id: %x", client.Id);
     ImGui::Text("Name: %s", client.Name.c_str());
     ImGui::Text("Level: %s", client.Level.c_str());
+    ImGui::Text("Cooldown: %d", client.CoolDownTag);
     ImGui::Text("GameMode: %s", client.GameMode.empty() ? "null" : client.GameMode.c_str());
 
-    if (client.GameMode != "tag") {
+    if (client.GameMode != GameMode_Tag) {
         return;
     }
 
-    if (client.Tag.TaggedPlayerId == client.Id) {
-        ImGui::Text("TaggedPlayerId: %d (%s)", client.Id, client.Name.c_str());
-        ImGui::Text("TaggedPlayerCanTag: %s", client.Tag.CanTag ? "true" : "false");
+    ImGui::Dummy(ImVec2(0.0f, 6.0f));
+
+    ImGui::Text("Tagged Player Data:");
+    if (client.TaggedPlayerId == client.Id) {
+        ImGui::Text("Id: %x (%s)", client.Id, client.Name.c_str());
     } else {
-        auto player = GetPlayerById(client.Tag.TaggedPlayerId);
+        auto player = GetPlayerById(client.TaggedPlayerId);
 
         if (!player) {
             return;
         }
 
-        ImGui::Text("TaggedPlayerId: %d (%s)", player->Tag.TaggedPlayerId, player->Name.c_str());
-        ImGui::Text("TaggedPlayerCanTag: %s", player->Tag.CanTag ? "true" : "false");
+        ImGui::Text("Id: %x (%s)", player->Id, player->Name.c_str());
     }
 }
 
@@ -1345,6 +1359,8 @@ bool Client::Initialize() {
     Menu::AddTab("Tag", TagTab);
 
     Engine::OnTick(OnTick);
+    Engine::OnTick(OnTickTag);
+
     Engine::OnRenderScene(OnRender);
     Engine::OnRenderScene(OnRenderTag);
 
@@ -1425,7 +1441,7 @@ bool Client::Initialize() {
     });
 
     Engine::OnPostLevelLoad([](const wchar_t *) {
-        if (client.Level != "tdmainmenu") {
+        if (client.Level != Map_MainMenu) {
             players.Mutex.lock_shared();
 
             for (const auto &p : players.List) {
