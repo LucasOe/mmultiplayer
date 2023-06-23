@@ -28,7 +28,7 @@ static std::string room;
 static bool showTagDistanceOverlay = true;
 static bool playerDiedAndSentJsonMessage = false;
 static int tagCooldown = 5;
-//static int previousTaggedId = 0;
+static int previousTaggedId = 0;
 
 static sockaddr_in server = {0};
 static SOCKET tcpSocket = 0, udpSocket = 0;
@@ -282,7 +282,7 @@ static bool Join() {
         std::transform(client.Level.begin(), client.Level.end(),
                        client.Level.begin(), [](char c) { return tolower(c); });
 
-        if (client.Level == "tdmainmenu") {
+        if (client.Level == Map_MainMenu) {
             loading = true;
         }
     }
@@ -716,6 +716,8 @@ static void ClientListener() {
                     SendJsonMessage({
                         {"type", "endGameMode"},
                     });
+
+                    previousTaggedId = 0;
                 }
             }
             else if (msgType == "gameMode") {
@@ -725,6 +727,7 @@ static void ClientListener() {
                     client.CanTag = false;
                     client.TaggedPlayerId = 0;
                     client.GameMode = "";
+                    previousTaggedId = 0;
                     continue;
                 }
 
@@ -749,28 +752,27 @@ static void ClientListener() {
                 client.CanTag = false;
                 client.CoolDownTag = msgTagCooldown;
 
-                /*
                 auto player = GetPlayerById(msgTaggedPlayerId);
                 char buffer[0xFF];
 
-                if (previousTaggedId == 0) {
-                    sprintf_s(buffer, sizeof(buffer), "[Tag] %s was randomly choosen to be tagged", player->Name.c_str());
-                    previousTaggedId = player->Id;
-                } else {
-                    auto previousTaggedPlayer = GetPlayerById(previousTaggedId);
+                if (client.Id == client.TaggedPlayerId) {
+                    if (previousTaggedId == 0) {
+                        sprintf_s(buffer, sizeof(buffer), "[Tag] %s was randomly choosen to be tagged", player->Name.c_str());
+                    } else {
+                        auto previousTaggedPlayer = GetPlayerById(previousTaggedId);
 
-                    if (previousTaggedPlayer) {
-                        sprintf_s(buffer, sizeof(buffer), "[Tag] %s was tagged by %s", player->Name.c_str(), previousTaggedPlayer->Name.c_str());
-                        previousTaggedId = player->Id;
+                        if (previousTaggedPlayer) {
+                            sprintf_s(buffer, sizeof(buffer), "[Tag] %s was tagged by %s", player->Name.c_str(), previousTaggedPlayer->Name.c_str());
+                        }
                     }
+
+                    SendJsonMessage({
+                        {"type", "announce"},
+                        {"body", buffer},
+                    });
                 }
 
-                SendJsonMessage({
-                    {"type", "announce"},
-                    {"body", buffer},
-                });
-                */
-
+                previousTaggedId = player->Id;
                 IgnorePlayerInput(client.Id == msgTaggedPlayerId);
             }
         }
@@ -1319,9 +1321,24 @@ static void TagTab() {
 
     ImGui::Dummy(ImVec2(0.0f, 6.0f));
 
-    ImGui::Text("Tagged Player Data:");
+    if (previousTaggedId == 0) {
+        ImGui::Text("Previous Tagged Id: 0 (n/a)");
+    } else {
+        if (previousTaggedId == client.Id) {
+            ImGui::Text("Previous Tagged Id: %x (%s)", previousTaggedId, client.Name.c_str());
+        } else {
+            auto player = GetPlayerById(client.TaggedPlayerId);
+
+            if (player) {
+                ImGui::Text("Previous Tagged Id: %x (%s)", previousTaggedId, player->Name.c_str());
+            } else {
+                ImGui::Text("Previous Tagged Id: ERROR!! Couldn't find a player with the id %x");
+            }
+        }
+    }
+
     if (client.TaggedPlayerId == client.Id) {
-        ImGui::Text("Id: %x (%s)", client.Id, client.Name.c_str());
+        ImGui::Text("Tagged Id: %x (%s)", client.Id, client.Name.c_str());
     } else {
         auto player = GetPlayerById(client.TaggedPlayerId);
 
@@ -1329,7 +1346,7 @@ static void TagTab() {
             return;
         }
 
-        ImGui::Text("Id: %x (%s)", player->Id, player->Name.c_str());
+        ImGui::Text("Tagged Id: %x (%s)", player->Id, player->Name.c_str());
     }
 }
 
