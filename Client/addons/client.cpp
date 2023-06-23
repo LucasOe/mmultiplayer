@@ -752,17 +752,16 @@ static void ClientListener() {
                 client.CanTag = false;
                 client.CoolDownTag = msgTagCooldown;
 
-                auto player = GetPlayerById(msgTaggedPlayerId);
-                char buffer[0xFF];
+                if (client.Id == client.TaggedPlayerId && playerDiedAndSentJsonMessage == false) {
+                    char buffer[0xFF];
 
-                if (client.Id == client.TaggedPlayerId) {
                     if (previousTaggedId == 0) {
-                        sprintf_s(buffer, sizeof(buffer), "[Tag] %s was randomly choosen to be tagged", player->Name.c_str());
+                        sprintf_s(buffer, sizeof(buffer), "[Tag] %s was randomly choosen to be tagged", client.Name.c_str());
                     } else {
                         auto previousTaggedPlayer = GetPlayerById(previousTaggedId);
 
                         if (previousTaggedPlayer) {
-                            sprintf_s(buffer, sizeof(buffer), "[Tag] %s was tagged by %s", player->Name.c_str(), previousTaggedPlayer->Name.c_str());
+                            sprintf_s(buffer, sizeof(buffer), "[Tag] %s tagged %s", previousTaggedPlayer->Name.c_str(), client.Name.c_str());
                         }
                     }
 
@@ -772,7 +771,7 @@ static void ClientListener() {
                     });
                 }
 
-                previousTaggedId = player->Id;
+                previousTaggedId = msgTaggedPlayerId;
                 IgnorePlayerInput(client.Id == msgTaggedPlayerId);
             }
         }
