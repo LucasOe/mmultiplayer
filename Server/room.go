@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -73,8 +72,8 @@ func (room *Room) StartTagGameMode() {
 }
 
 func (room *Room) tagRandomPlayerUnsafe() {
-	for randPlayerId, player := range room.Clients {
-		room.setTaggedPlayerUnsafe(randPlayerId, player.name+" will chase")
+	for randPlayerId := range room.Clients {
+		room.setTaggedPlayerUnsafe(randPlayerId)
 		break
 	}
 }
@@ -185,10 +184,10 @@ func (room *Room) PlayerDied(player *Client) {
 		return
 	}
 
-	room.setTaggedPlayerUnsafe(player.Id, player.name+" died and they will chase instead")
+	room.setTaggedPlayerUnsafe(player.Id)
 }
 
-func (room *Room) setTaggedPlayerUnsafe(taggedPlayerId uint32, msg string) {
+func (room *Room) setTaggedPlayerUnsafe(taggedPlayerId uint32) {
 	_, isClientInRoom := room.Clients[taggedPlayerId]
 	if !isClientInRoom {
 		return
@@ -215,8 +214,6 @@ func (room *Room) setTaggedPlayerUnsafe(taggedPlayerId uint32, msg string) {
 		"taggedPlayerId": taggedPlayerId,
 		"coolDown":       int(room.tagCoolDown.Seconds()),
 	})
-
-	room.announceUnsafe("[Tag] " + msg)
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	room.cancelTagStart = cancelFn
@@ -318,8 +315,7 @@ func (room *Room) newPlayerTagged() bool {
 
 		cLevel, cPosition := other.getLevelAndPosition()
 		if cLevel == taggedLevel && distance(cPosition, taggedPosition) < 900 {
-			room.setTaggedPlayerUnsafe(other.Id, fmt.Sprintf("%s was tagged by %s",
-				currentTaggedClient.name, other.name))
+			room.setTaggedPlayerUnsafe(other.Id)
 			return true
 		}
 	}
