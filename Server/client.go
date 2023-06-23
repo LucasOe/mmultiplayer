@@ -64,9 +64,7 @@ func (client *Client) connectMsg(msg map[string]interface{}) {
 	system.Lock()
 	room, ok := system.Rooms[msgRoom]
 	if !ok {
-		room = &Room{
-			Name: msgRoom,
-		}
+		room = newRoom(msgRoom)
 
 		system.Rooms[msgRoom] = room
 		log.Printf("created room \"%s\"\n", room.Name)

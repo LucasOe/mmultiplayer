@@ -7,10 +7,17 @@ import (
 	"time"
 )
 
+func newRoom(name string) *Room {
+	return &Room{
+		Name:    name,
+		Clients: make(map[uint32]*Client),
+	}
+}
+
 type Room struct {
 	Name           string
 	rwMu           sync.RWMutex
-	Clients        []*Client
+	Clients        map[uint32]*Client
 	gameMode       string
 	taggedPlayerId uint32
 	canTag         bool
@@ -23,7 +30,7 @@ func (room *Room) AddPlayer(client *Client) {
 	room.rwMu.Lock()
 	defer room.rwMu.Unlock()
 
-	room.Clients = append(room.Clients, client)
+	room.Clients[client.Id] = client
 
 	// Notify the other clients that a new client connected
 	room.sendMessageExceptUnsafe(client.Id, map[string]interface{}{
@@ -65,19 +72,10 @@ func (room *Room) StartTagGameMode() {
 }
 
 func (room *Room) tagRandomPlayerUnsafe() {
-	var randPlayerId uint32
-
-	numPlayers := len(room.Clients)
-	switch numPlayers {
-	case 0:
-		return
-	case 1:
-		randPlayerId = room.Clients[0].Id
-	default:
-		randPlayerId = room.Clients[system.rng.Intn(numPlayers)].Id
+	for randPlayerId := range room.Clients {
+		room.setTaggedPlayerUnsafe(randPlayerId)
+		break
 	}
-
-	room.setTaggedPlayerUnsafe(randPlayerId)
 }
 
 func (room *Room) EndGameMode() {
@@ -134,15 +132,8 @@ func (room *Room) OnPlayerDisconnect(disconnectedPlayer *Client) {
 		return
 	}
 
-	var newClients []*Client
+	delete(room.Clients, disconnectedPlayer.Id)
 
-	for _, c := range room.Clients {
-		if c.Id != disconnectedPlayer.Id {
-			newClients = append(newClients, c)
-		}
-	}
-
-	room.Clients = newClients
 	if len(room.Clients) == 0 {
 		system.RemoveRoom(room.Name)
 	}
@@ -189,51 +180,19 @@ func (room *Room) PlayerDied(player *Client) {
 	room.rwMu.Lock()
 	defer room.rwMu.Unlock()
 
-	if !room.canTag {
+	if room.gameMode != TagGameMode || player.Id == room.taggedPlayerId {
 		return
 	}
 
-	var isClientInRoom bool
-	for _, client := range room.Clients {
-		if client.Id == room.taggedPlayerId {
-			isClientInRoom = true
-			break
-		}
-	}
-
-	if !isClientInRoom {
-		return
-	}
-
-	if player.Id != room.taggedPlayerId {
-		room.setTaggedPlayerUnsafe(player.Id)
-	}
-}
-
-func (room *Room) SetTaggedPlayer(taggedPlayerId uint32) {
-	room.rwMu.Lock()
-	defer room.rwMu.Unlock()
-
-	if !room.canTag {
-		return
-	}
-
-	var isClientInRoom bool
-	for _, client := range room.Clients {
-		if client.Id == taggedPlayerId {
-			isClientInRoom = true
-			break
-		}
-	}
-
-	if !isClientInRoom {
-		return
-	}
-
-	room.setTaggedPlayerUnsafe(taggedPlayerId)
+	room.setTaggedPlayerUnsafe(player.Id)
 }
 
 func (room *Room) setTaggedPlayerUnsafe(taggedPlayerId uint32) {
+	_, isClientInRoom := room.Clients[taggedPlayerId]
+	if !isClientInRoom {
+		return
+	}
+
 	room.canTag = false
 	room.taggedPlayerId = taggedPlayerId
 	if room.tagCoolDown == 0 {
@@ -270,6 +229,13 @@ func canTagNotifier(ctx context.Context, room *Room, duration time.Duration) {
 	case <-countdown.C:
 		room.EnableCanTag()
 	}
+}
+
+func (room *Room) announceUnsafe(msg string) {
+	room.sendMessageUnsafe(map[string]interface{}{
+		"type": "announce",
+		"body": msg,
+	})
 }
 
 func (room *Room) SendMessage(msg interface{}) {
@@ -330,23 +296,26 @@ func (room *Room) newPlayerTaggedLoop(ctx context.Context) {
 
 func (room *Room) newPlayerTagged() bool {
 	room.rwMu.RLock()
-	taggedPlayerId := room.taggedPlayerId
-	room.rwMu.RUnlock()
+	defer room.rwMu.RUnlock()
 
-	currentTaggedClient := system.GetClientById(taggedPlayerId)
+	if !room.canTag {
+		return false
+	}
+
+	currentTaggedClient := system.GetClientById(room.taggedPlayerId)
 	if currentTaggedClient == nil {
 		return false
 	}
 
 	taggedLevel, taggedPosition := currentTaggedClient.getLevelAndPosition()
 	for _, other := range room.Clients {
-		if other.Id == taggedPlayerId {
+		if other.Id == room.taggedPlayerId {
 			continue
 		}
 
 		cLevel, cPosition := other.getLevelAndPosition()
 		if cLevel == taggedLevel && distance(cPosition, taggedPosition) < 900 {
-			room.SetTaggedPlayer(other.Id)
+			room.setTaggedPlayerUnsafe(other.Id)
 			return true
 		}
 	}
