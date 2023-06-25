@@ -307,12 +307,21 @@ static bool Join() {
 
     const auto msgType = msg["type"];
     const auto msgId = msg["id"];
-    if (!msgType.is_string() || msgType != "id" || !msgId.is_number_integer()) {
+    const auto msgGameMode = msg["gameMode"];
+    const auto msgTaggedPlayerId = msg["taggedPlayerId"];
+    const auto msgCanTag = msg["canTag"];
+
+    if (!msgType.is_string() || msgType != "id" || !msgId.is_number_integer() ||
+        !msgGameMode.is_string() || !msgTaggedPlayerId.is_number_integer() ||
+        !msgCanTag.is_boolean()) {
         printf("client: malformed connect response\n");
         return false;
     }
 
     client.Id = msgId;
+    client.GameMode = msgGameMode.get<std::string>();
+    client.TaggedPlayerId = msgTaggedPlayerId;
+    client.CanTag = msgCanTag;
 
     printf("client: joined with id %x\n", client.Id);
     return true;
