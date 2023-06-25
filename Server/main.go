@@ -118,6 +118,7 @@ func udpListener() {
 				return
 			}
 
+			// TODO combine this method and client.room.SendLastPackets into one method
 			client.setLastPacketAndPosition(buf[:packetSize])
 
 			// Respond with the last packet of every other client in the same room and level
@@ -132,6 +133,6 @@ type position struct {
 	z float64
 }
 
-func distance(from position, to position) float64 {
+func distanceMeters(from position, to position) float64 {
 	return math.Sqrt(math.Pow(to.x-from.x, 2)+math.Pow(to.y-from.y, 2)+math.Pow(to.z-from.z, 2)) / 100
 }

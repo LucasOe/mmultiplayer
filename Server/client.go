@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"log"
+	"math"
 	"net"
 	"strings"
 	"sync"
@@ -79,8 +80,11 @@ func (client *Client) connectMsg(msg map[string]interface{}) {
 	// Tell the client their UUID
 	// TODO consider calling on a go routine
 	client.SendMessage(map[string]interface{}{
-		"type": "id",
-		"id":   client.Id,
+		"type":           "id",
+		"id":             client.Id,
+		"gameMode":       room.gameMode,
+		"taggedPlayerId": room.taggedPlayerId,
+		"canTag":         room.canTag,
 	})
 
 	room.AddPlayer(client)
@@ -222,7 +226,7 @@ func (client *Client) SendMessage(msg interface{}) {
 	client.Tcp.Write(append(r, 0))
 }
 
-func (client *Client) getLevelAndPosition() (string, position) {
+func (client *Client) GetLevelAndPosition() (string, position) {
 	client.rwMu.RLock()
 	defer client.rwMu.RUnlock()
 
@@ -235,19 +239,10 @@ func (client *Client) setLastPacketAndPosition(buf []byte) {
 
 	client.lastPacket = buf
 
-	x := float64(binary.LittleEndian.Uint32(buf[4:8]))
-	y := float64(binary.LittleEndian.Uint32(buf[8:12]))
-	z := float64(binary.LittleEndian.Uint32(buf[12:16]))
+	x := float64(math.Float32frombits(binary.LittleEndian.Uint32(buf[4:8])))
+	y := float64(math.Float32frombits(binary.LittleEndian.Uint32(buf[8:12])))
+	z := float64(math.Float32frombits(binary.LittleEndian.Uint32(buf[12:16])))
 	client.position = position{x: x, y: y, z: z}
-}
-
-func getUint32Field(obj map[string]interface{}, field string) (uint32, bool) {
-	vf, ok := obj[field].(float64)
-	if !ok {
-		return 0, false
-	}
-
-	return uint32(vf), true
 }
 
 func getTimeDurationSecondsField(obj map[string]interface{}, field string) (time.Duration, bool) {

@@ -42,6 +42,7 @@ func (room *Room) AddPlayer(client *Client) {
 	})
 
 	// Tell the client the existing clients
+	// TODO remove room variables once Toyro knows about the change
 	for _, c := range room.Clients {
 		if c.Id != client.Id {
 			go client.SendMessage(map[string]interface{}{
