@@ -285,7 +285,7 @@ func (room *Room) SendLastPackets(client *Client, conn net.PacketConn, addr net.
 	clientLevel, clientPosition := client.GetLevelAndPosition()
 	taggedLevel, taggedPosition := taggedClient.GetLevelAndPosition()
 
-	if clientLevel == taggedLevel && distanceMeters(clientPosition, taggedPosition) < 1.7 {
+	if clientLevel == taggedLevel && distanceMeters(clientPosition, taggedPosition) < 1.3 {
 		go func() {
 			room.rwMu.Lock()
 			defer room.rwMu.Unlock()
