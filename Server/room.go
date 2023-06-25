@@ -170,11 +170,6 @@ func (room *Room) EnableCanTag() {
 	if room.cancelTagCheck != nil {
 		room.cancelTagCheck()
 	}
-
-	ctx, cancelFn := context.WithCancel(context.Background())
-	room.cancelTagCheck = cancelFn
-
-	go room.newPlayerTaggedLoop(ctx)
 }
 
 func (room *Room) PlayerDied(player *Client) {
@@ -271,55 +266,32 @@ func (room *Room) SendLastPackets(client *Client, conn net.PacketConn, addr net.
 	room.rwMu.RLock()
 	defer room.rwMu.RUnlock()
 
+	// TODO mutex hat :(
 	for _, c := range room.Clients {
 		if c.Id != client.Id && c.lastPacket != nil && c.level == client.level {
 			conn.WriteTo(c.lastPacket, addr)
 		}
 	}
-}
-
-func (room *Room) newPlayerTaggedLoop(ctx context.Context) {
-	// roughly 63 times a second
-	ticker := time.NewTicker(16 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			if room.newPlayerTagged() {
-				return
-			}
-		}
-	}
-}
-
-func (room *Room) newPlayerTagged() bool {
-	room.rwMu.RLock()
-	defer room.rwMu.RUnlock()
 
 	if !room.canTag {
-		return false
+		return
 	}
 
-	currentTaggedClient := system.GetClientById(room.taggedPlayerId)
-	if currentTaggedClient == nil {
-		return false
+	taggedClient := room.Clients[room.taggedPlayerId]
+	if taggedClient == nil || client == taggedClient {
+		return
 	}
 
-	taggedLevel, taggedPosition := currentTaggedClient.getLevelAndPosition()
-	for _, other := range room.Clients {
-		if other.Id == room.taggedPlayerId {
-			continue
-		}
+	clientLevel, clientPosition := client.GetLevelAndPosition()
+	taggedLevel, taggedPosition := taggedClient.GetLevelAndPosition()
 
-		cLevel, cPosition := other.getLevelAndPosition()
-		if cLevel == taggedLevel && distance(cPosition, taggedPosition) < 900 {
-			room.setTaggedPlayerUnsafe(other.Id)
-			return true
-		}
+	if clientLevel == taggedLevel && distanceMeters(clientPosition, taggedPosition) < 1.7 {
+		go func() {
+			room.rwMu.Lock()
+			defer room.rwMu.Unlock()
+
+			room.setTaggedPlayerUnsafe(client.Id)
+		}()
+		return
 	}
-
-	return false
 }
