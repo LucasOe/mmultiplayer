@@ -21,9 +21,21 @@ typedef void (*InputCallback)(unsigned int &message, int keycode);
 
 namespace Engine {
 
-static const char *Characters[] = {"Faith",           "Kate",        "Celeste",
-                                   "Assault Celeste", "Jacknife",    "Miller",
-                                   "Kreeg",           "Pursuit Cop", "Ghost"};
+static const char *Characters[] = {
+    "Faith",
+    "Kate",
+    "Celeste",
+    "Assault Celeste",
+    "Jacknife",
+    "Miller",
+    "Kreeg",
+    "Pursuit Cop",
+    "Ghost",
+    //"Ropeburn",
+    //"Riot Cop",
+    //"Swat",
+    //"Swat Sniper"
+};
 
 enum class Character {
     Faith,
@@ -35,6 +47,10 @@ enum class Character {
     Kreeg,
     PursuitCop,
     Ghost,
+    //Ropeburn,
+    //RiotCop,
+    //Swat,
+    //SwatSniper,
     Max
 };
 
