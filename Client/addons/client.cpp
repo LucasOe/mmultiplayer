@@ -320,7 +320,7 @@ static bool Join() {
 
     client.Id = msgId;
     client.GameMode = msgGameMode.get<std::string>();
-    client.TaggedPlayerId = msgTaggedPlayerId;
+    client.TaggedPlayerId = previousTaggedId = msgTaggedPlayerId;
     client.CanTag = msgCanTag;
 
     printf("client: joined with id %x\n", client.Id);
@@ -734,12 +734,12 @@ static void ClientListener() {
 
                 if (msgGameMode.is_null()) {
                     client.CanTag = false;
-                    client.TaggedPlayerId = 0;
                     client.GameMode = "";
-                    previousTaggedId = 0;
                     continue;
                 }
 
+                previousTaggedId = 0;
+                client.TaggedPlayerId = 0;
                 client.GameMode = msgGameMode.get<std::string>();
             } 
             else if (msgType == "canTag") {
