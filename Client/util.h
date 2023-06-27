@@ -57,6 +57,7 @@
 #define Map_Kate                "convoy_p"
 #define Map_TheShard            "scraper_p"
 
+#define GameMode_None           ""
 #define GameMode_Tag            "tag"
 
 // Calculates the distance and returns a float value in meters
