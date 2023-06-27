@@ -734,7 +734,7 @@ static void ClientListener() {
 
                 if (msgGameMode.is_null()) {
                     client.CanTag = false;
-                    client.GameMode = "";
+                    client.GameMode = GameMode_None;
                     continue;
                 }
 
@@ -863,6 +863,10 @@ static void OnTickTag(float deltaTime) {
 
                 playerDiedAndSentJsonMessage = true;
                 client.CanTag = false;
+            }
+        } else {
+            if (!client.CanTag) {
+                IgnorePlayerInput(true);
             }
         }
 
@@ -1262,7 +1266,7 @@ static void TagTab() {
         return;
     }
 
-    if (client.GameMode == "") {
+    if (client.GameMode == GameMode_None) {
         if (ImGui::InputInt("Cooldown##tag-change-cooldown", &tagCooldown, 0, 0,
                             ImGuiInputTextFlags_EnterReturnsTrue)) {
             tagCooldown = client.CoolDownTag = max(1, tagCooldown);
@@ -1322,59 +1326,18 @@ static void TagTab() {
     ImGui::Text("Level: %s", client.Level.c_str());
     ImGui::Text("Cooldown: %d", client.CoolDownTag);
     ImGui::Text("GameMode: %s", client.GameMode.empty() ? "null" : client.GameMode.c_str());
-
-    if (client.GameMode != GameMode_Tag) {
-        return;
-    }
-
-    ImGui::Dummy(ImVec2(0.0f, 6.0f));
-
-    if (previousTaggedId == 0) {
-        ImGui::Text("Previous Tagged Id: 0 (n/a)");
-    } else {
-        if (previousTaggedId == client.Id) {
-            ImGui::Text("Previous Tagged Id: %x (%s)", previousTaggedId, client.Name.c_str());
-        } else {
-            auto player = GetPlayerById(client.TaggedPlayerId);
-
-            if (player) {
-                ImGui::Text("Previous Tagged Id: %x (%s)", previousTaggedId, player->Name.c_str());
-            } else {
-                ImGui::Text("Previous Tagged Id: ERROR!! Couldn't find a player with the id %x");
-            }
-        }
-    }
-
-    if (client.TaggedPlayerId == client.Id) {
-        ImGui::Text("Tagged Id: %x (%s)", client.Id, client.Name.c_str());
-    } else {
-        auto player = GetPlayerById(client.TaggedPlayerId);
-
-        if (!player) {
-            return;
-        }
-
-        ImGui::Text("Tagged Id: %x (%s)", player->Id, player->Name.c_str());
-    }
 }
 
 bool Client::Initialize() {
     // Settings
-    client.Name =
-        Settings::GetSetting("client", "name", "anonymous").get<std::string>();
-    strncpy_s(nameInput, sizeof(nameInput) - 1, client.Name.c_str(),
-              sizeof(nameInput) - 1);
+    client.Name = Settings::GetSetting("client", "name", "anonymous").get<std::string>();
+    strncpy_s(nameInput, sizeof(nameInput) - 1, client.Name.c_str(), sizeof(nameInput) - 1);
 
     room = Settings::GetSetting("client", "room", "lobby").get<std::string>();
-    strncpy_s(roomInput, sizeof(roomInput) - 1, room.c_str(),
-              sizeof(roomInput) - 1);
+    strncpy_s(roomInput, sizeof(roomInput) - 1, room.c_str(), sizeof(roomInput) - 1);
 
-    client.Character =
-        Settings::GetSetting("client", "character", Engine::Character::Faith)
-            .get<Engine::Character>();
-
+    client.Character = Settings::GetSetting("client", "character", Engine::Character::Faith).get<Engine::Character>();
     chat.Keybind = Settings::GetSetting("client", "chatKeybind", VK_T);
-
     players.ShowNameTags = Settings::GetSetting("client", "showNameTags", true);
     chat.ShowOverlay = Settings::GetSetting("client", "showChatOverlay", true);
     disabled = Settings::GetSetting("client", "disabled", false);
