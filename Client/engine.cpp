@@ -402,6 +402,9 @@ SpawnCharacter(Engine::Character character) {
 
         // Swat Sniper
         //L"CH_TKY_Cop_SWAT.SK_TKY_Cop_SWAT_Sniper",
+
+        // Merc
+        //L"CH_TKY_Crim_Heavy.SK_TKY_Crim_Heavy"
     };
 
     static const std::vector<std::wstring> materials[] = {
@@ -512,6 +515,13 @@ SpawnCharacter(Engine::Character character) {
             L"MaterialInstanceConstant CH_TKY_Cop_SWAT.MI_TKY_Cop_SWAT_Sniper",
             L"MaterialInstanceConstant CH_TKY_Cop_SWAT.MI_TKY_Cop_SWAT_eye",
         },
+        */
+
+        /*
+        // Merc
+        {
+            L"MaterialInstanceConstant CH_TKY_Crim_Heavy.MI_Crim_Heavy"
+        }
         */
     };
 
@@ -821,27 +831,12 @@ void Engine::TransformBones(Character character,
         memcpy(dest + 36, src + 42, sizeof(Classes::FBoneAtom));
         memcpy(dest + 39, src + 45, 63 * sizeof(Classes::FBoneAtom));
         break;
-    case Character::Celeste:
-        memcpy(dest, src, 7 * sizeof(Classes::FBoneAtom));
-        memcpy(dest + destCount - 63, src + 45, 63 * sizeof(Classes::FBoneAtom));
-        memcpy(dest + 18, src + 18, sizeof(Classes::FBoneAtom));
-        break;
     case Character::AssaultCeleste:
         memcpy(dest, src, 7 * sizeof(Classes::FBoneAtom));
         memcpy(dest + destCount - 63, src + 45, 63 * sizeof(Classes::FBoneAtom));
         memcpy(dest + 17, src + 18, sizeof(Classes::FBoneAtom));
         break;
-    case Character::Jacknife:
-        memcpy(dest, src, 7 * sizeof(Classes::FBoneAtom));
-        memcpy(dest + destCount - 63, src + 45, 63 * sizeof(Classes::FBoneAtom));
-        memcpy(dest + 18, src + 18, sizeof(Classes::FBoneAtom));
-        break;
     case Character::Miller:
-        memcpy(dest, src, 7 * sizeof(Classes::FBoneAtom));
-        memcpy(dest + destCount - 63, src + 45, 63 * sizeof(Classes::FBoneAtom));
-        memcpy(dest + 18, src + 18, sizeof(Classes::FBoneAtom));
-        break;
-    case Character::Kreeg:
         memcpy(dest, src, 7 * sizeof(Classes::FBoneAtom));
         memcpy(dest + destCount - 63, src + 45, 63 * sizeof(Classes::FBoneAtom));
         memcpy(dest + 18, src + 18, sizeof(Classes::FBoneAtom));
@@ -851,16 +846,17 @@ void Engine::TransformBones(Character character,
         memcpy(dest + destCount - 63, src + 45, 63 * sizeof(Classes::FBoneAtom));
         memcpy(dest + 15, src + 18, sizeof(Classes::FBoneAtom));
         break;
-    /*
-    case Character::Ropeburn:
-    case Character::RiotCop:
-    case Character::Swat:
-    case Character::SwatSniper:
+    case Character::Celeste:
+    case Character::Jacknife:
+    case Character::Kreeg:
+    //case Character::Ropeburn:
+    //case Character::RiotCop:
+    //case Character::Swat:
+    //case Character::SwatSniper:
         memcpy(dest, src, 7 * sizeof(Classes::FBoneAtom));
         memcpy(dest + destCount - 63, src + 45, 63 * sizeof(Classes::FBoneAtom));
         memcpy(dest + 18, src + 18, sizeof(Classes::FBoneAtom));
         break;
-    */
     }
 }
 
