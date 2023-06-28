@@ -28,6 +28,7 @@ static std::string room;
 static bool showTagDistanceOverlay = true;
 static bool playerDiedAndSentJsonMessage = false;
 static int tagCooldown = 5;
+static ULONGLONG taggedTimed = 0;
 static int previousTaggedId = 0;
 
 static sockaddr_in server = {0};
@@ -726,6 +727,7 @@ static void ClientListener() {
                         {"type", "endGameMode"},
                     });
 
+                    taggedTimed = 0;
                     previousTaggedId = 0;
                 }
             }
@@ -738,14 +740,15 @@ static void ClientListener() {
                     continue;
                 }
 
+                taggedTimed = 0; 
                 previousTaggedId = 0;
                 client.TaggedPlayerId = 0;
                 client.GameMode = msgGameMode.get<std::string>();
             } 
             else if (msgType == "canTag") {
-                if (client.Id == client.TaggedPlayerId) {
-                    client.CanTag = true;
+                client.CanTag = true;
 
+                if (client.Id == client.TaggedPlayerId) {
                     IgnorePlayerInput(false);
                 }
             } 
@@ -780,6 +783,7 @@ static void ClientListener() {
                     });
                 }
 
+                taggedTimed = GetTickCount64();
                 previousTaggedId = msgTaggedPlayerId;
                 IgnorePlayerInput(client.Id == msgTaggedPlayerId);
             }
@@ -1060,6 +1064,39 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
 
         y -= yIncrement;
     }
+
+    ImGui::EndRawScene();
+
+    if (taggedTimed == 0 || client.CanTag) {
+        return;
+    }
+
+    auto timeLeft = taggedTimed + (client.CoolDownTag * 1000) - GetTickCount64();
+
+    if (timeLeft < 0 || timeLeft > UINT_MAX) {
+        return;
+    }
+
+    if (client.Id == client.TaggedPlayerId) {
+        sprintf_s(buffer, "%s can move in %.1f seconds", client.Name.c_str(), (float)timeLeft / 1000);
+    } else {
+        auto player = GetPlayerById(client.TaggedPlayerId);
+
+        if (!player) {
+            return;
+        }
+
+        sprintf_s(buffer, "%s can move in %.1f seconds", player->Name.c_str(), (float)timeLeft / 1000);
+    }
+
+    window = ImGui::BeginRawScene("##tag-timeleft");
+
+    float size = ImGui::CalcTextSize(buffer, nullptr, false).x;
+    float height = ImGui::GetTextLineHeight();
+    float topMiddleX = io.DisplaySize.x / 2 - size / 2;
+
+    window->DrawList->AddRectFilled(ImVec2(topMiddleX - padding, 0), ImVec2(topMiddleX + size + padding, height + padding), ImColor(ImVec4(0, 0, 0, 0.4f)));
+    window->DrawList->AddText(ImVec2(topMiddleX, padding / 2), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), buffer);
 
     ImGui::EndRawScene();
 }
