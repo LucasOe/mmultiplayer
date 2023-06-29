@@ -1321,7 +1321,7 @@ static void TagTab() {
     if (client.GameMode == GameMode_None) {
         if (ImGui::InputInt("Cooldown##tag-change-cooldown", &tagCooldown, 0, 0,
                             ImGuiInputTextFlags_EnterReturnsTrue)) {
-            tagCooldown = client.CoolDownTag = max(1, tagCooldown);
+            tagCooldown = client.CoolDownTag = max(1, min(60, tagCooldown));
 
             SendJsonMessage({
                 {"type", "cooldown"},
@@ -1336,6 +1336,10 @@ static void TagTab() {
                 {"type", "announce"},
                 {"body", buffer},
             });
+        }
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+            ImGui::SetTooltip("Change to cooldown to be anywhere from 1 to 60. Press enter to update.");
         }
 
         ImGui::Dummy(ImVec2(0.0f, 6.0f));
@@ -1372,10 +1376,6 @@ static void TagTab() {
     }
 
     ImGui::SeperatorWithPadding(2.5f);
-
-    ImGui::Text("Id: %x", client.Id);
-    ImGui::Text("Name: %s", client.Name.c_str());
-    ImGui::Text("Level: %s", client.Level.c_str());
     ImGui::Text("Cooldown: %d", client.CoolDownTag);
     ImGui::Text("GameMode: %s", client.GameMode.empty() ? "null" : client.GameMode.c_str());
 }
