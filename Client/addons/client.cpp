@@ -26,6 +26,7 @@ static auto connected = false, loading = false, disabled = false;
 static std::string room;
 
 static bool showTagDistanceOverlay = true;
+static bool showTagCooldownOverlay = true;
 static bool playerDiedAndSentJsonMessage = false;
 static int tagCooldown = 5;
 static ULONGLONG taggedTimed = 0;
@@ -727,25 +728,27 @@ static void ClientListener() {
                         {"type", "endGameMode"},
                     });
 
-                    taggedTimed = 0;
-                    previousTaggedId = 0;
+                    AddChatMessage("[Tag] Tag has ended since you're the only one in this room");
                 }
             }
             else if (msgType == "gameMode") {
                 const auto msgGameMode = msg["gameMode"];
 
-                if (msgGameMode.is_null()) {
-                    client.CanTag = false;
-                    client.GameMode = GameMode_None;
+                if (!msg.is_string()) {
                     continue;
                 }
 
-                taggedTimed = 0; 
+                taggedTimed = 0;
                 previousTaggedId = 0;
+
+                IgnorePlayerInput(false);
+
+                client.CanTag = false;
                 client.TaggedPlayerId = 0;
                 client.GameMode = msgGameMode.get<std::string>();
             } 
             else if (msgType == "canTag") {
+                taggedTimed = 0;
                 client.CanTag = true;
 
                 if (client.Id == client.TaggedPlayerId) {
@@ -1033,10 +1036,10 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
     static float padding = 5.0f;
     static float rightPadding = 80.0f;
 
-    float yIncrement = ImGui::GetTextLineHeight();
-    float y = (playersInTheSameLevel * yIncrement) - yIncrement + (padding / 2);
+    float textHeight = ImGui::GetTextLineHeight();
+    float y = (playersInTheSameLevel * textHeight) - textHeight + (padding / 2);
 
-    window->DrawList->AddRectFilled(ImVec2(), ImVec2(256, y + padding + yIncrement),
+    window->DrawList->AddRectFilled(ImVec2(), ImVec2(256, y + padding + textHeight),
                                     ImColor(ImVec4(0, 0, 0, 0.4f)));
 
     char buffer[0x200] = {0};
@@ -1062,23 +1065,24 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
             window->DrawList->AddText(ImVec2(rightPadding, y), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), p->Name.c_str());
         }
 
-        y -= yIncrement;
+        y -= textHeight;
     }
 
     ImGui::EndRawScene();
 
-    if (taggedTimed == 0 || client.CanTag) {
+    if (taggedTimed == 0) {
         return;
     }
 
-    auto timeLeft = taggedTimed + (client.CoolDownTag * 1000) - GetTickCount64();
+    auto timeLeftTick = taggedTimed + (client.CoolDownTag * 1000) - GetTickCount64();
+    float timeLeft = (float)timeLeftTick / 1000;
 
-    if (timeLeft < 0 || timeLeft > UINT_MAX) {
+    if (timeLeft < 0.0f || timeLeft > UINT_MAX) {
         return;
     }
 
     if (client.Id == client.TaggedPlayerId) {
-        sprintf_s(buffer, "%s can move in %.1f seconds", client.Name.c_str(), (float)timeLeft / 1000);
+        sprintf_s(buffer, "%s can move in %.1f seconds", client.Name.c_str(), timeLeft);
     } else {
         auto player = GetPlayerById(client.TaggedPlayerId);
 
@@ -1086,16 +1090,15 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
             return;
         }
 
-        sprintf_s(buffer, "%s can move in %.1f seconds", player->Name.c_str(), (float)timeLeft / 1000);
+        sprintf_s(buffer, "%s can move in %.1f seconds", player->Name.c_str(), timeLeft);
     }
 
     window = ImGui::BeginRawScene("##tag-timeleft");
 
-    float size = ImGui::CalcTextSize(buffer, nullptr, false).x;
-    float height = ImGui::GetTextLineHeight();
-    float topMiddleX = io.DisplaySize.x / 2 - size / 2;
+    float textSize = ImGui::CalcTextSize(buffer, nullptr, false).x;
+    float topMiddleX = io.DisplaySize.x / 2 - textSize / 2;
 
-    window->DrawList->AddRectFilled(ImVec2(topMiddleX - padding, 0), ImVec2(topMiddleX + size + padding, height + padding), ImColor(ImVec4(0, 0, 0, 0.4f)));
+    window->DrawList->AddRectFilled(ImVec2(topMiddleX - padding, 0), ImVec2(topMiddleX + textSize + padding, textHeight + padding), ImColor(ImVec4(0, 0, 0, 0.4f)));
     window->DrawList->AddText(ImVec2(topMiddleX, padding / 2), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), buffer);
 
     ImGui::EndRawScene();
@@ -1290,7 +1293,18 @@ static void MultiplayerTab() {
 }
 
 static void TagTab() {
-    ImGui::Checkbox("Show Distance Overlay##tag-overlay", &showTagDistanceOverlay);
+    ImGui::Checkbox("Distance Overlay##tag-distance-overlay", &showTagDistanceOverlay);
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+		ImGui::SetTooltip("Shows the distance to other players in meters.");
+	}
+
+    ImGui::Checkbox("Cooldown Overlay##tag-cooldown-overlay", &showTagCooldownOverlay);
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+        ImGui::SetTooltip("When someone gets tagged, in will show (if true) at the top middle of the screen of the cooldown\nin seconds until they can move again.");
+    }
+
     ImGui::SeperatorWithPadding(2.5f);
 
     if (players.List.size() == 0) {
