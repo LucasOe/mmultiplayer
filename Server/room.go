@@ -192,7 +192,7 @@ func (room *Room) setTaggedPlayerUnsafe(taggedPlayerId uint32) {
 	room.canTag = false
 	room.taggedPlayerId = taggedPlayerId
 	if room.tagCoolDown == 0 {
-		room.tagCoolDown = 10 * time.Second
+		room.tagCoolDown = 5 * time.Second
 	}
 
 	if room.cancelTagStart != nil {
