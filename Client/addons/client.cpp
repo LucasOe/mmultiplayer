@@ -722,19 +722,11 @@ static void ClientListener() {
                         return true;
                     }));
                 players.Mutex.unlock();
-
-                if (client.GameMode == GameMode_Tag && players.List.size() == 0) {
-                    SendJsonMessage({
-                        {"type", "endGameMode"},
-                    });
-
-                    AddChatMessage("[Tag] Tag has ended since you're the only one in this room");
-                }
             }
             else if (msgType == "gameMode") {
                 const auto msgGameMode = msg["gameMode"];
 
-                if (!msg.is_string()) {
+                if (!msgGameMode.is_string()) {
                     continue;
                 }
 
@@ -760,6 +752,15 @@ static void ClientListener() {
                 const auto msgTagCooldown = msg["coolDown"];
 
                 if (!msgTaggedPlayerId.is_number_integer() || !msgTagCooldown.is_number_integer()) {
+                    continue;
+                }
+
+                if (players.List.size() == 0) {
+                    SendJsonMessage({
+                        {"type", "endGameMode"},
+                    });
+
+                    AddChatMessage("[Tag] Tag has ended since you're the only one in this room");
                     continue;
                 }
 
@@ -1307,13 +1308,13 @@ static void TagTab() {
 
     ImGui::SeperatorWithPadding(2.5f);
 
-    if (players.List.size() == 0) {
-        ImGui::Text("You can't start tag when you're alone");
+    if (client.Level == Map_MainMenu) {
+        ImGui::Text("You can't start tag when you're in the main menu");
         return;
     }
 
-    if (client.Level == Map_MainMenu) {
-        ImGui::Text("You can't start tag when you're in the main menu");
+    if (players.List.size() == 0) {
+        ImGui::Text("You can't start tag when you're alone");
         return;
     }
 
