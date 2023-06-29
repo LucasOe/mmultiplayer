@@ -1303,7 +1303,7 @@ static void TagTab() {
     ImGui::Checkbox("Cooldown Overlay##tag-cooldown-overlay", &showTagCooldownOverlay);
 
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("When someone gets tagged, in will show (if true) at the top middle of the screen of the cooldown\nin seconds until they can move again.");
+        ImGui::SetTooltip("When someone gets tagged, it will show (if true) at the top middle of the screen of the cooldown\nin seconds until they can move again.");
     }
 
     ImGui::SeperatorWithPadding(2.5f);
