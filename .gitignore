@@ -355,3 +355,6 @@ MigrationBackup/
 
 # Jetbrains
 .idea/
+
+# Build Artifacts
+build/
