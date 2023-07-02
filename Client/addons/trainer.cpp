@@ -11,10 +11,19 @@
 static auto enabled = false, overlay = true, tooltip = true, god = false, kg = false,
             beamer = false, sidestepBeamer = false, sidestepBeamerForMe = false, strang = false, 
             resetFlyingSpeed = true, sidestepBeamerPressLeftKeybind = true,
-            sidestepBeamerPressRightKeybind = false, toggleResetKeybinds = false;
+            sidestepBeamerPressRightKeybind = false, toggleResetKeybinds = false,
+            showPlayerInfo = false, showExtraPlayerInfo = false;
 
-static int saveKeybind = 0, loadKeybind = 0, godKeybind = 0, kgKeybind = 0, beamerKeybind = 0,
+static int checkpointKeybind = 0, saveKeybind = 0, loadKeybind = 0, godKeybind = 0, kgKeybind = 0, beamerKeybind = 0,
            strangKeybind = 0, sidestepBeamerLeftKeybind = 0, sidestepBeamerRightKeybind = 0;
+
+static float topSpeed = 0.0f;
+static float topSpeedTimeHit = 0.0f;
+static float topSpeedResetAfterSeconds = 2.75f;
+
+static float checkpointTime = 0.0f;
+static bool checkpointUpdateTimer = false;
+static Classes::FVector checkpointLocation;
 
 static struct {
     bool Enabled = false;
@@ -311,29 +320,52 @@ static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
 }
 
 static void TrainerTab() {
-    auto pawn = Engine::GetPlayerPawn();
+    #pragma region Player
+    if (ImGui::Checkbox("Show Player Info", &showPlayerInfo)) {
+        Settings::SetSetting("player", "showInfo", showPlayerInfo);
+    }
 
-    if (!pawn) {
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+        ImGui::SetTooltip("X = Location X\nY = Location Y\nZ = Location Z\nV = Velocity\nVT = Velocity Top\nRX = Rotation Pitch\nRY = Rotation Yaw\nT = Time");
+    }
+
+    if (showPlayerInfo) {
+        if (ImGui::Checkbox("Show Extra Info", &showExtraPlayerInfo)) {
+            Settings::SetSetting("player", "showExtraPlayerInfo", showExtraPlayerInfo);
+        }
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+            ImGui::SetTooltip("S = Movement State (Enum)\nH = Health\nRT = Reaction Time Energy");
+        }
+    }
+
+    auto pawn = Engine::GetPlayerPawn();
+    auto controller = Engine::GetPlayerController();
+
+    if (!pawn || !controller) {
         return;
     }
 
-    if (ImGui::Checkbox("Enabled##trainer-enabled", &enabled)) {
-        Settings::SetSetting("trainer", "enabled", enabled);
+    if (!(Engine::GetTimeTrialGame() || controller->ReactionTimeEnergy >= 100.0f ||
+        controller->bReactionTime ||  pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled)) {
 
-        if (!enabled)
-        {
-            kg = false;
-            god = false;
-            beamer = false;
-            strang = false;
-            sidestepBeamer = false;
-            fly.Enabled = false;
+        if (ImGui::Button("Refill ReactionTimeEnergy##controller-reactiontime")) {
+            auto tdhud = static_cast<Classes::ATdHUD *>(controller->myHUD);
 
-            pawn->Velocity = fly.Velocity;
-            pawn->bCollideWorld = true;
-            pawn->EnterFallingHeight = -1e30f;
-            pawn->Physics = Classes::EPhysics::PHYS_Falling;
+            controller->ReactionTimeEnergy = 100.0f;
+            tdhud->EffectManager->ActivateReactionTimeTeaser();
         }
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+            ImGui::SetTooltip("Refills your reaction time energy to 100.0f");
+        }
+    }
+
+    ImGui::SeperatorWithPadding(2.5f);
+    #pragma endregion Player
+
+    if (ImGui::Checkbox("Trainer Enabled##trainer-enabled", &enabled)) {
+        Settings::SetSetting("trainer", "enabled", enabled);
     }
 
     if (!enabled) {
@@ -419,6 +451,18 @@ static void TrainerTab() {
     }
 
     ImGui::SeperatorWithPadding(2.5f);
+
+    if (ImGui::Hotkey("Checkpoint##trainer-checkpoint", &checkpointKeybind)) {
+        Settings::SetSetting("trainer", "checkpointKeybind", checkpointKeybind);
+    }
+
+    if (toggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset##checkpointKeybind")) {
+            Settings::SetSetting("trainer", "checkpointKeybind", checkpointKeybind = VK_3);
+        }
+    }
 
     if (ImGui::Hotkey("Save##trainer-save", &saveKeybind)) {
         Settings::SetSetting("trainer", "saveKeybind", saveKeybind);
@@ -561,7 +605,79 @@ static void TrainerTab() {
     }
 }
 
+template <typename T>
+void AddTextToDrawList(ImDrawList* drawList, float width, float rightPadding, float& y, float yIncrement, ImColor color, const char* label, const char* format, T value) {
+    char buffer[0x200];
+    sprintf_s(buffer, format, value);
+
+    drawList->AddText(ImVec2(width - ImGui::CalcTextSize(buffer, nullptr, false).x, y), color, buffer);
+    drawList->AddText(ImVec2(width - rightPadding, y), color, label);
+
+    y += yIncrement;
+}
+
 static void OnRender(IDirect3DDevice9 *) {
+    static const float padding = 5.0f;
+
+    if (showPlayerInfo) {
+        auto pawn = Engine::GetPlayerPawn();
+        auto controller = Engine::GetPlayerController();
+
+        if (pawn && controller) {
+            static const auto rightPadding = 100.0f;
+
+            auto window = ImGui::BeginRawScene("##player-info");
+
+            auto &io = ImGui::GetIO();
+            auto width = io.DisplaySize.x - padding;
+
+            auto yIncrement = ImGui::GetTextLineHeight();
+            auto y = io.DisplaySize.y - ((showExtraPlayerInfo ? 11 : 8) * yIncrement) - padding - ((yIncrement / 2) * 3);
+            auto color = ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+            window->DrawList->AddRectFilled(ImVec2(width - rightPadding - padding, y - padding), io.DisplaySize, ImColor(ImVec4(0, 0, 0, 0.4f)));
+
+            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "X", "%.2f", pawn->Location.X / 100.0f);
+            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "Y", "%.2f", pawn->Location.Y / 100.0f);
+            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "Z", "%.2f", pawn->Location.Z / 100.0f);
+
+            float speed = sqrtf(powf(pawn->Velocity.X, 2) + powf(pawn->Velocity.Y, 2)) * 0.036f;
+
+            if (pawn->WorldInfo->RealTimeSeconds - topSpeedTimeHit > topSpeedResetAfterSeconds) {
+                topSpeed = 0.0f;
+                topSpeedTimeHit = 0.0f;
+            }
+
+            if (speed > topSpeed) {
+                topSpeed = speed;
+                topSpeedTimeHit = pawn->WorldInfo->RealTimeSeconds;
+            }
+
+            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "V", "%.2f", speed);
+            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "VT", "%.2f", topSpeed);
+
+            float pitch = (static_cast<float>(controller->Rotation.Pitch % 0x10000) / static_cast<float>(0x10000)) * 360.0f;
+            pitch = pitch == 0.0f ? pitch : pitch > 180.0f ? pitch - 360.0f + 0.01f : pitch + 0.01f;
+
+            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "RX", "%.2f", pitch);
+            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "RY", "%.2f", (static_cast<float>(controller->Rotation.Yaw % 0x10000) / static_cast<float>(0x10000)) * 360.0f);
+
+            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "T", "%.2f", checkpointTime);
+
+            if (showExtraPlayerInfo) {
+                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "S", "%d", pawn->MovementState.GetValue());
+                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "H", "%d", pawn->Health);
+                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "RT", "%.2f", min(100.00f, controller->ReactionTimeEnergy));
+                // AddTextToDrawList(window->DrawList, width, y, yIncrement, "TD", "%.2f", pawn->WorldInfo->TimeDilation);
+            }
+
+            ImGui::EndRawScene();
+        } else {
+            topSpeed = 0.0f;
+            topSpeedTimeHit = 0.0f;
+        }
+    }
+
     if (!enabled || !overlay) {
         return;
     }
@@ -573,8 +689,6 @@ static void OnRender(IDirect3DDevice9 *) {
     text += god ? "God " : "";
 
     if (text != "") {
-        static const auto padding = 5.0f;
-
         const auto window = ImGui::BeginRawScene("##trainer-state");
         const auto &io = ImGui::GetIO();
         const auto width = ImGui::CalcTextSize(text.c_str(), nullptr, false).x;
@@ -592,12 +706,32 @@ static void OnRender(IDirect3DDevice9 *) {
 }
 
 static void OnTick(float deltaTime) {
-    if (!enabled) {
+    if (!enabled && !showPlayerInfo) {
         return;
     }
 
     const auto pawn = Engine::GetPlayerPawn();
+    static bool hasCheckpoint = false;
+
     if (!pawn) {
+        return;
+    }
+
+    if (showPlayerInfo) {
+        if (Engine::IsKeyDown(checkpointKeybind)) {
+            hasCheckpoint = true;
+            checkpointTime = 0.0f;
+            checkpointLocation = pawn->Location;
+        }
+
+        if (Distance(pawn->Location, checkpointLocation) > 1.0f && checkpointUpdateTimer && hasCheckpoint) {
+            checkpointTime += pawn->WorldInfo->TimeDilation * deltaTime;
+        } else {
+            checkpointUpdateTimer = false;
+        }
+    }
+
+    if (!enabled) {
         return;
     }
 
@@ -611,7 +745,7 @@ static void OnTick(float deltaTime) {
     }
 
     static Trainer::Save save;
-    static auto hasSave = false;
+    static bool hasSave = false;
 
     if (Engine::IsKeyDown(saveKeybind)) {
         Save(save, pawn, controller);
@@ -625,6 +759,11 @@ static void OnTick(float deltaTime) {
 
         if (strang) {
             strang = false;
+        }
+
+        if (hasCheckpoint) {
+            checkpointTime = 0.0f;
+            checkpointUpdateTimer = true;
         }
 
         Load(save, pawn, controller);
@@ -744,10 +883,13 @@ bool Trainer::Initialize() {
     enabled = Settings::GetSetting("trainer", "enabled", false);
     overlay = Settings::GetSetting("trainer", "overlay", true);
     tooltip = Settings::GetSetting("trainer", "tooltip", true);
+    checkpointKeybind = Settings::GetSetting("trainer", "checkpointKeybind", VK_3);
     saveKeybind = Settings::GetSetting("trainer", "saveKeybind", VK_4);
     loadKeybind = Settings::GetSetting("trainer", "loadKeybind", VK_5);
     godKeybind = Settings::GetSetting("trainer", "godKeybind", VK_1);
     toggleResetKeybinds = Settings::GetSetting("trainer", "toggleResetKeybinds", false);
+    showPlayerInfo = Settings::GetSetting("player", "showInfo", false);
+    showExtraPlayerInfo = Settings::GetSetting("player", "showExtraPlayerInfo", false);
 
     // Flying Settings
     fly.Keybind = Settings::GetSetting("trainer", "flyKeybind", VK_2);

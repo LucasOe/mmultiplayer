@@ -10,25 +10,10 @@
 #include "imgui/imgui_internal.h"
 #include "menu.h"
 
-static auto show = false, showPlayerInfo = false, showExtraPlayerInfo = false;
+static auto show = false;
 static std::vector<MenuTab> tabs;
 static int showKeybind = 0;
 static std::wstring levelName;
-
-static float topSpeed = 0.0f;
-static float topSpeedTimeHit = 0.0f;
-static float topSpeedResetAfterSeconds = 3.0f;
-
-template <typename T>
-void AddTextToDrawList(ImDrawList* drawList, float width, float rightPadding, float& y, float yIncrement, ImColor color, const char* label, const char* format, T value) {
-    char buffer[0x200];
-    sprintf_s(buffer, format, value);
-
-    drawList->AddText(ImVec2(width - ImGui::CalcTextSize(buffer, nullptr, false).x, y), color, buffer);
-    drawList->AddText(ImVec2(width - rightPadding, y), color, label);
-
-    y += yIncrement;
-}
 
 static void RenderMenu(IDirect3DDevice9 *device) {
 	if (show) {
@@ -44,64 +29,6 @@ static void RenderMenu(IDirect3DDevice9 *device) {
 
 		ImGui::EndTabBar();
 		ImGui::End();
-	}
-
-	if (showPlayerInfo) {
-		auto pawn = Engine::GetPlayerPawn();
-		auto controller = Engine::GetPlayerController();
-
-		if (pawn && controller) {
-			static const auto rightPadding = 100.0f;
-			static const auto padding = 5.0f;
-
-			auto window = ImGui::BeginRawScene("##player-debug-info");
-
-			auto &io = ImGui::GetIO();
-			auto width = io.DisplaySize.x - padding;
-
-			auto yIncrement = ImGui::GetTextLineHeight();
-			auto y = io.DisplaySize.y - ((showExtraPlayerInfo ? 11 : 8) * yIncrement) - padding - ((yIncrement / 2) * 3);
-            auto color = ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-			window->DrawList->AddRectFilled(ImVec2(width - rightPadding - padding, y - padding), io.DisplaySize, ImColor(ImVec4(0, 0, 0, 0.4f)));
-
-			AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "X", "%.2f", pawn->Location.X / 100.0f);
-			AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "Y", "%.2f", pawn->Location.Y / 100.0f);
-			AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "Z", "%.2f", pawn->Location.Z / 100.0f);
-
-			float speed = sqrtf(powf(pawn->Velocity.X, 2) + powf(pawn->Velocity.Y, 2)) * 0.036f;
-
-			if (pawn->WorldInfo->TimeSeconds - topSpeedTimeHit > topSpeedResetAfterSeconds && topSpeedTimeHit != 0.0f) {
-                topSpeed = 0.0f;
-                topSpeedTimeHit = 0.0f;
-			}
-
-            if (speed > topSpeed) {
-                topSpeed = speed;
-                topSpeedTimeHit = pawn->WorldInfo->TimeSeconds;
-            }
-
-			AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "V", "%.2f", speed);
-			AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "VT", "%.2f", topSpeed);
-
-			AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "RX", "%.2f", (static_cast<float>(controller->Rotation.Pitch % 0x10000) / static_cast<float>(0x10000)) * 360.0f);
-			AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "RY", "%.2f", (static_cast<float>(controller->Rotation.Yaw % 0x10000) / static_cast<float>(0x10000)) * 360.0f);
-
-			// TODO: Create a checkpoint system like speedometer does
-			AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "T", "%.2f", 0);
-
-			if (showExtraPlayerInfo) {
-				AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "S", "%d", pawn->MovementState.GetValue());
-				AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "H", "%d", pawn->Health);
-				AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "RT", "%.2f", min(100.00f, controller->ReactionTimeEnergy));
-				//AddTextToDrawList(window->DrawList, width, y, yIncrement, "TD", "%.2f", pawn->WorldInfo->TimeDilation);
-			}
-
-			ImGui::EndRawScene();
-		} else {
-            topSpeed = 0.0f;
-            topSpeedTimeHit = 0.0f;    
-		}
 	}
 }
 
@@ -204,54 +131,6 @@ static void WorldTab() {
 	}
 }
 
-void PlayerTab() {
-	if (ImGui::Checkbox("Show Player Info", &showPlayerInfo)) {
-		Settings::SetSetting("player", "showInfo", showPlayerInfo);
-    }
-
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("X = Location X\nY = Location Y\nZ = Location Z\nV = Velocity\nVT = Velocity Top\nRX = Rotation Pitch\nRY = Rotation Yaw\nT = Time");
-    }
-
-	if (showPlayerInfo) {
-        if (ImGui::Checkbox("Show Extra Info", &showExtraPlayerInfo)) {
-            Settings::SetSetting("player", "showExtraPlayerInfo", showExtraPlayerInfo);
-        }
-
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("S = Movement State (Enum)\nH = Health\nRT = Reaction Time Energy");
-		}
-	}
-
-	auto pawn = Engine::GetPlayerPawn();
-	auto controller = Engine::GetPlayerController();
-
-	if (!pawn || !controller) {
-        return;
-	}
-
-	if (Engine::GetTimeTrialGame() || Engine::GetLevelRace()) {
-        return;    
-	}
-
-    if (controller->ReactionTimeEnergy >= 100.0f || controller->bReactionTime || pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled) {
-        return;
-	}
-
-	ImGui::SeperatorWithPadding(2.5f);
-
-	if (ImGui::Button("Refill ReactionTimeEnergy##controller-reactiontime")) { 
-		auto tdhud = static_cast<Classes::ATdHUD *>(controller->myHUD);
-                    
-		controller->ReactionTimeEnergy = 100.0f;
-		tdhud->EffectManager->ActivateReactionTimeTeaser();
-	}
-
-	if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("Refills your reaction time energy to 100 instantly");
-	}
-}
-
 void Menu::AddTab(const char *name, MenuTabCallback callback) {
 	tabs.push_back({ name, callback });
 }
@@ -268,8 +147,6 @@ void Menu::Show() {
 
 bool Menu::Initialize() {
 	showKeybind = Settings::GetSetting("menu", "showKeybind", VK_INSERT);
-    showPlayerInfo = Settings::GetSetting("player", "showInfo", false);
-    showExtraPlayerInfo = Settings::GetSetting("player", "showExtraPlayerInfo", false);
 
 	Engine::OnRenderScene(RenderMenu);
 
@@ -291,7 +168,6 @@ bool Menu::Initialize() {
 
 	AddTab("Engine", EngineTab);
 	AddTab("World", WorldTab);
-	AddTab("Player", PlayerTab);
 
 	return true;
 }
