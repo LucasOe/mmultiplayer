@@ -1003,15 +1003,14 @@ static void OnRender(IDirect3DDevice9 *device) {
 }
 
 static void OnRenderTag(IDirect3DDevice9 *device) {
-    if (!showTagDistanceOverlay) {
+    if (!showTagDistanceOverlay && !showTagCooldownOverlay) {
         return;
     }
 
     auto pawn = Engine::GetPlayerPawn();
     auto controller = Engine::GetPlayerController();
-    auto world = Engine::GetWorld();
 
-    if (!pawn || !controller || !world) {
+    if (!pawn || !controller) {
         return;
     }
 
@@ -1031,78 +1030,82 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
         return;
     }
 
-    auto window = ImGui::BeginRawScene("##tag-info");
-    auto &io = ImGui::GetIO();
-
-    static float padding = 5.0f;
-    static float rightPadding = 80.0f;
-
-    float textHeight = ImGui::GetTextLineHeight();
-    float y = (playersInTheSameLevel * textHeight) - textHeight + (padding / 2);
-
-    window->DrawList->AddRectFilled(ImVec2(), ImVec2(256, y + padding + textHeight),
-                                    ImColor(ImVec4(0, 0, 0, 0.4f)));
-
     char buffer[0x200] = {0};
+    auto &io = ImGui::GetIO();
+    float textHeight = ImGui::GetTextLineHeight();
+    static float padding = 5.0f;
 
-    for (const auto &p : players.List) {
-        if (!p->Actor || p->Level != client.Level) {
-            continue;
+    if (showTagDistanceOverlay) {
+        auto window = ImGui::BeginRawScene("##tag-info");
+
+        static float rightPadding = 80.0f;
+        float y = (playersInTheSameLevel * textHeight) - textHeight + (padding / 2);
+
+        window->DrawList->AddRectFilled(ImVec2(), ImVec2(256, y + padding + textHeight), ImColor(ImVec4(0, 0, 0, 0.4f)));
+
+        for (const auto &p : players.List) {
+            if (!p->Actor || p->Level != client.Level) {
+                continue;
+            }
+
+            float dist = Distance(p->Actor->Location, pawn->Location);
+
+            if (dist >= 10.0f) {
+                sprintf_s(buffer, "%.0f m", dist);
+            } else {
+                sprintf_s(buffer, "%.1f m", dist);
+            }
+
+            if (client.GameMode == GameMode_Tag && p->Id == client.TaggedPlayerId) {
+                window->DrawList->AddText(ImVec2(padding, y), ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f)), buffer);
+                window->DrawList->AddText(ImVec2(rightPadding, y), ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f)), p->Name.c_str());
+            } else {
+                window->DrawList->AddText(ImVec2(padding, y), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), buffer);
+                window->DrawList->AddText(ImVec2(rightPadding, y), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), p->Name.c_str());
+            }
+
+            y -= textHeight;
         }
 
-        float dist = Distance(p->Actor->Location, pawn->Location);
-
-        if (dist >= 10.0f) {
-            sprintf_s(buffer, "%.0f m", dist);
-        } else {
-            sprintf_s(buffer, "%.1f m", dist);
-        }
-
-        if (client.GameMode == GameMode_Tag && p->Id == client.TaggedPlayerId) {
-            window->DrawList->AddText(ImVec2(padding, y), ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f)), buffer);
-            window->DrawList->AddText(ImVec2(rightPadding, y), ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f)), p->Name.c_str());
-        } else {
-            window->DrawList->AddText(ImVec2(padding, y), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), buffer);
-            window->DrawList->AddText(ImVec2(rightPadding, y), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), p->Name.c_str());
-        }
-
-        y -= textHeight;
+        ImGui::EndRawScene();
     }
 
-    ImGui::EndRawScene();
-
-    if (taggedTimed == 0) {
-        return;
-    }
-
-    auto timeLeftTick = taggedTimed + (client.CoolDownTag * 1000) - GetTickCount64();
-    float timeLeft = (float)timeLeftTick / 1000;
-
-    if (timeLeft < 0.0f || timeLeft > UINT_MAX) {
-        return;
-    }
-
-    if (client.Id == client.TaggedPlayerId) {
-        sprintf_s(buffer, "%s can move in %.1f seconds", client.Name.c_str(), timeLeft);
-    } else {
-        auto player = GetPlayerById(client.TaggedPlayerId);
-
-        if (!player) {
+    if (showTagCooldownOverlay) {
+        if (taggedTimed == 0) {
             return;
         }
 
-        sprintf_s(buffer, "%s can move in %.1f seconds", player->Name.c_str(), timeLeft);
+        auto timeLeftTick = taggedTimed + (client.CoolDownTag * 1000) - GetTickCount64();
+        auto timeLeft = (float)timeLeftTick / 1000;
+
+        if (timeLeft < 0.0f || timeLeft > UINT_MAX) {
+            return;
+        }
+
+        auto playerName = client.Name;
+
+        if (client.Id != client.TaggedPlayerId) {
+            auto player = GetPlayerById(client.TaggedPlayerId);
+
+            if (!player) {
+                return;
+            }
+
+            playerName = player->Name;
+        }
+
+        sprintf_s(buffer, "%s can move in %.1f seconds", playerName.c_str(), timeLeft);
+
+        auto window = ImGui::BeginRawScene("##tag-timeleft");
+
+        float textSize = ImGui::CalcTextSize(buffer, nullptr, false).x;
+        float topMiddleX = io.DisplaySize.x / 2 - textSize / 2;
+
+        window->DrawList->AddRectFilled(ImVec2(topMiddleX - padding, 0), ImVec2(topMiddleX + textSize + padding, textHeight + padding), ImColor(ImVec4(0, 0, 0, 0.4f)));
+        window->DrawList->AddText(ImVec2(topMiddleX, padding / 2), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), buffer);
+
+        ImGui::EndRawScene();
     }
-
-    window = ImGui::BeginRawScene("##tag-timeleft");
-
-    float textSize = ImGui::CalcTextSize(buffer, nullptr, false).x;
-    float topMiddleX = io.DisplaySize.x / 2 - textSize / 2;
-
-    window->DrawList->AddRectFilled(ImVec2(topMiddleX - padding, 0), ImVec2(topMiddleX + textSize + padding, textHeight + padding), ImColor(ImVec4(0, 0, 0, 0.4f)));
-    window->DrawList->AddText(ImVec2(topMiddleX, padding / 2), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), buffer);
-
-    ImGui::EndRawScene();
 }
 
 static void MultiplayerTab() {
@@ -1111,7 +1114,7 @@ static void MultiplayerTab() {
 
     const auto nameInputCallback = []() {
         if (client.Name != nameInput) {
-            auto empty = true;
+            bool empty = true;
             for (auto c : std::string(nameInput)) {
                 if (!isblank(c)) {
                     empty = false;
@@ -1155,10 +1158,10 @@ static void MultiplayerTab() {
 
     if (ImGui::BeginCombo("##client-character", selectedCharacter)) {
         for (auto i = 0; i < IM_ARRAYSIZE(Engine::Characters); ++i) {
-            const auto c = Engine::Characters[i];
-            const auto s = (c == selectedCharacter);
+            const auto label = Engine::Characters[i];
+            const auto selected = (label == selectedCharacter);
 
-            if (ImGui::Selectable(c, s)) {
+            if (ImGui::Selectable(label, selected)) {
                 client.Character = static_cast<Engine::Character>(i);
                 Settings::SetSetting("client", "character", client.Character);
 
@@ -1171,7 +1174,7 @@ static void MultiplayerTab() {
                 }
             }
 
-            if (s) {
+            if (selected) {
                 ImGui::SetItemDefaultFocus();
             }
         }
@@ -1374,10 +1377,6 @@ static void TagTab() {
             });
         }
     }
-
-    ImGui::SeperatorWithPadding(2.5f);
-    ImGui::Text("Cooldown: %d", client.CoolDownTag);
-    ImGui::Text("GameMode: %s", client.GameMode.empty() ? "null" : client.GameMode.c_str());
 }
 
 bool Client::Initialize() {

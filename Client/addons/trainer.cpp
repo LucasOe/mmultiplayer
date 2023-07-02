@@ -362,7 +362,7 @@ static void TrainerTab() {
     }
 
     ImGui::SeperatorWithPadding(2.5f);
-    #pragma endregion Player
+    #pragma endregion
 
     if (ImGui::Checkbox("Trainer Enabled##trainer-enabled", &enabled)) {
         Settings::SetSetting("trainer", "enabled", enabled);
@@ -452,6 +452,7 @@ static void TrainerTab() {
 
     ImGui::SeperatorWithPadding(2.5f);
 
+    #pragma region Keybinds
     if (ImGui::Hotkey("Checkpoint##trainer-checkpoint", &checkpointKeybind)) {
         Settings::SetSetting("trainer", "checkpointKeybind", checkpointKeybind);
     }
@@ -597,6 +598,7 @@ static void TrainerTab() {
             Settings::SetSetting("trainer", "strangKeybind", strangKeybind = VK_NONE);
         }
     }
+    #pragma endregion
 
     ImGui::SeperatorWithPadding(2.5f);
 
@@ -635,7 +637,7 @@ static void OnRender(IDirect3DDevice9 *) {
             auto y = io.DisplaySize.y - ((showExtraPlayerInfo ? 11 : 8) * yIncrement) - padding - ((yIncrement / 2) * 3);
             auto color = ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 
-            window->DrawList->AddRectFilled(ImVec2(width - rightPadding - padding, y - padding), io.DisplaySize, ImColor(ImVec4(0, 0, 0, 0.4f)));
+            window->DrawList->AddRectFilled(ImVec2(width - rightPadding - padding, y - (padding / 2)), io.DisplaySize, ImColor(ImVec4(0, 0, 0, 0.4f)));
 
             AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "X", "%.2f", pawn->Location.X / 100.0f);
             AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "Y", "%.2f", pawn->Location.Y / 100.0f);
@@ -668,7 +670,6 @@ static void OnRender(IDirect3DDevice9 *) {
                 AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "S", "%d", pawn->MovementState.GetValue());
                 AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "H", "%d", pawn->Health);
                 AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "RT", "%.2f", min(100.00f, controller->ReactionTimeEnergy));
-                // AddTextToDrawList(window->DrawList, width, y, yIncrement, "TD", "%.2f", pawn->WorldInfo->TimeDilation);
             }
 
             ImGui::EndRawScene();
