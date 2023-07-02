@@ -37,7 +37,7 @@ static int sidestepBeamerRightKeybind = 0;
 static int doubleJumpKeybind = 0;
 static int checkpointKeybind = 0;
 static bool showPlayerInfo = false; 
-static bool showExtraPlayerInfo = false
+static bool showExtraPlayerInfo = false;
 
 static float topSpeed = 0.0f;
 static float topSpeedTimeHit = 0.0f;
@@ -722,7 +722,7 @@ static void OnRender(IDirect3DDevice9 *) {
         }
     }
 
-    if (!enabled || !overlay) {
+    if (!enabled) {
         return;
     }
 
