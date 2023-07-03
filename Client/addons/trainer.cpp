@@ -7,6 +7,7 @@
 #include "../pattern.h"
 #include "../settings.h"
 #include "../util.h"
+#include "misc.h"
 
 static bool enabled = false;
 static bool tooltip = true;
@@ -14,34 +15,35 @@ static bool god = false;
 static bool kg = false;
 static bool beamer = false;
 static bool strang = false; 
+static bool resetFlyingSpeed = true;
+static bool toggleResetKeybinds = false;
+
 static bool sidestepBeamer = false;
 static bool sidestepBeamerForMe = false;
 static bool sidestepBeamerPressLeftKeybind = true;
 static bool sidestepBeamerPressRightKeybind = false;
-static bool resetFlyingSpeed = true;
-static bool toggleResetKeybinds = false;
-static bool doubleJumpEnabled = false;
-static bool doubleJump = false;
-static int doubleJumpCount = 0;
-static int doubleJumpCountMax = 1;
-static int doubleJumpCountSaved = -1;
-static bool canDoubleJump = false;
-static int saveKeybind = 0;
-static int loadKeybind = 0;
-static int godKeybind = 0;
-static int kgKeybind = 0;
-static int beamerKeybind = 0;
-static int strangKeybind = 0;
-static int sidestepBeamerLeftKeybind = 0;
-static int sidestepBeamerRightKeybind = 0;
-static int doubleJumpKeybind = 0;
-static int checkpointKeybind = 0;
+
+static int saveKeybind = VK_4;
+static int loadKeybind = VK_5;
+static int godKeybind = VK_1;
+static int checkpointKeybind = VK_3;
+static int kgKeybind = VK_NONE;
+static int beamerKeybind = VK_NONE;
+static int strangKeybind = VK_NONE;
+static int sidestepBeamerLeftKeybind = VK_A;
+static int sidestepBeamerRightKeybind = VK_D;
+
 static bool showPlayerInfo = false; 
+static bool showTopHeight = false;
 static bool showExtraPlayerInfo = false;
 
 static float topSpeed = 0.0f;
 static float topSpeedTimeHit = 0.0f;
 static float topSpeedResetAfterSeconds = 2.75f;
+
+static float topHeight = 0.0f;
+static float topHeightTimeHit = 0.0f;
+static float topHeightResetAfterSeconds = 2.75f;
 
 static float checkpointTime = 0.0f;
 static bool checkpointUpdateTimer = false;
@@ -49,11 +51,11 @@ static Classes::FVector checkpointLocation;
 
 static struct {
     bool Enabled = false;
-    int Keybind = 0;
-    int UpKeybind = 0;
-    int DownKeybind = 0;
-    int FasterKeybind = 0;
-    int SlowerKeybind = 0;
+    int Keybind = VK_2;
+    int UpKeybind = VK_SPACE;
+    int DownKeybind = VK_SHIFT;
+    int FasterKeybind = VK_E;
+    int SlowerKeybind = VK_Q;
     Classes::FVector Location;
     Classes::FVector Velocity;
     float Speed = 2.0f;
@@ -353,11 +355,21 @@ static void TrainerTab() {
     }
 
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("X = Location X\nY = Location Y\nZ = Location Z\nV = Velocity\nVT = Velocity Top\nRX = Rotation Pitch\nRY = Rotation Yaw\nT = Time");
+        if (showTopHeight) {
+            ImGui::SetTooltip("X = Location X\nY = Location Y\nZ = Location Z\nZT = Location Z Top\n \nV = Velocity\nVT = Velocity Top\n \nRX = Rotation Pitch\nRY = Rotation Yaw\n \nT = Time");
+        } else {
+            ImGui::SetTooltip("X = Location X\nY = Location Y\nZ = Location Z\n \nV = Velocity\nVT = Velocity Top\n \nRX = Rotation Pitch\nRY = Rotation Yaw\n \nT = Time");
+        }
     }
 
     if (showPlayerInfo) {
-        if (ImGui::Checkbox("Show Extra Info", &showExtraPlayerInfo)) {
+        if (ImGui::Checkbox("Show Top Height", &showTopHeight)) {
+            Settings::SetSetting("player", "showTopHeight", showTopHeight);
+            topHeight = 0.0f;
+            topHeightTimeHit = 0.0f;
+        }
+
+        if (ImGui::Checkbox("Show Extra Player Info", &showExtraPlayerInfo)) {
             Settings::SetSetting("player", "showExtraPlayerInfo", showExtraPlayerInfo);
         }
 
@@ -375,6 +387,8 @@ static void TrainerTab() {
 
     if (!(Engine::GetTimeTrialGame() || controller->ReactionTimeEnergy >= 100.0f ||
         controller->bReactionTime ||  pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled)) {
+
+        ImGui::Dummy(ImVec2(0.0f, 6.0f));
 
         if (ImGui::Button("Refill ReactionTimeEnergy##controller-reactiontime")) {
             auto tdhud = static_cast<Classes::ATdHUD *>(controller->myHUD);
@@ -422,8 +436,6 @@ static void TrainerTab() {
     } 
     
     if (sidestepBeamer) {
-        ImGui::SeperatorWithPadding(2.5f);
-
         if (ImGui::Checkbox("Auto Sidestep Beamer##trainer-beamer-sidestepForMe", &sidestepBeamerForMe)) {
             Settings::SetSetting("trainer", "sidestepBeamerForMe", sidestepBeamerForMe);
         }
@@ -476,6 +488,18 @@ static void TrainerTab() {
     ImGui::SeperatorWithPadding(2.5f);
 
     #pragma region Keybinds
+    if (ImGui::Hotkey("God##trainer-god", &godKeybind)) {
+        Settings::SetSetting("trainer", "godKeybind", godKeybind);
+    }
+
+    if (toggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset##godKeybind")) {
+            Settings::SetSetting("trainer", "godKeybind", godKeybind = VK_1);
+        }
+    }
+
     if (ImGui::Hotkey("Checkpoint##trainer-checkpoint", &checkpointKeybind)) {
         Settings::SetSetting("trainer", "checkpointKeybind", checkpointKeybind);
     }
@@ -487,26 +511,6 @@ static void TrainerTab() {
             Settings::SetSetting("trainer", "checkpointKeybind", checkpointKeybind = VK_3);
         }
     }
-
-    if (ImGui::Checkbox("Double Jump##trainer-doubleJumpEnabled", &doubleJumpEnabled)) {
-        Settings::SetSetting("trainer", "doubleJumpEnabled", doubleJumpEnabled);
-    }
-
-    if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("Allows you to double jump. Simply press the spacebar while you're in a falling state\nor watch the top right corner for \"Double Jump\"");
-    } 
-
-    if (doubleJumpEnabled) {
-        if (ImGui::InputInt("Max Jumps##trainer-doubleJumpCountMax", &doubleJumpCountMax, 1, 1, ImGuiInputTextFlags_EnterReturnsTrue)) {
-            Settings::SetSetting("trainer", "doubleJumpCountMax", doubleJumpCountMax = max(1, doubleJumpCountMax));
-        }
-
-        if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("Set your own limit of how many times you can jump.\nDefault value: 1");
-        }
-    }
-
-    ImGui::SeperatorWithPadding(2.5f);
 
     if (ImGui::Hotkey("Save##trainer-save", &saveKeybind)) {
         Settings::SetSetting("trainer", "saveKeybind", saveKeybind);
@@ -532,17 +536,7 @@ static void TrainerTab() {
         }
     }
 
-    if (ImGui::Hotkey("God##trainer-god", &godKeybind)) {
-        Settings::SetSetting("trainer", "godKeybind", godKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##godKeybind")) {
-            Settings::SetSetting("trainer", "godKeybind", godKeybind = VK_1);
-        }
-    }
+    ImGui::Dummy(ImVec2(0.0f, 6.0f));
 
     if (ImGui::Hotkey("Fly##trainer-fly", &fly.Keybind)) {
         Settings::SetSetting("trainer", "flyKeybind", fly.Keybind);
@@ -604,7 +598,7 @@ static void TrainerTab() {
         }
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Dummy(ImVec2(0.0f, 6.0f));
 
     if (ImGui::Hotkey("Kickglitch##trainer-kickglitch", &kgKeybind)) {
         Settings::SetSetting("trainer", "kgKeybind", kgKeybind);
@@ -652,7 +646,7 @@ static void TrainerTab() {
 
 template <typename T>
 void AddTextToDrawList(ImDrawList* drawList, float width, float rightPadding, float& y, float yIncrement, ImColor color, const char* label, const char* format, T value) {
-    char buffer[0x200];
+    char buffer[0xFF];
     sprintf_s(buffer, format, value);
 
     drawList->AddText(ImVec2(width - ImGui::CalcTextSize(buffer, nullptr, false).x, y), color, buffer);
@@ -677,14 +671,31 @@ static void OnRender(IDirect3DDevice9 *) {
             auto width = io.DisplaySize.x - padding;
 
             auto yIncrement = ImGui::GetTextLineHeight();
-            auto y = io.DisplaySize.y - ((showExtraPlayerInfo ? 11 : 8) * yIncrement) - padding - ((yIncrement / 2) * 3);
+            auto count = (showTopHeight ? 1 : 0) + (showExtraPlayerInfo ? 11 : 8);
+            auto y = io.DisplaySize.y - (count * yIncrement) - padding - ((yIncrement / 2) * 3);
             auto color = ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 
             window->DrawList->AddRectFilled(ImVec2(width - rightPadding - padding, y - (padding / 2)), io.DisplaySize, ImColor(ImVec4(0, 0, 0, 0.4f)));
 
             AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "X", "%.2f", pawn->Location.X / 100.0f);
             AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "Y", "%.2f", pawn->Location.Y / 100.0f);
-            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "Z", "%.2f", pawn->Location.Z / 100.0f);
+            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + (showTopHeight ? 0 : yIncrement / 2), color, "Z", "%.2f", pawn->Location.Z / 100.0f);
+
+            if (showTopHeight) {
+                float height = pawn->Location.Z / 100.0f;
+
+                if (pawn->WorldInfo->RealTimeSeconds - topHeightTimeHit > topHeightResetAfterSeconds) {
+                    topHeight = 0.0f;
+                    topHeightTimeHit = 0.0f;
+                }
+
+                if (height > topHeight) {
+                    topHeight = height;
+                    topHeightTimeHit = pawn->WorldInfo->RealTimeSeconds;
+                }
+
+                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "ZT", "%.2f", topHeight);
+            }
 
             float speed = sqrtf(powf(pawn->Velocity.X, 2) + powf(pawn->Velocity.Y, 2)) * 0.036f;
 
@@ -731,7 +742,6 @@ static void OnRender(IDirect3DDevice9 *) {
     text += kg ? "KG " : "";
     text += fly.Enabled ? "Fly " : "";
     text += god ? "God " : "";
-    text += doubleJump && doubleJumpCount < doubleJumpCountMax && canDoubleJump && doubleJumpEnabled ? "Double Jump " : "";
 
     if (text != "") {
         const auto window = ImGui::BeginRawScene("##trainer-state");
@@ -786,10 +796,14 @@ static void OnTick(float deltaTime) {
     }
 
     if (pawn->Health <= 0) {
-        if (doubleJumpEnabled && doubleJumpCount > 0) {
-            doubleJumpCount = 0;
-            // printf("doubleJumpCount reset to %d (player died)\n", doubleJumpCountMax);
+        if (fly.Enabled) {
+            fly.Enabled = false;
         }
+
+        if (god) {
+            god = false;
+        }
+
         return;
     }
 
@@ -797,10 +811,6 @@ static void OnTick(float deltaTime) {
     static bool hasSave = false;
 
     if (Engine::IsKeyDown(saveKeybind)) {
-        if (doubleJumpEnabled) {
-            doubleJumpCountSaved = doubleJumpCount;
-        }
-
         Save(save, pawn, controller);
         hasSave = true;
     }
@@ -808,10 +818,6 @@ static void OnTick(float deltaTime) {
     if (hasSave && Engine::IsKeyDown(loadKeybind)) {
         if (sidestepBeamer && sidestepBeamerForMe) {
             ReleaseKey();
-        }
-
-        if (doubleJumpEnabled) {
-            doubleJumpCount = doubleJumpCountSaved;
         }
 
         if (strang) {
@@ -877,9 +883,9 @@ static void OnTick(float deltaTime) {
         pawn->bCollideWorld = false;
         pawn->Physics = Classes::EPhysics::PHYS_None;
 
-        fly.Velocity.X *= 0.90f;
-        fly.Velocity.Y *= 0.90f;
-        fly.Velocity.Z *= 0.90f;
+        fly.Velocity.X *= 0.85f;
+        fly.Velocity.Y *= 0.85f;
+        fly.Velocity.Z *= 0.85f;
 
         pawn->LeftHandWorldIKController->StrengthTarget = 0.0f;
         pawn->RightHandWorldIKController->StrengthTarget = 0.0f;
@@ -917,30 +923,6 @@ static void OnTick(float deltaTime) {
             beamer = false;
         }
     }
-
-    if (doubleJumpEnabled) {
-        canDoubleJump = !pawn->Base && doubleJumpCount != doubleJumpCountMax && pawn->MovementState == Classes::EMovement::MOVE_Falling;
-
-        if (canDoubleJump && pawn->OldMovementState != Classes::EMovement::MOVE_WallClimbing) {
-            doubleJump = true;
-        } else {
-            doubleJump = false;
-        }
-
-        if (doubleJump && pawn->OldMovementState == Classes::EMovement::MOVE_WallClimbing) {
-            doubleJump = false;
-        }
-
-        if (doubleJumpCount > 0 && pawn->Base) {
-            doubleJumpCount = 0;
-            // printf("doubleJumpCount reset to %d (grounded)\n", doubleJumpCountMax);
-        }
-
-        if (doubleJumpCount > 0 && (pawn->MovementState == Classes::EMovement::MOVE_WallRunningRight || pawn->MovementState == Classes::EMovement::MOVE_WallRunningLeft)) {
-            doubleJumpCount = 0;
-            // printf("doubleJumpCount reset to %d (wallrunning)\n", doubleJumpCountMax);
-        }
-    }
 }
 
 void __fastcall StateHandlerHook(void *pawn, void *idle, float delta,
@@ -969,6 +951,7 @@ bool Trainer::Initialize() {
     godKeybind = Settings::GetSetting("trainer", "godKeybind", VK_1);
     toggleResetKeybinds = Settings::GetSetting("trainer", "toggleResetKeybinds", false);
     showPlayerInfo = Settings::GetSetting("player", "showInfo", false);
+    showTopHeight = Settings::GetSetting("player", "showTopHeight", false);
     showExtraPlayerInfo = Settings::GetSetting("player", "showExtraPlayerInfo", false);
 
     // Flying Settings
@@ -992,11 +975,6 @@ bool Trainer::Initialize() {
     sidestepBeamerPressLeftKeybind = Settings::GetSetting("trainer", "sidestepBeamerPressLeftKeybind", true);
     sidestepBeamerPressRightKeybind = Settings::GetSetting("trainer", "sidestepBeamerPressRightKeybind", false);
 
-    // Double Jump
-    doubleJumpEnabled = Settings::GetSetting("trainer", "doubleJumpEnabled", false);
-    doubleJumpKeybind = Settings::GetSetting("trainer", "doubleJumpKeybind", VK_SPACE);
-    doubleJumpCountMax = Settings::GetSetting("trainer", "doubleJumpCountMax", 1);
-
     // Functions
     Menu::AddTab("Trainer", TrainerTab);
     Engine::OnTick(OnTick);
@@ -1019,24 +997,6 @@ bool Trainer::Initialize() {
         }
 
         if (msg == WM_KEYDOWN) {
-            if (keycode == doubleJumpKeybind && doubleJumpEnabled) {
-                const auto pawn = Engine::GetPlayerPawn();
-                const auto controller = Engine::GetPlayerController();
-
-                if (pawn) {
-                    if (doubleJumpCount < doubleJumpCountMax && canDoubleJump) {
-                        pawn->SetMove(Classes::EMovement::MOVE_Walking, false, false);
-                        controller->PlayerInput->Jump();
-
-                        doubleJump = false;
-                        doubleJumpCount++;
-
-                        // int jumpsLeft = doubleJumpCountMax - doubleJumpCount;
-                        // printf("doubleJump (%d jump%s left)\n", jumpsLeft, jumpsLeft != 1 ? "s" : "");
-                    }
-                }
-            }
-
             if (keycode == godKeybind) {
                 god = !god;
 
@@ -1048,20 +1008,26 @@ bool Trainer::Initialize() {
                         pawn->MovementState ==
                             Classes::EMovement::MOVE_FallingUncontrolled) {
 
-                        pawn->InitialState = "Walking";
-                        pawn->SetInitialState();
-                        controller->InitialState = "PlayerWalking";
-                        controller->SetInitialState();
+                        if (pawn->Health > 0) {
+                            pawn->InitialState = "Walking";
+                            pawn->SetInitialState();
+                            controller->InitialState = "PlayerWalking";
+                            controller->SetInitialState();
 
-                        pawn->StopAllCustomAnimations(0.0f);
-                        pawn->SetMove(Classes::EMovement::MOVE_Walking, false,
-                                      false);
+                            pawn->StopAllCustomAnimations(0.0f);
+                            pawn->SetMove(Classes::EMovement::MOVE_Walking, false,
+                                          false);
 
-                        pawn->SetIgnoreLookInput(false);
-                        pawn->SetIgnoreMoveInput(false);
-                        controller->IgnoreButtonInput(false);
-                        controller->IgnoreLookInput(false);
-                        controller->IgnoreMoveInput(false);
+                            pawn->SetIgnoreLookInput(false);
+                            pawn->SetIgnoreMoveInput(false);
+                            controller->IgnoreButtonInput(false);
+                            controller->IgnoreLookInput(false);
+                            controller->IgnoreMoveInput(false); 
+                        } else {
+                            god = false;
+                        }
+                    } else {
+                        god = false;
                     }
                 }
             }
@@ -1074,27 +1040,33 @@ bool Trainer::Initialize() {
                     const auto controller = Engine::GetPlayerController();
 
                     if (pawn && controller) {
-                        pawn->InitialState = "Walking";
-                        pawn->SetInitialState();
-                        controller->InitialState = "PlayerWalking";
-                        controller->SetInitialState();
+                        if (pawn->Health > 0) {
+                            pawn->InitialState = "Walking";
+                            pawn->SetInitialState();
+                            controller->InitialState = "PlayerWalking";
+                            controller->SetInitialState();
 
-                        pawn->StopAllCustomAnimations(0.0f);
-                        pawn->SetMove(Classes::EMovement::MOVE_Walking, false,
-                                      false);
+                            pawn->StopAllCustomAnimations(0.0f);
+                            pawn->SetMove(Classes::EMovement::MOVE_Walking, false,
+                                          false);
 
-                        pawn->SetIgnoreLookInput(false);
-                        pawn->SetIgnoreMoveInput(false);
-                        controller->IgnoreButtonInput(false);
-                        controller->IgnoreLookInput(false);
-                        controller->IgnoreMoveInput(false);
+                            pawn->SetIgnoreLookInput(false);
+                            pawn->SetIgnoreMoveInput(false);
+                            controller->IgnoreButtonInput(false);
+                            controller->IgnoreLookInput(false);
+                            controller->IgnoreMoveInput(false);
 
-                        fly.Velocity = {0};
-                        fly.Location = pawn->Location;
+                            fly.Velocity = {0};
+                            fly.Location = pawn->Location;
                         
-                        if (resetFlyingSpeed) {
-                            fly.Speed = fly.DefaultSpeed;
+                            if (resetFlyingSpeed) {
+                                fly.Speed = fly.DefaultSpeed;
+                            }
+                        } else {
+                            fly.Enabled = false;
                         }
+                    } else {
+                        fly.Enabled = false;
                     }
                 } else {
                     const auto pawn = Engine::GetPlayerPawn();
