@@ -3,10 +3,7 @@
 #include "../addon.h"
 #include "../engine.h"
 #include "../sdk.h"
-#include <string>
 #include <vector>
-#include <windows.h>
-
 
 class Misc : public Addon {
   public:
