@@ -1,102 +1,32 @@
 package main
 
 import (
-	"encoding/json"
+	"crypto/rand"
+	"encoding/binary"
+	"github.com/google/uuid"
 	"log"
+	"math"
+	mathrand "math/rand"
 	"net"
-	"strings"
 	"sync"
 	"time"
-	"unsafe"
-
-	"github.com/google/uuid"
 )
 
 const (
-	Port           = "5222"
-	PacketSize     = 676
-	CharacterFaith = iota
-	CharacterKate
-	CharacterCeleste
-	CharacterAssaultCeleste
-	CharacterJacknife
-	CharacterMiller
-	CharacterKreeg
-	CharacterPersuitCop
-	CharacterGhost
-	CharacterMax
+	Port        = "5222"
+	TagGameMode = "tag"
 )
-
-type Packet struct {
-	Id uint32
-}
-
-type Client struct {
-	Tcp        net.Conn
-	Id         uint32
-	Room       *Room
-	Name       string
-	Character  uint32
-	Level      string
-	LastPacket []byte
-	LastSeen   time.Time
-}
-
-func (client *Client) SendMessage(msg interface{}) {
-	r, err := json.Marshal(msg)
-	if err != nil {
-		return
-	}
-
-	client.Tcp.Write(append(r, 0))
-}
-
-type Room struct {
-	Name    string
-	Clients []*Client
-}
-
-func (room *Room) SendMessage(msg interface{}) {
-	system.RLock()
-	for _, c := range room.Clients {
-		go c.SendMessage(msg)
-	}
-	system.RUnlock()
-}
-
-func (room *Room) SendMessageExcept(id uint32, msg interface{}) {
-	system.RLock()
-	for _, c := range room.Clients {
-		if c.Id != id {
-			go c.SendMessage(msg)
-		}
-	}
-	system.RUnlock()
-}
-
-type System struct {
-	sync.RWMutex
-	Rooms map[string]*Room
-}
-
-func (system *System) GetClientById(id uint32) *Client {
-	system.RLock()
-	defer system.RUnlock()
-
-	for _, r := range system.Rooms {
-		for _, c := range r.Clients {
-			if c.Id == id {
-				return c
-			}
-		}
-	}
-
-	return nil
-}
 
 var system = System{Rooms: map[string]*Room{}}
 
 func main() {
+	randomNumberGenerator, err := newRng()
+	if err != nil {
+		log.Fatalf("failed to create random number - %s", err)
+	}
+
+	system.rng = randomNumberGenerator
+
 	go tcpListener()
 	go udpListener()
 
@@ -110,281 +40,31 @@ func main() {
 			})
 		}
 		system.RUnlock()
-
-		var newRooms = map[string]*Room{}
-
-		system.Lock()
-		for name, r := range system.Rooms {
-			var newClients []*Client
-			for _, c := range r.Clients {
-				if time.Since(c.LastSeen) < 5*time.Second {
-					newClients = append(newClients, c)
-				} else {
-					go r.SendMessageExcept(c.Id, map[string]interface{}{
-						"type": "disconnect",
-						"id":   c.Id,
-					})
-
-					log.Printf("timed out %x \"%s\"\n", c.Id, c.Name)
-				}
-			}
-
-			if len(newClients) > 0 {
-				r.Clients = newClients
-				newRooms[name] = r
-			} else {
-				log.Printf("deleted room \"%s\"\n", name)
-			}
-		}
-
-		system.Rooms = newRooms
-		system.Unlock()
 	}
 }
 
-func getTrimStringField(obj map[string]interface{}, field string) (string, bool) {
-	v, ok := obj[field].(string)
-	if !ok {
-		return "", false
+func newRng() (*rng, error) {
+	buh := make([]byte, 8)
+	_, err := rand.Read(buh)
+	if err != nil {
+		return nil, err
 	}
 
-	v = strings.TrimSpace(v)
-	return v, v != ""
+	return &rng{
+		r: mathrand.New(mathrand.NewSource(int64(binary.LittleEndian.Uint64(buh)))),
+	}, nil
 }
 
-func tcpHandler(c net.Conn) {
-	d := json.NewDecoder(c)
+type rng struct {
+	mu sync.Mutex
+	r  *mathrand.Rand
+}
 
-	for {
-		var msg map[string]interface{}
-		err := d.Decode(&msg)
-		if err != nil {
-			break
-		}
-
-		msgType, ok := getTrimStringField(msg, "type")
-		if !ok {
-			continue
-		}
-
-		switch msgType {
-		case "connect":
-			msgRoom, ok := getTrimStringField(msg, "room")
-			if !ok {
-				continue
-			}
-
-			msgName, ok := getTrimStringField(msg, "name")
-			if !ok {
-				continue
-			}
-
-			msgLevel, ok := getTrimStringField(msg, "level")
-			if !ok {
-				continue
-			}
-
-			msgCharacter, ok := msg["character"].(float64)
-			if !ok || msgCharacter < 0 || msgCharacter >= CharacterMax {
-				continue
-			}
-
-			// Add the client to the room (create a new room if necessary)
-			system.Lock()
-			room, ok := system.Rooms[msgRoom]
-			if !ok {
-				room = &Room{
-					Name: msgRoom,
-				}
-
-				system.Rooms[msgRoom] = room
-				log.Printf("created room \"%s\"\n", room.Name)
-			}
-
-			client := &Client{
-				Tcp:        c,
-				Id:         uuid.New().ID(),
-				Room:       room,
-				Name:       msgName,
-				Character:  uint32(msgCharacter),
-				Level:      strings.ToLower(msgLevel),
-				LastPacket: nil,
-				LastSeen:   time.Now(),
-			}
-
-			room.Clients = append(room.Clients, client)
-			system.Unlock()
-
-			// Tell the client their UUID
-			client.SendMessage(map[string]interface{}{
-				"type": "id",
-				"id":   client.Id,
-			})
-
-			// Notify the other clients that a new client connected
-			room.SendMessageExcept(client.Id, map[string]interface{}{
-				"type":      "connect",
-				"id":        client.Id,
-				"name":      client.Name,
-				"character": client.Character,
-				"level":     client.Level,
-			})
-
-			// Tell the client the existing clients
-			system.RLock()
-			for _, c := range room.Clients {
-				if c.Id != client.Id {
-					go client.SendMessage(map[string]interface{}{
-						"type":      "connect",
-						"id":        c.Id,
-						"name":      c.Name,
-						"character": c.Character,
-						"level":     c.Level,
-					})
-				}
-			}
-			system.RUnlock()
-
-			log.Printf("room \"%s\": \"%s\" joined\n", room.Name, client.Name)
-		case "name":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
-			name, ok := getTrimStringField(msg, "name")
-			if !ok {
-				continue
-			}
-
-			client := system.GetClientById(uint32(id))
-			if client == nil {
-				continue
-			}
-
-			// Update the client's name and tell the other clients
-			client.Name = name
-			client.LastSeen = time.Now()
-			client.Room.SendMessageExcept(client.Id, map[string]interface{}{
-				"type": "name",
-				"id":   client.Id,
-				"name": client.Name,
-			})
-		case "chat":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
-			body, ok := msg["body"].(string)
-			if !ok {
-				continue
-			}
-
-			client := system.GetClientById(uint32(id))
-			if client == nil {
-				continue
-			}
-
-			client.LastSeen = time.Now()
-			client.Room.SendMessage(map[string]interface{}{
-				"type": "chat",
-				"body": client.Name + ": " + body,
-			})
-		case "level":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
-			level, ok := msg["level"].(string)
-			if !ok {
-				continue
-			}
-
-			client := system.GetClientById(uint32(id))
-			if client == nil {
-				continue
-			}
-
-			client.Level = strings.ToLower(level)
-			client.LastSeen = time.Now()
-			client.Room.SendMessageExcept(client.Id, map[string]interface{}{
-				"type":  "level",
-				"id":    client.Id,
-				"level": client.Level,
-			})
-		case "character":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
-			character, ok := msg["character"].(float64)
-			if !ok || character < 0 || character >= CharacterMax {
-				continue
-			}
-
-			client := system.GetClientById(uint32(id))
-			if client == nil {
-				continue
-			}
-
-			client.Character = uint32(character)
-			client.LastSeen = time.Now()
-			client.Room.SendMessageExcept(client.Id, map[string]interface{}{
-				"type":      "character",
-				"id":        client.Id,
-				"character": client.Character,
-			})
-		case "pong":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
-			client := system.GetClientById(uint32(id))
-			if client == nil {
-				continue
-			}
-
-			client.LastSeen = time.Now()
-		case "disconnect":
-			id, ok := msg["id"].(float64)
-			if !ok {
-				continue
-			}
-
-			client := system.GetClientById(uint32(id))
-			if client == nil {
-				continue
-			}
-
-			var newClients []*Client
-			room := client.Room
-
-			// Remove the client from the room
-			system.Lock()
-			for _, c := range room.Clients {
-				if c.Id != client.Id {
-					newClients = append(newClients, c)
-				}
-			}
-
-			room.Clients = newClients
-			system.Unlock()
-
-			// Notify the other clients who disconnected
-			room.SendMessageExcept(client.Id, map[string]interface{}{
-				"type": "disconnect",
-				"id":   client.Id,
-			})
-
-			log.Printf("room \"%s\": \"%s\" disconnected\n", room.Name, client.Name)
-		}
-	}
-
-	c.Close()
+func (o *rng) Intn(n int) int {
+	o.mu.Lock()
+	result := o.r.Intn(n)
+	o.mu.Unlock()
+	return result
 }
 
 func tcpListener() {
@@ -401,11 +81,19 @@ func tcpListener() {
 			continue
 		}
 
-		go tcpHandler(c)
+		client := &Client{
+			Tcp:  c,
+			Id:   uuid.New().ID(),
+			room: &Room{},
+		}
+
+		go client.tcpHandler()
 	}
 }
 
 func udpListener() {
+	const packetSize = 676
+
 	server, err := net.ListenPacket("udp", ":"+Port)
 	if err != nil {
 		log.Fatalln(err)
@@ -420,27 +108,31 @@ func udpListener() {
 			continue
 		}
 
-		if n != PacketSize {
+		if n != packetSize {
 			continue
 		}
 
 		go func() {
-			client := system.GetClientById((*Packet)(unsafe.Pointer(&buf[0])).Id)
+			client := system.GetClientById(binary.LittleEndian.Uint32(buf[0:4]))
 			if client == nil {
 				return
 			}
 
-			client.LastPacket = buf[:PacketSize]
-			client.LastSeen = time.Now()
+			// TODO combine this method and client.room.SendLastPackets into one method
+			client.setLastPacketAndPosition(buf[:packetSize])
 
 			// Respond with the last packet of every other client in the same room and level
-			system.RLock()
-			for _, c := range client.Room.Clients {
-				if c.Id != client.Id && c.LastPacket != nil && c.Level == client.Level {
-					server.WriteTo(c.LastPacket, addr)
-				}
-			}
-			system.RUnlock()
+			client.room.SendLastPackets(client, server, addr)
 		}()
 	}
+}
+
+type position struct {
+	x float64
+	y float64
+	z float64
+}
+
+func distanceMeters(from position, to position) float64 {
+	return math.Sqrt(math.Pow(to.x-from.x, 2)+math.Pow(to.y-from.y, 2)+math.Pow(to.z-from.z, 2)) / 100
 }
