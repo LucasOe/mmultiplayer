@@ -12,6 +12,9 @@ fi
 set -eux
 
 buildDir='build'
+go run resources/installer/xor/main.go Launcher/Release/Launcher.exe > resources/installer/squibbles/launcher.buh
+go run resources/installer/xor/main.go Client/Release/mmultiplayer.dll > resources/installer/squibbles/dll.buh
+go build -o ${buildDir}/app/squibbles.exe resources/installer/squibbles/main.go
 
 # TODO: Super hack because InnoSetup does not support relative paths.
 cp -v resources/installer/installer.iss "${buildDir}/"
