@@ -20,7 +20,6 @@ static bool permanentReactionTimeEnabled = false;
 static bool permanentGameSpeedEnabled = false;
 static float permanentGameSpeed = 0.25f;
 
-// One Hit Knock Down
 static bool ohkoEnabled = false;
 static EOhko ohkoType = EOhko::Normal;
 static int ohkoHealth = 100;
@@ -51,11 +50,6 @@ static void MiscTab() {
         Settings::SetSetting("misc", "consequtiveWallrunsLimitRemoved", consequtiveWallrunsLimitRemoved);
     }
 
-    // Idk what to type in the tooltip
-    //if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-    //    ImGui::SetTooltip("");
-    //}
-
     // Auto Roll
     if (ImGui::Checkbox("Auto Roll", &autorollEnabled)) {
         Settings::SetSetting("misc", "autorollEnabled", autorollEnabled);
@@ -73,7 +67,7 @@ static void MiscTab() {
         }
     }
 
-    // No health Regeneration
+    // No Health Regeneration
     if (!ohkoEnabled) {
         if (ImGui::Checkbox("No Health Regeneration", &noHealthRegenerationEnabled)) {
             Settings::SetSetting("misc", "noHealthRegenerationEnabled", noHealthRegenerationEnabled);
@@ -118,8 +112,6 @@ static void MiscTab() {
             Settings::SetSetting("misc", "permanentGameSpeed", permanentGameSpeed = max(0.1f, permanentGameSpeed));
         }
     }
-
-    ImGui::SeperatorWithPadding(2.5f);
 
     // One Hit Knock Down
     if (!noHealthRegenerationEnabled) 
@@ -218,7 +210,7 @@ static void OnTick(float deltaTime) {
                        levelName.begin(), [](char c) { return tolower(c); });
     }
 
-    if (ohkoEnabled && levelName != "tdmainmenu" &&
+    if (ohkoEnabled && levelName != Map_MainMenu &&
         (pawn->EnterFallingHeight != -1e30f && pawn->Health != pawn->MaxHealth)) {
         if (ohkoType == EOhko::Normal) {
             pawn->RegenerateDelay = 5;
@@ -234,7 +226,7 @@ static void OnTick(float deltaTime) {
         }
     }
 
-    if (noHealthRegenerationEnabled && levelName != "tdmainmenu" &&
+    if (noHealthRegenerationEnabled && levelName != Map_MainMenu &&
         (pawn->EnterFallingHeight != -1e30f && pawn->Health != pawn->MaxHealth)) {
 
         pawn->RegenerateDelay = 0;
