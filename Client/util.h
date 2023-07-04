@@ -1,3 +1,5 @@
+#include <WinUser.h>
+
 #pragma once
 
 /*
@@ -43,8 +45,46 @@
 #define VK_Y					0x59
 #define VK_Z					0x5A
 
+#define Map_MainMenu            "tdmainmenu"
+#define Map_Prologue            "edge_p"
+#define Map_Flight              "escape_p"
+#define Map_Jacknife            "stromdrains_p"
+#define Map_Heat                "cranes_p"
+#define Map_Ropeburn            "subway_p"
+#define Map_NewEden             "mall_p"
+#define Map_Factory             "factory_p"
+#define Map_TheBoat             "boat_p"
+#define Map_Kate                "convoy_p"
+#define Map_TheShard            "scraper_p"
+
+#define GameMode_None           ""
+#define GameMode_Tag            "tag"
+
 // Calculates the distance and returns a float value in meters
 inline static float Distance(Classes::FVector from, Classes::FVector to) 
 { 
 	return sqrt(((from.X - to.X) * (from.X - to.X)) + ((from.Y - to.Y) * (from.Y - to.Y)) + ((from.Z - to.Z) * (from.Z - to.Z))) / 100;
+}
+
+static INPUT input = {0};
+
+inline static void PressKey(int keyCode) {
+    input.type = INPUT_KEYBOARD;
+    input.ki.wScan = 0;
+    input.ki.time = 0;
+    input.ki.dwExtraInfo = 0;
+
+    input.ki.wVk = keyCode;
+    input.ki.dwFlags = 0;
+    SendInput(1, &input, sizeof(INPUT));
+}
+
+inline static void ReleaseKey() {
+    input.type = INPUT_KEYBOARD;
+    input.ki.wScan = 0;
+    input.ki.time = 0;
+    input.ki.dwExtraInfo = 0;
+
+    input.ki.dwFlags = KEYEVENTF_KEYUP;
+    SendInput(1, &input, sizeof(INPUT));
 }

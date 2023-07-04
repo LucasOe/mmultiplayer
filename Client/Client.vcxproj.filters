@@ -261,6 +261,9 @@
     <ClInclude Include="util.h">
       <Filter>Header Files\util</Filter>
     </ClInclude>
+    <ClInclude Include="addons\misc.h">
+      <Filter>Header Files\addons</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -364,6 +367,9 @@
     </ClCompile>
     <ClCompile Include="debug.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\misc.cpp">
+      <Filter>Source Files\addons</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
