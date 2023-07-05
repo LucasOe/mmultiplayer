@@ -1,3 +1,7 @@
+// Application that is used to evade Windows Defender for launcher and dll.
+// We need to evade Windows Defender because of file injection in the launcher.
+// File paths are specified as non flag arguments and are XOR'd to
+// standard output.
 package main
 
 import (

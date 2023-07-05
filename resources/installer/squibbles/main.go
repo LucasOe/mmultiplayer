@@ -1,3 +1,5 @@
+// Application that helps evade Windows Defender by XORing launcher and dll and
+// extracting files at install time.
 package main
 
 import (
@@ -26,13 +28,6 @@ func main() {
 }
 
 func mainWithError() error {
-	//launcherPath := flag.String("launcher", "", "")
-	//dllPath := flag.String("dll", "", "")
-	//flag.Parse()
-	//
-	//if flag.NArg() < 1 {
-	//	return errors.New("missing a file")
-	//}
 	exePath, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("failed to get file path - %w", err)
