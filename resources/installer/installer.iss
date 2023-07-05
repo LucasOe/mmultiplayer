@@ -62,8 +62,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Source: "{#ApplicationFilesPath}\*"; DestDir: "{app}\bin"; Flags: ignoreversion createallsubdirs recursesubdirs
 
 [Icons]
-Name: "{group}\{#AppNameOverride}"; Filename: "{app}\bin\{#AppExeNameOverride}";
-Name: "{group}\{cm:UninstallProgram,{#AppNameOverride}}"; Filename: "{uninstallexe}"
+Name: "{autoprograms}\{#AppNameOverride}"; Filename: "{app}\bin\{#AppExeNameOverride}";
+;Name: "{group}\{cm:UninstallProgram,{#AppNameOverride}}"; Filename: "{uninstallexe}"
 ;Name: "{commondesktop}\{#AppNameOverride}"; Filename: "{app}\{#AppExeNameOverride}"; Tasks: desktopicon
 ;Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#AppNameOverride}"; Filename: "{app}\{#AppExeNameOverride}"; Tasks: quicklaunchicon
 
@@ -75,5 +75,6 @@ Filename: "{app}\bin\squibbles.exe"; Flags: runhidden
 [UninstallRun]
 Filename: "C:\WINDOWS\system32\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "Remove-MpPreference -ExclusionPath '{app}\bin'"; Flags: runhidden
 
-[InstallDelete]
+[UninstallDelete]
 Type: filesandordirs; Name: "{app}\bin"
+Type: dirifempty; Name: "{app}"
