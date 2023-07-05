@@ -42,6 +42,10 @@ UninstallDisplayIcon={app}\{#AppExeNameOverride}
 SetupLogging=yes
 ; Disable auto closing of application because the app handles it.
 CloseApplications=no
+ChangesAssociations=yes
+
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\bin"
 
 [Messages]
 SetupAppTitle = {#AppNameOverride} {#AppVersionOverride}

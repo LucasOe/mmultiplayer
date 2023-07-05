@@ -24,7 +24,7 @@ cp -v resources/installer/installer.iss "${buildDir}/"
 innosetupArgs=$(cat <<-END
 /DApplicationFilesPath=app
 /DOutputPath=.
-/DAppNameOverride=Mirrors Edge Multiplayer
+/DAppNameOverride=Mirror's Edge Multiplayer
 /DAppPublisherOverride=Buh
 /DAppURLOverride=https://github.com/Toyro98/mmultiplayer
 /DAppExeNameOverride=Launcher.exe
