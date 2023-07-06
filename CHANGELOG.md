@@ -17,10 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Permanent reaction time
   - Permanent game speed
   - One hit knock down
-- Double jump 
-- Sidestepbeamer 
+- Sidestepbeamer
 - Reset button next to bindable keys
-- Refill reaction time energy button
+- Button to reset the trainer save and checkpoint
+- Button to refill reaction time energy
 - 4 more selectable models
   - Ropeburn
   - Riot Cop
@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Creating a save and reloading level and teleporting would cause Faith to autoroll
+- Creating a save no longer saves bools about the input (elevator state)
 - Dying and teleporting showed a black screen
 - Arms not being reset to default postion when teleporting
 - Sound not being reset when teleporting during reaction time
@@ -36,10 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Teleporting while sliding didn't remove the sliding sound
   
 ### Changed
-- Styling in tabs to add more space between stuff  
-- Improved reaction time when using the trainer
+- Styling in tabs to add more space between stuff (Except dolly tab)  
 - Flying speed to reset after being toggled
 - Default flying speed to be 2.0f instead of 3.0f
 
 ### Removed
+- Player tab
 - Option to toggle the overlay in trainer
