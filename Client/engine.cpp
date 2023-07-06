@@ -392,19 +392,16 @@ SpawnCharacter(Engine::Character character) {
         L"TT_Ghost.GhostCharacter_01",
 
         // Ropeburn
-        //L"CH_TKY_Crim_RB.SK_TKY_Crim_RB",
+        L"CH_TKY_Crim_RB.SK_TKY_Crim_RB",
 
         // Riot Cop
-        //L"CH_TKY_Cop_Patrol.SK_TKY_Cop_Patrol_PK",
+        L"CH_TKY_Cop_Patrol.SK_TKY_Cop_Patrol_PK",
 
         // Swat
-        //L"CH_TKY_Cop_SWAT.CH_TKY_Cop_SWAT",
+        L"CH_TKY_Cop_SWAT.CH_TKY_Cop_SWAT",
 
         // Swat Sniper
-        //L"CH_TKY_Cop_SWAT.SK_TKY_Cop_SWAT_Sniper",
-
-        // Merc
-        //L"CH_TKY_Crim_Heavy.SK_TKY_Crim_Heavy"
+        L"CH_TKY_Cop_SWAT.SK_TKY_Cop_SWAT_Sniper"
     };
 
     static const std::vector<std::wstring> materials[] = {
@@ -489,7 +486,6 @@ SpawnCharacter(Engine::Character character) {
             L"Material TT_Ghost.Materials.M_GhostShader_01",
         },
 
-        /*
         // Ropeburn
         {
             L"MaterialInstanceConstant CH_TKY_Crim_RB.MI_Crim_RB_Cloth",
@@ -514,15 +510,7 @@ SpawnCharacter(Engine::Character character) {
         {
             L"MaterialInstanceConstant CH_TKY_Cop_SWAT.MI_TKY_Cop_SWAT_Sniper",
             L"MaterialInstanceConstant CH_TKY_Cop_SWAT.MI_TKY_Cop_SWAT_eye",
-        },
-        */
-
-        /*
-        // Merc
-        {
-            L"MaterialInstanceConstant CH_TKY_Crim_Heavy.MI_Crim_Heavy"
         }
-        */
     };
 
     const auto player = Engine::GetPlayerPawn();
@@ -849,10 +837,10 @@ void Engine::TransformBones(Character character,
     case Character::Celeste:
     case Character::Jacknife:
     case Character::Kreeg:
-    //case Character::Ropeburn:
-    //case Character::RiotCop:
-    //case Character::Swat:
-    //case Character::SwatSniper:
+    case Character::Ropeburn:
+    case Character::RiotCop:
+    case Character::Swat:
+    case Character::SwatSniper:
         memcpy(dest, src, 7 * sizeof(Classes::FBoneAtom));
         memcpy(dest + destCount - 63, src + 45, 63 * sizeof(Classes::FBoneAtom));
         memcpy(dest + 18, src + 18, sizeof(Classes::FBoneAtom));
