@@ -21,6 +21,10 @@ const (
 	CharacterKreeg
 	CharacterPersuitCop
 	CharacterGhost
+	CharacterRopeburn
+	CharacterRiotCop
+	CharacterSwat
+	CharacterSwatSniper
 	CharacterMax
 )
 
