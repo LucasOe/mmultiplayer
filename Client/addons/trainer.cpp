@@ -18,6 +18,9 @@ static bool strang = false;
 static bool resetFlyingSpeed = true;
 static bool toggleResetKeybinds = false;
 
+static Trainer::Save save;
+static bool hasSave = false;
+
 static bool sidestepBeamer = false;
 static bool sidestepBeamerForMe = false;
 static bool sidestepBeamerPressLeftKeybind = true;
@@ -34,7 +37,7 @@ static int sidestepBeamerLeftKeybind = VK_A;
 static int sidestepBeamerRightKeybind = VK_D;
 
 static bool showPlayerInfo = false; 
-static bool showTopHeight = false;
+static bool showTopHeightInfo = false;
 static bool showExtraPlayerInfo = false;
 
 static float topSpeed = 0.0f;
@@ -45,6 +48,7 @@ static float topHeight = 0.0f;
 static float topHeightTimeHit = 0.0f;
 static float topHeightResetAfterSeconds = 2.75f;
 
+static bool hasCheckpoint = false;
 static float checkpointTime = 0.0f;
 static bool checkpointUpdateTimer = false;
 static Classes::FVector checkpointLocation;
@@ -355,7 +359,7 @@ static void TrainerTab() {
     }
 
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        if (showTopHeight) {
+        if (showTopHeightInfo) {
             ImGui::SetTooltip("X = Location X\nY = Location Y\nZ = Location Z\nZT = Location Z Top\n \nV = Velocity\nVT = Velocity Top\n \nRX = Rotation Pitch\nRY = Rotation Yaw\n \nT = Time");
         } else {
             ImGui::SetTooltip("X = Location X\nY = Location Y\nZ = Location Z\n \nV = Velocity\nVT = Velocity Top\n \nRX = Rotation Pitch\nRY = Rotation Yaw\n \nT = Time");
@@ -363,8 +367,8 @@ static void TrainerTab() {
     }
 
     if (showPlayerInfo) {
-        if (ImGui::Checkbox("Show Top Height", &showTopHeight)) {
-            Settings::SetSetting("player", "showTopHeight", showTopHeight);
+        if (ImGui::Checkbox("Show Top Height", &showTopHeightInfo)) {
+            Settings::SetSetting("player", "showTopHeightInfo", showTopHeightInfo);
             topHeight = 0.0f;
             topHeightTimeHit = 0.0f;
         }
@@ -396,10 +400,6 @@ static void TrainerTab() {
             controller->ReactionTimeEnergy = 100.0f;
             tdhud->EffectManager->ActivateReactionTimeTeaser();
         }
-
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("Refills your reaction time energy to 100.0f");
-        }
     }
 
     ImGui::SeperatorWithPadding(2.5f);
@@ -407,6 +407,11 @@ static void TrainerTab() {
 
     if (ImGui::Checkbox("Trainer Enabled##trainer-enabled", &enabled)) {
         Settings::SetSetting("trainer", "enabled", enabled);
+
+        checkpointTime = 0.0f;
+        checkpointUpdateTimer = false;
+        hasCheckpoint = false;
+        hasSave = false;
     }
 
     if (!enabled) {
@@ -419,6 +424,29 @@ static void TrainerTab() {
 
     ImGui::SeperatorWithPadding(2.5f);
 
+    #pragma region Reset
+    if (hasSave) {
+        if (ImGui::Button("Reset Save##trainer-reset-save")) {
+            hasSave = false;
+        }
+    }
+
+    if (hasCheckpoint) {
+        if (hasSave) {
+            ImGui::SameLine();
+        }
+
+        if (ImGui::Button("Reset Checkpoint##trainer-reset-checkpoint")) {
+            checkpointTime = 0.0f;
+            checkpointUpdateTimer = false;
+            hasCheckpoint = false;
+        }
+    }
+
+    if (hasSave || hasCheckpoint) {
+        ImGui::Dummy(ImVec2(0.0f, 6.0f));
+    }
+
     if (ImGui::Checkbox("Reset Flying Speed##trainer-reset-flyspeed", &resetFlyingSpeed)) {
         Settings::SetSetting("trainer", "resetFlyingSpeed", resetFlyingSpeed);
     }
@@ -426,14 +454,12 @@ static void TrainerTab() {
     if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
         ImGui::SetTooltip("Resets the flying speed back to normal once flying has been activated.\nIf set to false, the speed will not be reset.");
     }
+    #pragma endregion
 
+    #pragma region SidestepBeamer
     if (ImGui::Checkbox("Sidestep Beamer##trainer-beamer-sidestep", &sidestepBeamer)) {
         Settings::SetSetting("trainer", "sidestepBeamer", sidestepBeamer);
     }
-
-    if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("Instead of it quickturning, it will jump.");
-    } 
     
     if (sidestepBeamer) {
         if (ImGui::Checkbox("Auto Sidestep Beamer##trainer-beamer-sidestepForMe", &sidestepBeamerForMe)) {
@@ -466,7 +492,7 @@ static void TrainerTab() {
             if (toggleResetKeybinds) {
                 ImGui::SameLine();
 
-                if (ImGui::Button("Reset##sidestepBeamerLeftKeybind")) {
+                if (ImGui::Button("Reset##trainer-reset-sidestepBeamerLeftKeybind")) {
                     Settings::SetSetting("trainer", "sidestepBeamerLeftKeybind", sidestepBeamerLeftKeybind = VK_A);
                 }
             }
@@ -478,12 +504,13 @@ static void TrainerTab() {
             if (toggleResetKeybinds) {
                 ImGui::SameLine();
 
-                if (ImGui::Button("Reset##sidestepBeamerRightKeybind")) {
+                if (ImGui::Button("Reset##trainer-reset-sidestepBeamerRightKeybind")) {
                     Settings::SetSetting("trainer", "sidestepBeamerRightKeybind", sidestepBeamerRightKeybind = VK_D);
                 }
             }
         }
     }
+    #pragma endregion
 
     ImGui::SeperatorWithPadding(2.5f);
 
@@ -666,12 +693,11 @@ static void OnRender(IDirect3DDevice9 *) {
             static const auto rightPadding = 100.0f;
 
             auto window = ImGui::BeginRawScene("##player-info");
-
             auto &io = ImGui::GetIO();
             auto width = io.DisplaySize.x - padding;
 
             auto yIncrement = ImGui::GetTextLineHeight();
-            auto count = (showTopHeight ? 1 : 0) + (showExtraPlayerInfo ? 11 : 8);
+            auto count = (showTopHeightInfo ? 1 : 0) + (showExtraPlayerInfo ? 11 : 8);
             auto y = io.DisplaySize.y - (count * yIncrement) - padding - ((yIncrement / 2) * 3);
             auto color = ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 
@@ -679,9 +705,9 @@ static void OnRender(IDirect3DDevice9 *) {
 
             AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "X", "%.2f", pawn->Location.X / 100.0f);
             AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "Y", "%.2f", pawn->Location.Y / 100.0f);
-            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + (showTopHeight ? 0 : yIncrement / 2), color, "Z", "%.2f", pawn->Location.Z / 100.0f);
+            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + (showTopHeightInfo ? 0 : yIncrement / 2), color, "Z", "%.2f", pawn->Location.Z / 100.0f);
 
-            if (showTopHeight) {
+            if (showTopHeightInfo) {
                 float height = pawn->Location.Z / 100.0f;
 
                 if (pawn->WorldInfo->RealTimeSeconds - topHeightTimeHit > topHeightResetAfterSeconds) {
@@ -717,7 +743,6 @@ static void OnRender(IDirect3DDevice9 *) {
 
             AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "RX", "%.2f", pitch);
             AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "RY", "%.2f", (static_cast<float>(controller->Rotation.Yaw % 0x10000) / static_cast<float>(0x10000)) * 360.0f);
-
             AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "T", "%.2f", checkpointTime);
 
             if (showExtraPlayerInfo) {
@@ -730,6 +755,8 @@ static void OnRender(IDirect3DDevice9 *) {
         } else {
             topSpeed = 0.0f;
             topSpeedTimeHit = 0.0f;
+            topHeight = 0.0f;
+            topHeightTimeHit = 0.0f;
         }
     }
 
@@ -737,7 +764,8 @@ static void OnRender(IDirect3DDevice9 *) {
         return;
     }
 
-    std::string text = strang ? "Strang " : "";
+    std::string text = "";
+    text += strang ? "Strang " : "";
     text += beamer ? sidestepBeamer ? "Sidestep Beamer " : "Beamer " : "";
     text += kg ? "KG " : "";
     text += fly.Enabled ? "Fly " : "";
@@ -766,8 +794,6 @@ static void OnTick(float deltaTime) {
     }
 
     const auto pawn = Engine::GetPlayerPawn();
-    static bool hasCheckpoint = false;
-
     if (!pawn) {
         return;
     }
@@ -777,12 +803,14 @@ static void OnTick(float deltaTime) {
             hasCheckpoint = true;
             checkpointTime = 0.0f;
             checkpointLocation = pawn->Location;
-        }
+        } 
 
-        if (Distance(pawn->Location, checkpointLocation) > 1.0f && checkpointUpdateTimer && hasCheckpoint) {
-            checkpointTime += pawn->WorldInfo->TimeDilation * deltaTime;
-        } else {
-            checkpointUpdateTimer = false;
+        if (hasCheckpoint) {
+            if (Distance(pawn->Location, checkpointLocation) > 1.0f && checkpointUpdateTimer) {
+                checkpointTime += pawn->WorldInfo->TimeDilation * deltaTime;
+            } else {
+                checkpointUpdateTimer = false;
+            }
         }
     }
 
@@ -796,19 +824,11 @@ static void OnTick(float deltaTime) {
     }
 
     if (pawn->Health <= 0) {
-        if (fly.Enabled) {
-            fly.Enabled = false;
-        }
-
-        if (god) {
-            god = false;
-        }
+        fly.Enabled = false;
+        god = false;
 
         return;
     }
-
-    static Trainer::Save save;
-    static bool hasSave = false;
 
     if (Engine::IsKeyDown(saveKeybind)) {
         Save(save, pawn, controller);
@@ -950,8 +970,10 @@ bool Trainer::Initialize() {
     loadKeybind = Settings::GetSetting("trainer", "loadKeybind", VK_5);
     godKeybind = Settings::GetSetting("trainer", "godKeybind", VK_1);
     toggleResetKeybinds = Settings::GetSetting("trainer", "toggleResetKeybinds", false);
+
+    // Player Info
     showPlayerInfo = Settings::GetSetting("player", "showInfo", false);
-    showTopHeight = Settings::GetSetting("player", "showTopHeight", false);
+    showTopHeightInfo = Settings::GetSetting("player", "showTopHeightInfo", false);
     showExtraPlayerInfo = Settings::GetSetting("player", "showExtraPlayerInfo", false);
 
     // Flying Settings
@@ -1026,8 +1048,6 @@ bool Trainer::Initialize() {
                         } else {
                             god = false;
                         }
-                    } else {
-                        god = false;
                     }
                 }
             }
