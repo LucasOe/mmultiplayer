@@ -19,7 +19,7 @@
     - Strang tool
 - Dolly camera
     - Supports player recordings
-    
-## Addons
 
-- Tag (Work In Progress)
+## About This Fork
+
+Read the <a href="https://github.com/Toyro98/mmultiplayer/blob/main/CHANGELOG.md">CHANGELOG.md</a> to see what has been changed in this fork from the original mmultiplayer mod.
