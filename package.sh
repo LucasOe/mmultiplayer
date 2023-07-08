@@ -16,8 +16,9 @@ go run resources/installer/xor/main.go Launcher/Release/Launcher.exe > resources
 go run resources/installer/xor/main.go Client/Release/mmultiplayer.dll > resources/installer/squibbles/dll.buh
 go build -o ${buildDir}/app/squibbles.exe resources/installer/squibbles/main.go
 
-# TODO: Super hack because InnoSetup does not support relative paths.
-cp -v resources/installer/installer.iss "${buildDir}/"
+cp resources/installer/installer.iss "${buildDir}/"
+
+cp Launcher/Icon.ico "${buildDir}/"
 
 # TODO: Add license for Windows installer.
 # '/DLicenseFileOverride=license_en_US.txt'
