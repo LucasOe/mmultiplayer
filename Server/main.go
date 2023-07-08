@@ -1,15 +1,19 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/binary"
-	"github.com/google/uuid"
 	"log"
 	"math"
 	mathrand "math/rand"
 	"net"
+	"os/signal"
 	"sync"
 	"time"
+
+	"github.com/Toyro98/mmultiplayer/Server/internal/osspecific"
+	"github.com/google/uuid"
 )
 
 const (
@@ -20,6 +24,9 @@ const (
 var system = System{Rooms: map[string]*Room{}}
 
 func main() {
+	ctx, cancelFn := signal.NotifyContext(context.Background(), osspecific.QuitSignals()...)
+	defer cancelFn()
+
 	randomNumberGenerator, err := newRng()
 	if err != nil {
 		log.Fatalf("failed to create random number - %s", err)
@@ -30,17 +37,21 @@ func main() {
 	go tcpListener()
 	go udpListener()
 
-	for {
-		time.Sleep(2 * time.Second)
+	go func() {
+		for {
+			time.Sleep(2 * time.Second)
 
-		system.RLock()
-		for _, r := range system.Rooms {
-			r.SendMessage(map[string]interface{}{
-				"type": "ping",
-			})
+			system.RLock()
+			for _, r := range system.Rooms {
+				r.SendMessage(map[string]interface{}{
+					"type": "ping",
+				})
+			}
+			system.RUnlock()
 		}
-		system.RUnlock()
-	}
+	}()
+
+	<-ctx.Done()
 }
 
 func newRng() (*rng, error) {
