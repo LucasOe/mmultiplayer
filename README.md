@@ -2,8 +2,8 @@
 
 ## Setup
 
-1. Download the latest launcher from <a href="https://github.com/Toyro98/mmultiplayer/releases">here</a>.
-2. Run the launcher either before Mirror's Edge or when Mirror's Edge is running.
+1. Download the latest installer from <a href="https://github.com/Toyro98/mmultiplayer/releases">here</a>.
+2. Run the program either before Mirror's Edge or when Mirror's Edge is running.
 3. Press `Insert` to view the in-game menu where you can adjust settings as you please.
 
 ## Features
@@ -38,3 +38,11 @@ To build dll and Launcher:
 
 To build the installer:
 - `VERSION=X.X.X ./package.sh` - Expects a version to be provided by setting an environment variable. Saves and builds artifacts to `build/`. Requires Inno Setup and Git Bash.
+
+## Contributors
+Thanks to these wonderful people :)
+- [btbd](https://github.com/btbd)
+- [LucasOe](https://github.com/LucasOe)
+- [Toyro98](https://github.com/Toyro98)
+- [SeungKang](https://github.com/SeungKang)
+- [stephen-fox](https://github.com/stephen-fox)
