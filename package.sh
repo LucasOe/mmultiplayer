@@ -18,7 +18,7 @@ go build -o ${buildDir}/app/squibbles.exe resources/installer/squibbles/main.go
 
 cp resources/installer/installer.iss "${buildDir}/"
 
-cp Launcher/Icon.ico "${buildDir}/"
+cp -r resources/installer/images "${buildDir}/"
 
 # TODO: Add license for Windows installer.
 # '/DLicenseFileOverride=license_en_US.txt'

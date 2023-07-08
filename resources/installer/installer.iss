@@ -44,9 +44,9 @@ CloseApplications=no
 ; Makes Windows Explorer refresh all icons after installer finishes. Fixes missing icon in start menu.
 ; https://stackoverflow.com/questions/44076985/create-desktop-link-icon-after-the-run-section-of-inno-setup
 ChangesAssociations=yes
-SetupIconFile=Icon.ico
-;WizardImageFile=images\icon.bmp
-;WizardSmallImageFile=images\icon-small.bmp
+SetupIconFile=images\icon256.ico
+WizardImageFile=images\arland.bmp
+WizardSmallImageFile=images\icon-small.bmp
 
 [InstallDelete]
 ; Remove any previous versions of extracted applications from squibbles.
