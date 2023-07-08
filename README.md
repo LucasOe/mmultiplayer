@@ -23,3 +23,11 @@
 ## About This Fork
 
 Read the <a href="https://github.com/Toyro98/mmultiplayer/blob/main/CHANGELOG.md">CHANGELOG.md</a> to see what has been changed in this fork from the original mmultiplayer mod.
+
+## Building from source
+
+To build Client and Launcher:
+- `./build.sh` - Requires DirectX June 2010, MSBuild, Visual Studio 2019 and Git Bash.
+
+To build the installer:
+- `VERSION=X.X.X ./package.sh` - Expects a version to be provided by setting an environment variable. Saves and builds artifacts to `build/`. Requires Inno Setup and Git Bash.
