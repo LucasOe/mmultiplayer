@@ -13,12 +13,14 @@
 static bool enabled = false;
 static std::string levelName;
 
-static bool consequtiveWallrunsLimitRemoved = false;
+static bool noConsequtiveWallrunsLimit = false;
 static bool autorollEnabled = false;
 static bool noHealthRegenerationEnabled = false;
 static bool permanentReactionTimeEnabled = false;
 static bool permanentGameSpeedEnabled = false;
 static float permanentGameSpeed = 0.25f;
+static bool noWallrunChallenge = false;
+static bool noWallclimbChallenge = false;
 
 static bool ohkoEnabled = false;
 static EOhko ohkoType = EOhko::Normal;
@@ -45,11 +47,6 @@ static void MiscTab() {
 
     ImGui::SeperatorWithPadding(2.5f);
 
-    // Consequtive Wallruns
-    if (ImGui::Checkbox("No Consequtive Wallruns Limit", &consequtiveWallrunsLimitRemoved)) {
-        Settings::SetSetting("misc", "consequtiveWallrunsLimitRemoved", consequtiveWallrunsLimitRemoved);
-    }
-
     // Auto Roll
     if (ImGui::Checkbox("Auto Roll", &autorollEnabled)) {
         Settings::SetSetting("misc", "autorollEnabled", autorollEnabled);
@@ -65,6 +62,29 @@ static void MiscTab() {
         } else {
             ImGui::SetTooltip("What's the point of ohko or no health regeneration if auto rolling is on?");
         }
+    }
+
+    // Consequtive Wallruns
+    if (ImGui::Checkbox("No Consequtive Wallruns Limit", &noConsequtiveWallrunsLimit)) {
+        Settings::SetSetting("misc", "consequtiveWallrunsLimitRemoved", noConsequtiveWallrunsLimit);
+    }
+
+    // No Wallrun Challenge
+    if (ImGui::Checkbox("No Wallrun Challenge", &noWallrunChallenge)) {
+        Settings::SetSetting("misc", "noWallrunChallenge", noWallrunChallenge);
+    }
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+        ImGui::SetTooltip("Wallrun and you start from new game");
+    }
+
+    // No Wallclimb Challenge
+    if (ImGui::Checkbox("No Wallclimb Challenge", &noWallclimbChallenge)) {
+        Settings::SetSetting("misc", "noWallclimbChallenge", noWallclimbChallenge);
+    }
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+        ImGui::SetTooltip("Wallclimb and you start from new game");
     }
 
     // No Health Regeneration
@@ -120,11 +140,7 @@ static void MiscTab() {
             Settings::SetSetting("misc", "ohkoEnabled", ohkoEnabled);
 
             ohkoHealth = 100;
-
-            auto pawn = Engine::GetPlayerPawn();
-            if (pawn) {
-                pawn->Health = pawn->MaxHealth;
-            }
+            pawn->Health = pawn->MaxHealth;
         }
 
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
@@ -249,7 +265,7 @@ static void OnTick(float deltaTime) {
         }
     }
 
-    if (consequtiveWallrunsLimitRemoved) {
+    if (noConsequtiveWallrunsLimit) {
         if (pawn->MovementState == Classes::EMovement::MOVE_WallRunningLeft ||
             pawn->MovementState == Classes::EMovement::MOVE_WallRunningRight) {
 
@@ -266,16 +282,31 @@ static void OnTick(float deltaTime) {
     if (autorollEnabled) {
         pawn->RollTriggerTime = 1e30f;
     }
+
+    if (noWallrunChallenge) {
+        if (pawn->MovementState == Classes::EMovement::MOVE_WallRunningLeft ||
+            pawn->MovementState == Classes::EMovement::MOVE_WallRunningRight) {
+            StartNewGame();
+        }
+    }
+
+    if (noWallclimbChallenge) {
+        if (pawn->MovementState == Classes::EMovement::MOVE_WallClimbing) {
+            StartNewGame();
+        }
+    }
 }
 
 bool Misc::Initialize() {
     enabled = Settings::GetSetting("misc", "enabled", false);
 
-    consequtiveWallrunsLimitRemoved = Settings::GetSetting("misc", "consequtiveWallrunsLimitRemoved", false);
+    noConsequtiveWallrunsLimit = Settings::GetSetting("misc", "consequtiveWallrunsLimitRemoved", false);
     autorollEnabled = Settings::GetSetting("misc", "autorollEnabled", false);
     permanentReactionTimeEnabled = Settings::GetSetting("misc", "permanentReactionTimeEnabled", false);
     permanentGameSpeedEnabled = Settings::GetSetting("misc", "permanentGameSpeedEnabled", false);
     permanentGameSpeed = Settings::GetSetting("misc", "permanentGameSpeed", 0.25f);
+    noWallrunChallenge = Settings::GetSetting("misc", "noWallrunChallenge", false);
+    noWallclimbChallenge = Settings::GetSetting("misc", "noWallclimbChallenge", false);
 
     ohkoEnabled = Settings::GetSetting("misc", "ohkoEnabled", false);
     ohkoType = Settings::GetSetting("misc", "ohkoType", EOhko::Normal).get<EOhko>();
