@@ -11,8 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Tag Addon
 - Misc Addon
-  - Consequtive wallruns limit removed 
   - Autoroll
+  - No consequtive wallruns limit 
+  - No wallrun challenge
+  - No wallclimb challenge
   - No health regeneration
   - Permanent reaction time
   - Permanent game speed
