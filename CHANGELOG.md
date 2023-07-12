@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reset button next to bindable keys
 - Button to reset the trainer save and checkpoint
 - Button to refill reaction time energy
+- Toggable option to show your top height in player info
 - 4 more selectable models
   - Ropeburn
   - Riot Cop
@@ -40,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Styling in tabs to add more space between stuff (except dolly tab)  
 - Flying speed to reset after being toggled
+- Player info to be more like speedometer
 - Default flying speed to be 2.0f instead of 3.0f
 
 ### Removed
