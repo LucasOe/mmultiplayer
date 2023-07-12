@@ -452,7 +452,7 @@ static void TrainerTab() {
     }
 
     if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("Resets the flying speed back to normal once flying has been activated.\nIf set to false, the speed will not be reset.");
+        ImGui::SetTooltip("Resets the flying speed back to normal once flying has been activated.\nIf set to false, the speed will not be reset");
     }
     #pragma endregion
 
@@ -467,7 +467,7 @@ static void TrainerTab() {
         }
 
         if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("If set to false, you need to manually hold your left keybind or right keybind when beamer is active.");
+            ImGui::SetTooltip("If set to false, you need to manually hold your left keybind or right keybind when beamer is active");
         } 
 
         if (sidestepBeamerForMe) {
