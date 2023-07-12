@@ -58,7 +58,7 @@ static void MiscTab() {
 
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
         if (!ohkoEnabled && !noHealthRegenerationEnabled) {
-            ImGui::SetTooltip("Remember the auto roll bug? If enabled, it will auto roll for you.");
+            ImGui::SetTooltip("Remember the auto roll bug? If enabled, it will auto roll for you");
         } else {
             ImGui::SetTooltip("What's the point of ohko or no health regeneration if auto rolling is on?");
         }
@@ -97,7 +97,7 @@ static void MiscTab() {
         }
 
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("Health regeneration is turned off. If you have 100 health and take 15 damage, you'll have 85 health for the rest of the game.\nIf you reach 0 health, it will start a new game for you.");
+            ImGui::SetTooltip("Health regeneration is turned off. If you have 100 health and take 15 damage, you'll have 85 health for the rest of the game.\nIf you reach 0 health, it will start a new game for you");
         }
     }
 
@@ -157,7 +157,7 @@ static void MiscTab() {
             }
 
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-                ImGui::SetTooltip("If you take any damage at all, you'll respawn at the last checkpoint.");
+                ImGui::SetTooltip("If you take any damage at all, you'll respawn at the last checkpoint");
             }
 
             if (ImGui::RadioButton("Extreme", ohkoType == EOhko::Extreme)) {
@@ -165,7 +165,7 @@ static void MiscTab() {
             }
 
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-                ImGui::SetTooltip("If you take any damage at all, it will instantly start a new game.");
+                ImGui::SetTooltip("If you take any damage at all, it will instantly start a new game");
             }
         }
     }

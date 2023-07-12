@@ -1335,7 +1335,7 @@ static void TagTab() {
         ImGui::Checkbox("Cooldown Overlay##tag-cooldown-overlay", &showTagCooldownOverlay);
 
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("When someone gets tagged, it will show (if true) at the top middle of the screen of the cooldown\nin seconds until they can move again.");
+            ImGui::SetTooltip("When someone gets tagged, it will show (if true) at the top middle of the screen of the cooldown\nin seconds until they can move again");
         }
     }
 
@@ -1372,7 +1372,7 @@ static void TagTab() {
         }
 
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("Change to cooldown to be anywhere from 1 to 60. Press enter to update.");
+            ImGui::SetTooltip("Change to cooldown to be anywhere from 1 to 60. Press enter to update");
         }
 
         ImGui::Dummy(ImVec2(0.0f, 6.0f));
