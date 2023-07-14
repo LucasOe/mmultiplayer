@@ -70,18 +70,19 @@ Source: "{#ApplicationFilesPath}\*"; DestDir: "{app}\bin"; Flags: ignoreversion 
 Name: "{autoprograms}\{#AppNameOverride}"; Filename: "{app}\bin\{#AppExeNameOverride}";
 ;Name: "{group}\{cm:UninstallProgram,{#AppNameOverride}}"; Filename: "{uninstallexe}"
 ;Name: "{commondesktop}\{#AppNameOverride}"; Filename: "{app}\{#AppExeNameOverride}"; Tasks: desktopicon
-;Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#AppNameOverride}"; Filename: "{app}\{#AppExeNameOverride}"; Tasks: quicklaunchicon
 
 [Run]
 ;Filename: "{app}\{#AppExeNameOverride}"; Description: "{cm:LaunchProgram,{#StringChange(AppNameOverride, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-Filename: "C:\WINDOWS\system32\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "Add-MpPreference -ExclusionPath '{app}\bin'"; Flags: runhidden
+; The double quotes logic here is insane but needs to be that way to support spaces
+; https://stackoverflow.com/questions/23611855/inno-setup-spaces-and-double-quote-in-run/23611986#23611986
+Filename: "C:\WINDOWS\system32\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "Add-MpPreference -ExclusionPath ""\""{app}\bin\"""; Flags: runhidden
 ; Runs program to XOR and extract Launcher and dll.
 Filename: "{app}\bin\squibbles.exe"; Flags: runhidden
 
 [UninstallRun]
 ; Adds {app}\bin directory as an exclusion path so that Windows Defender doesn't try to delete.
 ; Windows Defender does not like how we do process injection.
-Filename: "C:\WINDOWS\system32\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "Remove-MpPreference -ExclusionPath '{app}\bin'"; Flags: runhidden
+Filename: "C:\WINDOWS\system32\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "Remove-MpPreference -ExclusionPath ""\""{app}\bin\"""; Flags: runhidden
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\bin"
