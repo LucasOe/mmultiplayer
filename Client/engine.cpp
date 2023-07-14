@@ -531,18 +531,6 @@ SpawnCharacter(Engine::Character character) {
             Classes::USkeletalMesh::StaticClass(), false)),
         false);
 
-    // Every actor has 1 lod info except these. They all have 3 lod's and the first lod info is the same as all others, so we replace the seconds and third with the first one
-    // If we don't do this, once it switches lod, the character will T pose for a frame and return to normal. 
-    if (character == Engine::Character::RiotCop || character == Engine::Character::Swat ||
-        character == Engine::Character::SwatSniper) {
-
-        auto skeletalMesh = actor->SkeletalMeshComponent->SkeletalMesh;
-
-        for (size_t i = 1; i < skeletalMesh->LODInfo.Num(); i++) {
-            skeletalMesh->LODInfo[i] = skeletalMesh->LODInfo[0];
-        }
-    }
-
     const auto mats = materials[static_cast<size_t>(character)];
     for (auto i = 0UL; i < mats.size(); ++i) {
         mesh->SetMaterial(
@@ -550,6 +538,23 @@ SpawnCharacter(Engine::Character character) {
                    actor->STATIC_DynamicLoadObject(
                        mats[i].c_str(),
                        Classes::UMaterialInterface::StaticClass(), false)));
+    }
+
+    // Every actor has 1 lod info except these. They all have 3 lod's and the first lod info is the same as all others, so we replace the seconds and third with the first one
+    // If we don't do this, once it switches lod, the character will T pose for a frame and return to normal. 
+    if (character == Engine::Character::RiotCop || character == Engine::Character::Swat ||
+        character == Engine::Character::SwatSniper) {
+
+        auto skeletalMesh = actor->SkeletalMeshComponent->SkeletalMesh;
+
+        if (!skeletalMesh) {
+            actor->ShutDown();
+            return nullptr;
+        }
+
+        for (size_t i = 1; i < skeletalMesh->LODInfo.Num(); i++) {
+            skeletalMesh->LODInfo[i] = skeletalMesh->LODInfo[0];
+        }
     }
 
     if (character == Engine::Character::Kate ||
