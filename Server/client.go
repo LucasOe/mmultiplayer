@@ -22,9 +22,7 @@ const (
 	CharacterPersuitCop
 	CharacterGhost
 	CharacterRopeburn
-	CharacterRiotCop
 	CharacterSwat
-	CharacterSwatSniper
 	CharacterMax
 )
 
