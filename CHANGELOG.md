@@ -5,12 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
 ## [2.1.1] - 2023-07-15
+
+### Added
+- Troubleshooting section in CONTRIBUTING.md
+
+### Changed
+- User can no longer configure install directory. Install is set to default install location (C:\Program Files\Mirror's Edge Multiplayer)
 
 ### Removed
 - Swat Sniper and Riot Cop as selectable models (both caused crash during loading)
+
+### Fixed
+- Fixed installer not creating a Windows Security exclusion
 
 ## [2.1.0] - 2023-07-12
 
