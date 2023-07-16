@@ -66,26 +66,63 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
-Source: "{#ApplicationFilesPath}\*"; DestDir: "{app}\bin"; Flags: ignoreversion createallsubdirs recursesubdirs
+Source: "{#ApplicationFilesPath}\*"; DestDir: "{app}\bin"; AfterInstall: ExecSquibbles; Flags: ignoreversion createallsubdirs recursesubdirs
 
 [Icons]
 Name: "{autoprograms}\{#AppNameOverride}"; Filename: "{app}\bin\{#AppExeNameOverride}";
 ;Name: "{group}\{cm:UninstallProgram,{#AppNameOverride}}"; Filename: "{uninstallexe}"
 ;Name: "{commondesktop}\{#AppNameOverride}"; Filename: "{app}\{#AppExeNameOverride}"; Tasks: desktopicon
 
-[Run]
-;Filename: "{app}\{#AppExeNameOverride}"; Description: "{cm:LaunchProgram,{#StringChange(AppNameOverride, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-; The double quotes logic here is insane but needs to be that way to support spaces
-; https://stackoverflow.com/questions/23611855/inno-setup-spaces-and-double-quote-in-run/23611986#23611986
-Filename: "C:\WINDOWS\system32\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "Add-MpPreference -ExclusionPath ""\""{app}\bin\"""; Flags: runhidden
-; Runs program to XOR and extract Launcher and dll.
-Filename: "{app}\bin\squibbles.exe"; Flags: runhidden
-
 [UninstallRun]
-; Adds {app}\bin directory as an exclusion path so that Windows Defender doesn't try to delete.
-; Windows Defender does not like how we do process injection.
-Filename: "C:\WINDOWS\system32\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "Remove-MpPreference -ExclusionPath ""\""{app}\bin\"""; Flags: runhidden
+; Refer to squibbles' documentation for more information.
+Filename: "{app}\bin\squibbles.exe"; Parameters: "uninstall"; Flags: runhidden
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\bin"
 Type: dirifempty; Name: "{app}"
+
+; The following code implements an "AfterInstall" InnoSetup procedure that
+; allows InnoSetup to learn if squibbles (our installer helper application)
+; failed with a non-zero exit status.
+;
+; Normally, InnoSetup wants users to put helper programs in the "Run" section.
+; The "Run" section does not check if any of the specified executables actually
+; succeeded. This means that any non-zero exit status for a "Run" application
+; is ignored.
+;
+; This code is mostly copied from StackOverflow user Martin Prikryl.
+; Refer to: https://stackoverflow.com/a/63945787
+[Code]
+var CancelWithoutPrompt: boolean;
+
+function InitializeSetup(): Boolean;
+begin
+  CancelWithoutPrompt := false;
+  result := true;
+end;
+
+procedure CancelButtonClick(CurPageID: Integer; var Cancel, Confirm: Boolean);
+begin
+  if CancelWithoutPrompt then
+    Confirm := false; { hide confirmation prompt }
+end;
+
+procedure ExecSquibbles();
+var
+  resultCode: Integer;
+  begin
+    // Refer to squibbles's documentation for more information.
+    Exec(ExpandConstant('{app}\bin\squibbles.exe'), 'install',
+        '', SW_HIDE, ewWaitUntilTerminated, resultCode);
+
+    if resultCode <> 0 then
+    begin
+      SuppressibleMsgBox(
+      'Installer helper program failed, exit code ' + IntToStr(resultCode) + '. ' +
+        'Aborting installation.',
+	mbCriticalError, MB_OK, 0);
+
+      CancelWithoutPrompt := true;
+      WizardForm.Close;
+    end;
+end;
