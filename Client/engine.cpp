@@ -392,19 +392,10 @@ SpawnCharacter(Engine::Character character) {
         L"TT_Ghost.GhostCharacter_01",
 
         // Ropeburn
-        //L"CH_TKY_Crim_RB.SK_TKY_Crim_RB",
-
-        // Riot Cop
-        //L"CH_TKY_Cop_Patrol.SK_TKY_Cop_Patrol_PK",
+        L"CH_TKY_Crim_RB.SK_TKY_Crim_RB",
 
         // Swat
-        //L"CH_TKY_Cop_SWAT.CH_TKY_Cop_SWAT",
-
-        // Swat Sniper
-        //L"CH_TKY_Cop_SWAT.SK_TKY_Cop_SWAT_Sniper",
-
-        // Merc
-        //L"CH_TKY_Crim_Heavy.SK_TKY_Crim_Heavy"
+        L"CH_TKY_Cop_SWAT.CH_TKY_Cop_SWAT"
     };
 
     static const std::vector<std::wstring> materials[] = {
@@ -489,7 +480,6 @@ SpawnCharacter(Engine::Character character) {
             L"Material TT_Ghost.Materials.M_GhostShader_01",
         },
 
-        /*
         // Ropeburn
         {
             L"MaterialInstanceConstant CH_TKY_Crim_RB.MI_Crim_RB_Cloth",
@@ -499,30 +489,11 @@ SpawnCharacter(Engine::Character character) {
             L"MaterialInstanceConstant CH_TKY_Crim_RB.MI_Crim_RB_Teeth",
         },
 
-        // Riot Cop
-        {
-            L"MaterialInstanceConstant CH_TKY_Cop_Riot.MI_TKY_Cop_Riot",
-        },
-
         // Swat
         {
             L"MaterialInstanceConstant CH_TKY_Cop_SWAT.MI_TKY_Cop_SWAT_SH",
             L"MaterialInstanceConstant CH_TKY_Cop_SWAT.MI_TKY_Cop_SWAT_eye_SH",
-        },
-
-        // Swat Sniper
-        {
-            L"MaterialInstanceConstant CH_TKY_Cop_SWAT.MI_TKY_Cop_SWAT_Sniper",
-            L"MaterialInstanceConstant CH_TKY_Cop_SWAT.MI_TKY_Cop_SWAT_eye",
-        },
-        */
-
-        /*
-        // Merc
-        {
-            L"MaterialInstanceConstant CH_TKY_Crim_Heavy.MI_Crim_Heavy"
         }
-        */
     };
 
     const auto player = Engine::GetPlayerPawn();
@@ -550,6 +521,16 @@ SpawnCharacter(Engine::Character character) {
                    actor->STATIC_DynamicLoadObject(
                        mats[i].c_str(),
                        Classes::UMaterialInterface::StaticClass(), false)));
+    }
+
+    // Every actor has 1 lod info except Swat. It has 3 lod's and the first lod info is the same as all others, so we replace the second and third with the first one
+    // If we don't do this, once it switches lod, the character will T pose for a frame and return to normal. 
+    if (character == Engine::Character::Swat) {
+        auto skeletalMesh = actor->SkeletalMeshComponent->SkeletalMesh;
+
+        for (size_t i = 1; i < skeletalMesh->LODInfo.Num(); i++) {
+            skeletalMesh->LODInfo[i] = skeletalMesh->LODInfo[0];
+        }
     }
 
     if (character == Engine::Character::Kate ||
@@ -836,23 +817,17 @@ void Engine::TransformBones(Character character,
         memcpy(dest + destCount - 63, src + 45, 63 * sizeof(Classes::FBoneAtom));
         memcpy(dest + 17, src + 18, sizeof(Classes::FBoneAtom));
         break;
-    case Character::Miller:
-        memcpy(dest, src, 7 * sizeof(Classes::FBoneAtom));
-        memcpy(dest + destCount - 63, src + 45, 63 * sizeof(Classes::FBoneAtom));
-        memcpy(dest + 18, src + 18, sizeof(Classes::FBoneAtom));
-        break;
     case Character::PursuitCop:
         memcpy(dest, src, 7 * sizeof(Classes::FBoneAtom));
         memcpy(dest + destCount - 63, src + 45, 63 * sizeof(Classes::FBoneAtom));
         memcpy(dest + 15, src + 18, sizeof(Classes::FBoneAtom));
         break;
+    case Character::Miller:
     case Character::Celeste:
     case Character::Jacknife:
     case Character::Kreeg:
-    //case Character::Ropeburn:
-    //case Character::RiotCop:
-    //case Character::Swat:
-    //case Character::SwatSniper:
+    case Character::Ropeburn:
+    case Character::Swat:
         memcpy(dest, src, 7 * sizeof(Classes::FBoneAtom));
         memcpy(dest + destCount - 63, src + 45, 63 * sizeof(Classes::FBoneAtom));
         memcpy(dest + 18, src + 18, sizeof(Classes::FBoneAtom));

@@ -31,11 +31,8 @@ static const char *Characters[] = {
     "Kreeg",
     "Pursuit Cop",
     "Ghost",
-    //"Ropeburn",
-    //"Riot Cop",
-    //"Swat",
-    //"Swat Sniper",
-    //"Merc"
+    "Ropeburn",
+    "Swat",
 };
 
 enum class Character {
@@ -48,11 +45,8 @@ enum class Character {
     Kreeg,
     PursuitCop,
     Ghost,
-    //Ropeburn,
-    //RiotCop,
-    //Swat,
-    //SwatSniper,
-    //Merc,
+    Ropeburn,
+    Swat,
     Max
 };
 

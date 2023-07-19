@@ -41,10 +41,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, char *, int) {
 
 bool LoadClient(HANDLE process) {
     std::wstring path;
-    if (!GetDllPath(path, process)) {
-        MessageBox(0, L"Failed to get temp path", L"Failure", 0);
+    if (!GetDllPath(path)) {
+        MessageBox(0, L"Failed to get dll path", L"Failure", 0);
         return false;
     }
+
+    // MessageBoxW(NULL, path.c_str(), L"buh", MB_OK);
 
     bool status = false;
 
@@ -115,25 +117,24 @@ bool HasModule(HANDLE process, const wchar_t *module) {
     return false;
 }
 
-bool GetDllPath(std::wstring &path, HANDLE &process) {
-    wchar_t buffer[0x200] = {0};
-    TCHAR filename[MAX_PATH];
+bool GetDllPath(std::wstring &path) {
+    // https://learn.microsoft.com/en-us/cpp/text/how-to-convert-between-various-string-types?view=msvc-170
+    wchar_t* filename = new wchar_t[MAX_PATH];
+    HANDLE current = GetCurrentProcess();
 
     // Get process file name
-    if (GetModuleFileNameEx(process, NULL, filename, MAX_PATH) == 0) {
+    if (GetModuleFileNameEx(current, NULL, filename, MAX_PATH) == 0) {
         return false;
     }
 
-    //MessageBox(0, filename, L"Debug", 0);
+    // MessageBox(0, filename, L"Debug", 0);
 
-    // filename to path without filename
-    wchar_t drive[5];
-    wchar_t dir[200];
-    wchar_t fname[200];
-    wchar_t ext[3];
+    wchar_t drive[_MAX_DRIVE];
+    wchar_t dir[_MAX_DIR];
+    wchar_t fname[_MAX_FNAME];
+    wchar_t ext[_MAX_EXT];
     _wsplitpath_s(filename, drive, dir, fname, ext);
 
-    // Concat drive and dir
     std::wstring outpath = drive;
     outpath += dir;
     

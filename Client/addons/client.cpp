@@ -1019,10 +1019,16 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
     }
 
     int playersInTheSameLevel = 0;
+    float longestNameWidth = 0.0f;
 
     for (const auto &p : players.List) {
         if (p->Level == client.Level && p->Actor) {
             playersInTheSameLevel++;
+            float nameWidth = ImGui::CalcTextSize(p->Name.c_str(), nullptr, false).x;
+
+            if (nameWidth > longestNameWidth) {
+                longestNameWidth = nameWidth;
+            }
         }
     }
 
@@ -1033,15 +1039,18 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
     char buffer[0x200] = {0};
     auto &io = ImGui::GetIO();
     float textHeight = ImGui::GetTextLineHeight();
+
     static float padding = 5.0f;
+    static float maxNameWidth = 192.0f;
 
     if (showTagDistanceOverlay) {
         auto window = ImGui::BeginRawScene("##tag-info");
 
         static float rightPadding = 80.0f;
         float y = (playersInTheSameLevel * textHeight) - textHeight + (padding / 2);
+        float x = min(maxNameWidth, longestNameWidth);
 
-        window->DrawList->AddRectFilled(ImVec2(), ImVec2(256, y + padding + textHeight), ImColor(ImVec4(0, 0, 0, 0.4f)));
+        window->DrawList->AddRectFilled(ImVec2(), ImVec2(rightPadding + x + padding, y + padding + textHeight), ImColor(ImVec4(0, 0, 0, 0.4f)));
 
         for (const auto &p : players.List) {
             if (!p->Actor || p->Level != client.Level) {
@@ -1056,13 +1065,23 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
                 sprintf_s(buffer, "%.1f m", dist);
             }
 
+            auto name = p->Name;
+            auto color = ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+
             if (client.GameMode == GameMode_Tag && p->Id == client.TaggedPlayerId) {
-                window->DrawList->AddText(ImVec2(padding, y), ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f)), buffer);
-                window->DrawList->AddText(ImVec2(rightPadding, y), ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f)), p->Name.c_str());
-            } else {
-                window->DrawList->AddText(ImVec2(padding, y), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), buffer);
-                window->DrawList->AddText(ImVec2(rightPadding, y), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), p->Name.c_str());
+                color = ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
             }
+
+            if (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth) {
+                int charactersToRemove = 3;
+                do {
+                    name = p->Name;
+                    name = name.substr(0, name.size() - charactersToRemove++) + "...";
+                } while (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth);
+            }
+
+            window->DrawList->AddText(ImVec2(padding, y), color, buffer);
+            window->DrawList->AddText(ImVec2(rightPadding, y), color, name.c_str());
 
             y -= textHeight;
         }
@@ -1094,7 +1113,16 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
             playerName = player->Name;
         }
 
-        sprintf_s(buffer, "%s can move in %.1f seconds", playerName.c_str(), timeLeft);
+        auto name = playerName;
+        if (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth) {
+            int charactersToRemove = 3;
+            do {
+                name = playerName;
+                name = name.substr(0, name.size() - charactersToRemove++) + "...";
+            } while (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth);
+        }
+
+        sprintf_s(buffer, "%s can move in %.1f seconds", name.c_str(), timeLeft);
 
         auto window = ImGui::BeginRawScene("##tag-timeleft");
 
@@ -1303,10 +1331,12 @@ static void TagTab() {
 		ImGui::SetTooltip("Shows the distance to other players in meters.");
 	}
 
-    ImGui::Checkbox("Cooldown Overlay##tag-cooldown-overlay", &showTagCooldownOverlay);
+    if (client.GameMode == GameMode_Tag) {
+        ImGui::Checkbox("Cooldown Overlay##tag-cooldown-overlay", &showTagCooldownOverlay);
 
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("When someone gets tagged, it will show (if true) at the top middle of the screen of the cooldown\nin seconds until they can move again.");
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+            ImGui::SetTooltip("When someone gets tagged, it will show (if true) at the top middle of the screen of the cooldown\nin seconds until they can move again");
+        }
     }
 
     ImGui::SeperatorWithPadding(2.5f);
@@ -1342,7 +1372,7 @@ static void TagTab() {
         }
 
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("Change to cooldown to be anywhere from 1 to 60. Press enter to update.");
+            ImGui::SetTooltip("Change to cooldown to be anywhere from 1 to 60. Press enter to update");
         }
 
         ImGui::Dummy(ImVec2(0.0f, 6.0f));
