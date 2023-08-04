@@ -6,6 +6,8 @@ import (
 	"log"
 	"math"
 	"net"
+	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -247,6 +249,39 @@ func (client *Client) setLastPacketAndPosition(buf []byte) {
 	client.position = position{x: x, y: y, z: z}
 }
 
+func (client *Client) sendPostDataMsg(msg map[string]interface{}) {
+	client.rwMu.Lock()
+	defer client.rwMu.Unlock()
+
+	json, ok := msg["body"].(string)
+	if !ok {
+		log.Printf("Error: %v", json)
+		return
+	}
+
+	requestURL := "secret url" + url.QueryEscape(json)
+
+	req, err := http.NewRequest("POST", requestURL, nil)
+	if err != nil {
+		log.Printf("Error: %v", err)
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	cli := &http.Client{}
+
+	resp, err := cli.Do(req)
+	if err != nil {
+		log.Printf("Error: %v", err)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	log.Printf("data sent")
+}
+
 func getTimeDurationSecondsField(obj map[string]interface{}, field string) (time.Duration, bool) {
 	v, ok := obj[field].(float64)
 	if !ok {
@@ -316,6 +351,8 @@ func (client *Client) tcpHandler() {
 			client.deadMsg()
 		case "disconnect":
 			client.disconnectMsg()
+		case "post":
+			client.sendPostDataMsg(msg)
 		}
 	}
 }
