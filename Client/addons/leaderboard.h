@@ -35,10 +35,13 @@ class Leaderboard : public Addon {
     } Speedrun;
 
     typedef struct {
+        int Health;                                                 // 0x2B8 (0x4)
+        unsigned long bSRPauseTimer;                                // 0x41C (0x4)
+    } Pawn;
 
-        // TdPlayerController
+    typedef struct {
         unsigned long bReactionTime;                                // 0x52C (0x4)
-		float ReactionTimeEnergy;                                   // 0x5A8 (0x4)
+        float ReactionTimeEnergy;                                   // 0x5A8 (0x4)
     } Controller;
 
     bool Initialize();
