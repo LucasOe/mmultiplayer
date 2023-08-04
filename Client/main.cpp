@@ -9,6 +9,7 @@
 #include "addons/client.h"
 #include "addons/trainer.h"
 #include "addons/misc.h"
+#include "addons/leaderboard.h"
 
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID reserved) {
     if (reason == DLL_PROCESS_ATTACH) {
@@ -20,7 +21,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID reserved) {
 
 		Settings::Load();
 
-		Addon *addons[] = { new Client(), new Trainer(), new Dolly(), new Misc() };
+		Addon *addons[] = { new Client(), new Trainer(), new Dolly(), new Leaderboard(), new Misc() };
 
 		if (!Engine::Initialize()) {
 			MessageBoxA(0, "Failed to initialize engine", "Fatal", 0);
