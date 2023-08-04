@@ -11,7 +11,6 @@
 #include "../engine.h"
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_internal.h"
-#include "../json.h"
 #include "../menu.h"
 #include "../settings.h"
 
@@ -141,7 +140,7 @@ static bool RecvJsonMessage(json &msg) {
     }
 }
 
-static bool SendJsonMessage(json msg) {
+bool Client::SendJsonMessage(json msg) {
     static std::mutex sendMutex;
 
     const auto data = msg.dump();
@@ -184,7 +183,8 @@ static void SendChatInput() {
     if (connected) {
         for (auto c = &chatInput[0]; *c; ++c) {
             if (!isblank(*c)) {
-                SendJsonMessage({
+                Client cli;
+                cli.SendJsonMessage({
                     {"type", "chat"},
                     {"id", client.Id},
                     {"body", chatInput},
@@ -200,7 +200,8 @@ static void SendChatInput() {
 
 static void Disconnect() {
     if (connected) {
-        SendJsonMessage({
+        Client cli;
+        cli.SendJsonMessage({
             {"type", "disconnect"},
             {"id", client.Id},
         });
@@ -289,7 +290,8 @@ static bool Join() {
         }
     }
 
-    if (!SendJsonMessage({
+    Client cli;
+    if (!cli.SendJsonMessage({
             {"type", "connect"},
             {"room", room},
             {"name", client.Name},
@@ -386,6 +388,8 @@ static void ClientListener() {
         });
 
         json msg;
+        Client cli;
+
         while (RecvJsonMessage(msg)) {
             auto msgType = msg["type"];
             if (!msgType.is_string()) {
@@ -690,7 +694,7 @@ static void ClientListener() {
                 players.Mutex.unlock_shared();
             } 
             else if (msgType == "ping") {
-                if (SendJsonMessage({
+                if (cli.SendJsonMessage({
                         {"type", "pong"},
                         {"id", client.Id},
                     })) {
@@ -756,7 +760,7 @@ static void ClientListener() {
                 }
 
                 if (players.List.size() == 0) {
-                    SendJsonMessage({
+                    cli.SendJsonMessage({
                         {"type", "endGameMode"},
                     });
 
@@ -781,7 +785,7 @@ static void ClientListener() {
                         }
                     }
 
-                    SendJsonMessage({
+                    cli.SendJsonMessage({
                         {"type", "announce"},
                         {"body", buffer},
                     });
@@ -856,7 +860,9 @@ static void OnTickTag(float deltaTime) {
 
         if (client.Id != client.TaggedPlayerId) {
             if (pawn->Health <= 0 && playerDiedAndSentJsonMessage == false) {
-                SendJsonMessage({
+
+                Client cli;
+                cli.SendJsonMessage({
                     {"type", "dead"},
                 });
 
@@ -864,7 +870,7 @@ static void OnTickTag(float deltaTime) {
                 sprintf_s(buffer, sizeof(buffer), "[Tag] %s died and they will chase instead",
                           client.Name.c_str());
 
-                SendJsonMessage({
+                cli.SendJsonMessage({
                     {"type", "announce"},
                     {"body", buffer},
                 });
@@ -1140,6 +1146,8 @@ static void MultiplayerTab() {
     ImGui::Text("Status: %s", connected ? "Connected" : disabled ? "Multiplayer Disabled" : "Connecting");
     ImGui::SeperatorWithPadding(2.5f);
 
+    Client cli;
+
     const auto nameInputCallback = []() {
         if (client.Name != nameInput) {
             bool empty = true;
@@ -1156,7 +1164,8 @@ static void MultiplayerTab() {
                 Settings::SetSetting("client", "name", client.Name);
 
                 if (connected) {
-                    SendJsonMessage({
+                    Client cli;
+                    cli.SendJsonMessage({
                         {"type", "name"},
                         {"id", client.Id},
                         {"name", client.Name},
@@ -1194,7 +1203,7 @@ static void MultiplayerTab() {
                 Settings::SetSetting("client", "character", client.Character);
 
                 if (connected) {
-                    SendJsonMessage({
+                    cli.SendJsonMessage({
                         {"type", "character"},
                         {"id", client.Id},
                         {"character", client.Character},
@@ -1351,12 +1360,14 @@ static void TagTab() {
         return;
     }
 
+    Client cli;
+
     if (client.GameMode == GameMode_None) {
         if (ImGui::InputInt("Cooldown##tag-change-cooldown", &tagCooldown, 0, 0,
                             ImGuiInputTextFlags_EnterReturnsTrue)) {
             tagCooldown = client.CoolDownTag = max(1, min(60, tagCooldown));
 
-            SendJsonMessage({
+            cli.SendJsonMessage({
                 {"type", "cooldown"},
                 {"cooldown", client.CoolDownTag},
             });
@@ -1365,7 +1376,7 @@ static void TagTab() {
             sprintf_s(buffer, sizeof(buffer), "[Tag] %s changed the cooldown to be %d second%s",
                       client.Name.c_str(), tagCooldown, tagCooldown != 1 ? "s" : "");
 
-            SendJsonMessage({
+            cli.SendJsonMessage({
                 {"type", "announce"},
                 {"body", buffer},
             });
@@ -1378,14 +1389,14 @@ static void TagTab() {
         ImGui::Dummy(ImVec2(0.0f, 6.0f));
 
         if (ImGui::Button("Start Tag")) {
-            SendJsonMessage({
+            cli.SendJsonMessage({
                 {"type", "startTagGameMode"},
             });
 
             char buffer[0xFF];
             sprintf_s(buffer, sizeof(buffer), "[Tag] %s started tag", client.Name.c_str());
 
-            SendJsonMessage({
+            cli.SendJsonMessage({
                 {"type", "announce"},
                 {"body", buffer},
             });
@@ -1394,14 +1405,14 @@ static void TagTab() {
 
     if (client.GameMode == GameMode_Tag) {
         if (ImGui::Button("End Tag")) {
-            SendJsonMessage({
+            cli.SendJsonMessage({
                 {"type", "endGameMode"},
             });
 
             char buffer[0xFF];
             sprintf_s(buffer, sizeof(buffer), "[Tag] %s ended tag", client.Name.c_str());
 
-            SendJsonMessage({
+            cli.SendJsonMessage({
                 {"type", "announce"},
                 {"body", buffer},
             });
@@ -1524,7 +1535,9 @@ bool Client::Initialize() {
         }
 
         if (connected) {
-            SendJsonMessage({
+
+            Client cli;
+            cli.SendJsonMessage({
                 {"type", "level"},
                 {"id", client.Id},
                 {"level", client.Level},

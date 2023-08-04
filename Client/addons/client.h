@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <vector>
 #include "../engine.h"
+#include "../json.h"
 
 static int CompressedBoneOffsets[] = {
     0x14,  0x20,  0x24,  0x28,  0x2C,  0x30,  0x34,  0x38,  0x40,  0x44,  0x48,
@@ -75,6 +76,8 @@ class Client : public Addon {
         unsigned int TaggedPlayerId;
         unsigned int CoolDownTag = 5;
     };
+
+    bool SendJsonMessage(json msg);
 
     static std::vector<Client::Player *> GetPlayerList();
 };
