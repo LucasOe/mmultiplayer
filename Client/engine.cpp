@@ -741,12 +741,15 @@ Classes::ATdSPTimeTrialGame *Engine::GetTimeTrialGame(bool update) {
         auto world = GetWorld(update);
 
         if (world) {
-            auto timetrial = static_cast<Classes::ATdSPTimeTrialGame *>(world->Game);
+            std::string game = world->Game->GetName();
 
-            if (timetrial->IsA(Classes::ATdSPTimeTrialGame::StaticClass())) {
-                cache = timetrial;
+            if (game.find("TdSPTimeTrialGame") == -1) {
+                cache = nullptr;
                 return cache;
             }
+
+            cache = static_cast<Classes::ATdSPTimeTrialGame *>(world->Game);
+            return cache;
         }
     }
 
@@ -764,12 +767,15 @@ Classes::ATdSPLevelRace *Engine::GetLevelRace(bool update) {
         auto world = GetWorld(update);
 
         if (world) {
-            auto levelrace = static_cast<Classes::ATdSPLevelRace *>(world->Game);
+            std::string game = world->Game->GetName();
 
-            if (levelrace->IsA(Classes::ATdSPLevelRace::StaticClass())) {
-                cache = levelrace;
+            if (game.find("TdSPLevelRace") == -1) {
+                cache = nullptr;
                 return cache;
             }
+
+            cache = static_cast<Classes::ATdSPLevelRace *>(world->Game);
+            return cache;
         }
     }
 
