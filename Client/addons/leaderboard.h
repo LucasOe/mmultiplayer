@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include "../addon.h"
 
 class Leaderboard : public Addon {
@@ -78,3 +79,15 @@ class Checkpoint {
             numPassedCheckpoints == accumulatedIntermediateTimes.size();
     }
 };
+
+typedef struct {
+    float avgspeed;
+    float topspeed;
+    bool timedCheckpoint;
+    float intermediateDistance;
+    float accumulatedIntermediateDistance;
+    float intermediateTime;
+    float accumulatedIntermediateTime;
+    float intermediateRealTime;
+    float accumulatedIntermediateRealTime;
+} Checkpoint2;
