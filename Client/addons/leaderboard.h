@@ -49,37 +49,6 @@ class Leaderboard : public Addon {
     std::string GetName();
 };
 
-class Checkpoint {
-  public:
-    std::vector<float> avgspeed;
-    std::vector<float> topspeed;
-    std::vector<bool> timedCheckpoint;
-    std::vector<float> intermediateDistances;
-    std::vector<float> accumulatedIntermediateDistances;
-    std::vector<float> intermediateTimes;
-    std::vector<float> accumulatedIntermediateTimes;
-
-    void Clear() {
-        avgspeed.clear();
-        topspeed.clear();
-        timedCheckpoint.clear();
-        intermediateDistances.clear();
-        accumulatedIntermediateDistances.clear();
-        intermediateTimes.clear();
-        accumulatedIntermediateTimes.clear();
-    }
-
-    bool IsValid(int numPassedCheckpoints) {
-        return numPassedCheckpoints == avgspeed.size() && 
-            numPassedCheckpoints == topspeed.size() &&
-            numPassedCheckpoints == timedCheckpoint.size() &&
-            numPassedCheckpoints == intermediateDistances.size() &&
-            numPassedCheckpoints == accumulatedIntermediateDistances.size() &&
-            numPassedCheckpoints == intermediateTimes.size() &&
-            numPassedCheckpoints == accumulatedIntermediateTimes.size();
-    }
-};
-
 typedef struct {
     float avgspeed;
     float topspeed;
@@ -90,4 +59,5 @@ typedef struct {
     float accumulatedIntermediateTime;
     float intermediateRealTime;
     float accumulatedIntermediateRealTime;
-} Checkpoint2;
+    int respawnCount;
+} Checkpoint;
