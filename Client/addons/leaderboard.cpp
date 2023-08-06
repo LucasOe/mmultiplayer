@@ -3,7 +3,6 @@
 
 #include <codecvt>
 #include <algorithm>
-#include <chrono>
 
 #include "../engine.h"
 #include "../imgui/imgui.h"
@@ -25,11 +24,14 @@ static Leaderboard::Speedrun oldSpeedrun;
 static Leaderboard::Pawn oldPawn;
 static Leaderboard::Controller oldController;
 
-static Checkpoint checkpoints;
+static std::vector<Checkpoint2> checkpoints;
 static float checkpointTopSpeed = 0.0f;
-static float previousDistance = 0.0f;
-static float previousTime = 0.0f;
+static float checkpointPreviousDistance = 0.0f;
+static float checkpointPreviousTime = 0.0f;
+static float checkpointPreviousRealTime = 0.0f;
+static float raceStartRealTimeSeconds = 0.0f;
 
+// Timestamps in unix time. These are used to know if the run was started properly or not
 static std::chrono::milliseconds startTimestamp = std::chrono::milliseconds(0);
 static std::chrono::milliseconds endTimestamp = std::chrono::milliseconds(0);
 
@@ -74,10 +76,14 @@ static void Save(Classes::ATdPlayerPawn* pawn, Classes::ATdPlayerController* con
 }
 
 static void ResetValues() {
-    checkpoints.Clear();
+    checkpoints.clear();
+    checkpoints.shrink_to_fit();
+
     checkpointTopSpeed = 0.0f;
-    previousTime = 0.0f;
-    previousDistance = 0.0f;
+    checkpointPreviousTime = 0.0f;
+    checkpointPreviousDistance = 0.0f;
+    checkpointPreviousRealTime = 0.0f;
+    raceStartRealTimeSeconds = 0.0f;
 
     reactionTimeUses = 0;
     playerDeaths = 0;
@@ -125,6 +131,8 @@ static void SendJsonData(json jsonData) {
     jsonData.push_back({"StartTimestamp", startTimestamp.count()});
     jsonData.push_back({"EndTimestamp", endTimestamp.count()});
 
+    printf("%s\n", jsonData.dump().c_str());
+
     Client client;
     client.SendJsonMessage({
         {"type", "post"},
@@ -138,7 +146,7 @@ static std::chrono::milliseconds GetTimeInMillisecondsSinceEpoch() {
 
 static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial, float deltaTime) {
     if (timetrial->RaceCountDownTimer == timetrial->RaceCountDownTime + 1 && timetrial->RaceCountDownTimer != oldTimeTrial.RaceCountDownTimer) {
-        printf("timetrial: countdown starting\n");
+        printf("timetrial: countdown started\n");
 
         // TODO: Find a way to reset the world's time seconds without side effects
         // * The characters mesh gets messed up if you use world->TimeSeconds = 0.0f
@@ -146,9 +154,11 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial, float deltaT
         ResetValues();
     }
 
-    if (timetrial->RaceStartTimeStamp != oldTimeTrial.RaceStartTimeStamp && timetrial->RaceStartTimeStamp != -1) {
+    if (timetrial->RaceCountDownTimer == 0 && timetrial->RaceCountDownTimer != oldTimeTrial.RaceCountDownTimer && timetrial->RaceStartTimeStamp != oldTimeTrial.RaceStartTimeStamp && timetrial->RaceStartTimeStamp != -1) {
         printf("timetrial: timetrial started\n");
+
         startTimestamp = GetTimeInMillisecondsSinceEpoch();
+        raceStartRealTimeSeconds = timetrial->WorldInfo->RealTimeSeconds;
     }
 
     if (timetrial->CurrentTimeData.TotalTime == 0.0f && timetrial->RacingPawn->MovementState != Classes::EMovement::MOVE_FallingUncontrolled) {
@@ -165,55 +175,103 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial, float deltaT
     }
 
     if (timetrial->NumPassedCheckPoints > oldTimeTrial.NumPassedCheckPoints) {
-        const float distance = (timetrial->PlayerDistance / (timetrial->NumPassedCheckPoints == oldTimeTrial.NumCheckPoints ? 1 : 100)) - previousDistance;
-        const float time = (timetrial->WorldInfo->TimeSeconds - timetrial->RaceStartTimeStamp) - previousTime;
-        const float avgspeed = (distance / time) * 3.6;
+        const float distance = (timetrial->PlayerDistance / (timetrial->NumPassedCheckPoints == oldTimeTrial.NumCheckPoints ? 1 : 100)) - checkpointPreviousDistance;
+        const float time = timetrial->WorldInfo->TimeSeconds - timetrial->RaceStartTimeStamp - checkpointPreviousTime;
+        const float avgspeed = (distance / time) * 3.6f;
+        const float realtime = timetrial->WorldInfo->RealTimeSeconds - raceStartRealTimeSeconds - checkpointPreviousRealTime;
         
-        checkpoints.avgspeed.push_back(avgspeed);
-        checkpoints.topspeed.push_back(checkpointTopSpeed);
-        checkpoints.timedCheckpoint.push_back(timetrial->NumPassedTimerCheckPoints > oldTimeTrial.NumPassedTimerCheckPoints);
-        checkpoints.intermediateDistances.push_back(distance);
-        checkpoints.accumulatedIntermediateDistances.push_back(distance + previousDistance);
-        checkpoints.intermediateTimes.push_back(time);
-        checkpoints.accumulatedIntermediateTimes.push_back(time + previousTime);
+        Checkpoint2 chp;
+        chp.avgspeed = avgspeed;
+        chp.topspeed = checkpointTopSpeed;
+        chp.timedCheckpoint = timetrial->NumPassedTimerCheckPoints > oldTimeTrial.NumPassedTimerCheckPoints;
+        chp.intermediateDistance = distance;
+        chp.accumulatedIntermediateDistance = distance + checkpointPreviousDistance;
+        chp.intermediateTime = time;
+        chp.accumulatedIntermediateTime = time + checkpointPreviousTime;
+        chp.intermediateRealTime = realtime;
+        chp.accumulatedIntermediateRealTime = realtime + checkpointPreviousRealTime;
+
+        checkpoints.push_back(chp);
 
         checkpointTopSpeed = 0.0f;
-        previousTime = time + previousTime;
-        previousDistance = distance + previousDistance;
+        checkpointPreviousTime = time + checkpointPreviousTime;
+        checkpointPreviousDistance = distance + checkpointPreviousDistance;
+        checkpointPreviousRealTime = realtime + checkpointPreviousRealTime;
     }
 
     if (timetrial->NumPassedCheckPoints == oldTimeTrial.NumCheckPoints && timetrial->NumPassedCheckPoints > oldTimeTrial.NumPassedCheckPoints) {
         printf("timetrial: timetrial finished\n");
         endTimestamp = GetTimeInMillisecondsSinceEpoch();
 
-        if (!checkpoints.IsValid(timetrial->NumPassedCheckPoints) || startTimestamp == std::chrono::milliseconds(0)) {
+        if (checkpoints.size() != timetrial->NumPassedCheckPoints || startTimestamp == std::chrono::milliseconds(0)) {
             printf("timetrial: invalid data!\n");
             return;
         }
 
-        json jsonTrackData;
+        json jsonIntermediateDistances;
         json jsonCheckpoints;
+        json jsonCheckpointData;
 
         for (int i = 0; i < timetrial->NumCheckPoints; i++) {
-            json jsonData = {
-                {"AvgSpeed", checkpoints.avgspeed[i]},
-                {"TopSpeed", checkpoints.topspeed[i]},
-                {"TimedCheckpoint", checkpoints.timedCheckpoint[i] == true ? "true" : "false"},
-                {"IntermediateDistances", checkpoints.intermediateDistances[i]},
-                {"AccumulatedIntermediateDistances", checkpoints.accumulatedIntermediateDistances[i]},
-                {"IntermediateTimes", checkpoints.intermediateTimes[i]},
-                {"AccumulatedIntermediateTimes", checkpoints.accumulatedIntermediateTimes[i]}
-            };
+            jsonCheckpoints.push_back({
+                {"AvgSpeed", checkpoints[i].avgspeed},
+                {"TopSpeed", checkpoints[i].topspeed},
+                {"TimedCheckpoint", checkpoints[i].timedCheckpoint == true ? "true" : "false"},
+                {"IntermediateDistance", checkpoints[i].intermediateDistance},
+                {"AccumulatedIntermediateDistance", checkpoints[i].accumulatedIntermediateDistance},
+                {"IntermediateTime", checkpoints[i].intermediateTime},
+                {"AccumulatedIntermediateTime", checkpoints[i].accumulatedIntermediateTime},
+                {"IntermediateRealTime", checkpoints[i].intermediateRealTime},
+                {"AccumulatedIntermediateRealTime", checkpoints[i].accumulatedIntermediateRealTime}
+            });
 
-            jsonCheckpoints.push_back(jsonData);
+			jsonIntermediateDistances.push_back(timetrial->CurrentTackData.IntermediateDistance[i] / 100.0f);
         }
 
-        for (size_t i = 0; i < timetrial->CurrentTackData.IntermediateDistance.Num(); i++) {
-			jsonTrackData.push_back(timetrial->CurrentTackData.IntermediateDistance[i] / 100.0f);
-		}
+        for (int i = 0; i < timetrial->NumPassedCheckPoints; i++) {
+            const auto track = static_cast<Classes::ATdTimerCheckpoint*>(timetrial->CheckpointManager->ActiveTrack[i]);
+
+            json jsonBelongToTracks;
+
+            for (size_t j = 0; j < track->BelongToTracks.Num(); j++) {
+			    jsonBelongToTracks.push_back({
+                    {"TrackIndex", track->BelongToTracks[j].TrackIndex.GetValue()},
+                    {"OrderIndex", track->BelongToTracks[j].OrderIndex},
+                    {"bNoIntermediateTime", track->BelongToTracks[j].bNoIntermediateTime == true ? "true" : "false"},
+                    {"bLastCheckpoint", track->BelongToTracks[j].bLastCheckpoint == true ? "true" : "false"}
+                });
+		    }
+
+            jsonCheckpointData.push_back({
+                // UObject
+                {"FullName", track->GetFullName()},
+
+                // AActor
+                {"X", track->Location.X},
+                {"Y", track->Location.Y},
+                {"Z", track->Location.Z},
+                {"Pitch", track->Rotation.Pitch},
+                {"Yaw", track->Rotation.Yaw},
+                {"Roll", track->Rotation.Roll},
+
+                // ATdTimerCheckpoint
+                {"BelongToTracks", jsonBelongToTracks},
+                {"CustomHeight", track->CustomHeight},
+                {"CustomWidthScale", track->CustomWidthScale},
+                {"bNoRespawn", track->bNoRespawn == true ? "true" : "false"},
+                {"InitialHeight", track->InitialHeight},
+                {"InitialRadius", track->InitialRadius},
+
+                // ATdPlaceableCheckpoint
+                {"bShouldBeBased", track->bShouldBeBased == true ? "true" : "false"},
+            });
+        }
 
         json jsonData = {
+            // The current map name in lower case
             {"MapName", levelName},
+
+            // Timetrial data
             {"ActiveTTStretch", timetrial->ActiveTTStretch.GetValue()},
             {"QualifyingTime", timetrial->QualifyingTime},
             {"StarRatingTimes", {
@@ -221,15 +279,20 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial, float deltaT
                 {"2", timetrial->StarRatingTimes[1]},
                 {"1", timetrial->StarRatingTimes[2]}}
             },
+            {"TotalTime", timetrial->CurrentTimeData.TotalTime},
+            {"PlayerDistance", timetrial->PlayerDistance},
+            {"AvgSpeed", (timetrial->PlayerDistance / timetrial->CurrentTimeData.TotalTime) * 3.6f},
+
+            // Custom data
+            {"CheckpointData", jsonCheckpoints},
+            {"TopSpeed", overallTopSpeed},
+
+            // These are sent in order to verify that the run is valid
             {"TrackData", {
                 {"TotalDistance", timetrial->CurrentTackData.TotalDistance / 100.0f},
-                {"IntermediateDistance", jsonTrackData}}
-            },
-            {"TotalTime", timetrial->CurrentTimeData.TotalTime},
-            {"Distance", timetrial->PlayerDistance},
-            {"AvgSpeed", (timetrial->PlayerDistance / timetrial->CurrentTimeData.TotalTime) * 3.6f},
-            {"TopSpeed", overallTopSpeed},
-            {"CheckpointData", jsonCheckpoints}
+                {"IntermediateDistances", jsonIntermediateDistances},
+                {"CheckpointData", jsonCheckpointData}}
+            }
         };
 
         SendJsonData(jsonData);
