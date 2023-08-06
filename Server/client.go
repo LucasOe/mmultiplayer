@@ -255,30 +255,28 @@ func (client *Client) sendPostDataMsg(msg map[string]interface{}) {
 
 	json, ok := msg["body"].(string)
 	if !ok {
-		log.Printf("Error: %v", json)
+		log.Printf("Error: %s", json)
 		return
 	}
 
-	requestURL := "secret url" + url.QueryEscape(json)
+	url := "secret url" + url.QueryEscape(json)
+	log.Printf("%s", url)
 
-	req, err := http.NewRequest("POST", requestURL, nil)
+	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
-		log.Printf("Error: %v", err)
+		log.Printf("Error: %s", err)
 		return
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 
-	cli := &http.Client{}
-
-	resp, err := cli.Do(req)
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Printf("Error: %v", err)
+		log.Printf("Error: %s", err)
 		return
 	}
 
-	defer resp.Body.Close()
-
+	defer res.Body.Close()
 	log.Printf("data sent")
 }
 
