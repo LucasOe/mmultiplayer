@@ -253,16 +253,25 @@ func (client *Client) sendPostDataMsg(msg map[string]interface{}) {
 	client.rwMu.Lock()
 	defer client.rwMu.Unlock()
 
-	json, ok := msg["body"].(string)
+	jsonString, ok := msg["body"].(string)
 	if !ok {
-		log.Printf("Error: %s", json)
+		log.Printf("Error: %s", jsonString)
 		return
 	}
 
-	url := "secret url" + url.QueryEscape(json)
-	log.Printf("%s", url)
+	leaderboardURL, err := url.Parse("secret-url")
+	if err != nil {
+		log.Printf("Error: %s", err)
+		return
+	}
 
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	query := leaderboardURL.Query()
+	query.Add("data", url.QueryEscape(jsonString))
+	leaderboardURL.RawQuery = query.Encode()
+	leaderboardURLStr := leaderboardURL.String()
+	log.Printf("%s", leaderboardURLStr)
+
+	req, err := http.NewRequest(http.MethodPost, leaderboardURLStr, nil)
 	if err != nil {
 		log.Printf("Error: %s", err)
 		return
@@ -275,9 +284,9 @@ func (client *Client) sendPostDataMsg(msg map[string]interface{}) {
 		log.Printf("Error: %s", err)
 		return
 	}
-
 	defer res.Body.Close()
-	log.Printf("data sent")
+
+	log.Printf("data sent - response code: %d", res.StatusCode)
 }
 
 func getTimeDurationSecondsField(obj map[string]interface{}, field string) (time.Duration, bool) {
