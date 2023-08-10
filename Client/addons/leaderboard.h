@@ -5,59 +5,72 @@
 
 class Leaderboard : public Addon {
   public:
+    class Old {
+      public:
+        typedef struct {
+            int RaceFinishLineTime;
+            float RaceFinishLineTimer;
+            int RaceCountDownTime;
+            int RaceCountDownTimer;
+            int NumCheckPoints;
+            int NumPassedCheckPoints;
+            int NumPassedTimerCheckPoints;
+            float LastCheckpointTimeStamp;
+            float LastPlayerResetTime;
+            Classes::TEnumAsByte<Classes::ETTStretch> ActiveTTStretch;
+            float QualifyingTime;
+            float StarRatingTimes[0x3];
+            Classes::FTrackData CurrentTackData;
+            Classes::FTimeData CurrentTimeData;
+            Classes::FTimeData TimeDataToBeat;
+            float RaceStartTimeStamp;
+            float RaceEndTimeStamp;
+            float PlayerDistance;
+        } TimeTrial;
 
-    typedef struct {
-        int RaceFinishLineTime;                                     // 0x3AC (0x4)
-        float RaceFinishLineTimer;                                  // 0x3B4 (0x4)
-        int RaceCountDownTime;                                      // 0x3B8 (0x4)
-        int RaceCountDownTimer;                                     // 0x3BC (0x4)
-        int NumCheckPoints;                                         // 0x3D0 (0x4)
-        int NumPassedCheckPoints;                                   // 0x3D4 (0x4)
-        int NumPassedTimerCheckPoints;                              // 0x3D8 (0x4)
-        float LastCheckpointTimeStamp;                              // 0x3DC (0x4)
-        float LastPlayerResetTime;                                  // 0x3F4 (0x4)
-        Classes::TEnumAsByte<Classes::ETTStretch> ActiveTTStretch;  // 0x3F9 (0x1)
-        float QualifyingTime;                                       // 0x404 (0x4)
-        float StarRatingTimes[0x3];                                 // 0x408 (0x4)
-        Classes::FTrackData CurrentTackData;                        // 0x414 (0x10)
-        Classes::FTimeData CurrentTimeData;                         // 0x424 (0x1C)
-        Classes::FTimeData TimeDataToBeat;                          // 0x440 (0x1C)
-        float RaceStartTimeStamp;                                   // 0x45C (0x4)
-        float RaceEndTimeStamp;                                     // 0x460 (0x4)
-        float PlayerDistance;                                       // 0x464 (0x4)
-    } TimeTrial;
+        typedef struct {
+            unsigned long bRaceOver;
+            float TimeAttackClock;
+            float TimeAttackDistance;
+            int ActiveCheckpointWeight;
+        } Speedrun;
 
-    typedef struct {
-        unsigned long bRaceOver;                                    // 0x3C8 (0x4)
+        typedef struct {
+            int Health;
+            unsigned long bSRPauseTimer;
+        } Pawn;
 
-        // These can be found in TdGameData; 0x368 (0x4)
-        float TimeAttackClock;                                      // 0x114 (0x4)
-        float TimeAttackDistance;                                   // 0x118 (0x4)
-    } Speedrun;
-
-    typedef struct {
-        int Health;                                                 // 0x2B8 (0x4)
-        unsigned long bSRPauseTimer;                                // 0x41C (0x4)
-    } Pawn;
-
-    typedef struct {
-        unsigned long bReactionTime;                                // 0x52C (0x4)
-        float ReactionTimeEnergy;                                   // 0x5A8 (0x4)
-    } Controller;
+        typedef struct {
+            unsigned long bReactionTime;
+            float ReactionTimeEnergy;
+        } Controller;
+    };
 
     bool Initialize();
     std::string GetName();
 };
 
 typedef struct {
+    float worldTimeSeconds;
+    float worldRealTimeSeconds;
+    float time;
     float avgspeed;
     float topspeed;
+    float distance;
+    float intermediateDistance;
+    float intermediateTime;
+    int checkpointWeight;
+    std::chrono::milliseconds unixTime;
+} Info;
+
+typedef struct {
+    float avgspeed;
+    Info topSpeedInfo;
     bool timedCheckpoint;
     float intermediateDistance;
     float accumulatedIntermediateDistance;
     float intermediateTime;
     float accumulatedIntermediateTime;
-    float intermediateRealTime;
-    float accumulatedIntermediateRealTime;
-    int respawnCount;
-} Checkpoint;
+    std::vector<Info> respawnInfo;
+    std::chrono::milliseconds checkpointTouchedUnixTime;
+} TimeTrialInfo;
