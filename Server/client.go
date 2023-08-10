@@ -1,13 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"log"
 	"math"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -259,34 +259,14 @@ func (client *Client) sendPostDataMsg(msg map[string]interface{}) {
 		return
 	}
 
-	leaderboardURL, err := url.Parse("secret-url")
+	post, err := http.DefaultClient.Post("secret :)", "application/json", bytes.NewBuffer([]byte(jsonString)))
 	if err != nil {
 		log.Printf("Error: %s", err)
 		return
 	}
+	defer post.Body.Close()
 
-	query := leaderboardURL.Query()
-	query.Add("data", url.QueryEscape(jsonString))
-	leaderboardURL.RawQuery = query.Encode()
-	leaderboardURLStr := leaderboardURL.String()
-	log.Printf("%s", leaderboardURLStr)
-
-	req, err := http.NewRequest(http.MethodPost, leaderboardURLStr, nil)
-	if err != nil {
-		log.Printf("Error: %s", err)
-		return
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Printf("Error: %s", err)
-		return
-	}
-	defer res.Body.Close()
-
-	log.Printf("data sent - response code: %d", res.StatusCode)
+	log.Printf("data sent - response code: %d", post.StatusCode)
 }
 
 func getTimeDurationSecondsField(obj map[string]interface{}, field string) (time.Duration, bool) {
