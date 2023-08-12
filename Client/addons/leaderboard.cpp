@@ -126,10 +126,7 @@ static void LeaderboardTab() {
                 }
             }
 
-            if (!empty) {
-                playerName = nameInput;
-                Settings::SetSetting("race", "playerName", playerName);
-            }
+            Settings::SetSetting("race", "playerName", playerName = (!empty ? nameInput : ""));
         }
     }
 
@@ -138,7 +135,7 @@ static void LeaderboardTab() {
     if (!playerName.empty() && submitRun) {
         ImGui::Text("Your runs that you finish will be uploaded to a server");
     } else {
-        ImGui::Text("Your runs that you finish will NOT be uploaded to a server!");
+        ImGui::Text("Your runs that you finish will >> NOT << be uploaded to a server");
         if (playerName.empty()){
             ImGui::Text("- The name can't be empty!");
         } else {
@@ -153,6 +150,8 @@ static void SendJsonData(json jsonData) {
     jsonData.push_back({"EndTimeStampUnix", endTimeStampUnix.count()});
 
     if (submitRun) {
+        printf("data sent\n\n");
+
         Client client;
         client.SendJsonMessage({
             {"type", "post"},
@@ -172,7 +171,7 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial, const float 
     const float time = timetrial->WorldInfo->TimeSeconds - (timetrial->RaceStartTimeStamp != -1 ? timetrial->RaceStartTimeStamp : 0.0f) - timeTrialCheckpointPreviousTime;
     const float speed = timetrial->RacingPawn ? sqrtf(powf(timetrial->RacingPawn->Velocity.X, 2) + powf(timetrial->RacingPawn->Velocity.Y, 2)) * CMS_TO_KPH : 0.0f;
 
-    // Info about the current tick
+    // Info about the current tick such as time, avgspeed, and etc
     Info info;
     info.time = time + timeTrialCheckpointPreviousTime;
     info.distance = distance + timeTrialCheckpointPreviousDistance;
@@ -183,15 +182,18 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial, const float 
     info.unixTime = GetTimeInMillisecondsSinceEpoch();
 
     // Time Trial Countdown
-    if (timetrial->RaceCountDownTimer == timetrial->RaceCountDownTime + 1 && timetrial->RaceCountDownTimer != oldTimeTrial.RaceCountDownTimer) {
+    if (timetrial->LastPlayerResetTime == timetrial->WorldInfo->TimeSeconds) {
         // TODO: Find a way to reset the world's time seconds without side effects
         // The characters mesh gets messed up if you use world->TimeSeconds = 0.0f
 
+        printf("timetrial: countdown started\n");
         ResetValues();
     }
 
     // Time Trial Started
-    if (timetrial->RaceCountDownTimer == 0 && timetrial->RaceCountDownTimer != oldTimeTrial.RaceCountDownTimer && timetrial->RaceStartTimeStamp != oldTimeTrial.RaceStartTimeStamp && timetrial->RaceStartTimeStamp != -1) {
+    if (timetrial->RaceCountDownTimer == 0 && time == 0.0f && distance == 0.0f) {
+        printf("timetrial: race started\n");
+
         startTimeStampUnix = info.unixTime;
         timeTrialRealTimeStarted = timetrial->WorldInfo->RealTimeSeconds;
     }
@@ -205,11 +207,14 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial, const float 
 
     // Respawn
     if (timetrial->RaceCountDownTimer == 0 && timetrial->CurrentTimeData.TotalTime == 0.0f && timetrial->LastPlayerResetTime != oldTimeTrial.LastPlayerResetTime) {
+        printf("timetrial: player respawned\n");
         timeTrialCheckpointRespawnInfo.push_back(info);
     }
 
     // Time Trial Checkpoint Touched
     if (timetrial->NumPassedCheckPoints > oldTimeTrial.NumPassedCheckPoints) {
+        printf("timetrial: checkpoint touched (%d/%d)\n", timetrial->NumPassedCheckPoints, timetrial->NumCheckPoints);
+
         TimeTrialInfo ttInfo;
         ttInfo.avgspeed = (distance / time) * MS_TO_KPH;
         ttInfo.topSpeedInfo = timeTrialCheckpointTopSpeedInfo;
@@ -230,9 +235,14 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial, const float 
 
     // Time Trial Finish
     if (timetrial->NumPassedCheckPoints == oldTimeTrial.NumCheckPoints && timetrial->NumPassedCheckPoints > oldTimeTrial.NumPassedCheckPoints) {
+        printf("timetrial: race finished\n");
         endTimeStampUnix = info.unixTime;
 
         if (timeTrialCheckpointInfo.size() != timetrial->NumPassedCheckPoints || startTimeStampUnix == std::chrono::milliseconds(0)) {
+            printf("timetrial: invalid data!\n");
+            printf("- timeTrialCheckpointInfo.size(): %d\n", timeTrialCheckpointInfo.size());
+            printf("- timetrial->NumPassedCheckPoints: %d\n", timetrial->NumPassedCheckPoints);
+            printf("- startTimeStampUnix: %lld\n\n", startTimeStampUnix.count());
             return;
         }
 
@@ -357,7 +367,7 @@ static void OnTickSpeedRun(Classes::ATdSPLevelRace* speedrun, const float deltaT
     const auto checkpointManager = speedrun->TdGameData->CheckpointManager;
     const bool isTimerAtZero = speedrun->TdGameData->TimeAttackClock == 0.0f && pawn->WorldInfo->RealTimeSeconds == 0.0f;
     
-    // Info about the current tick
+    // Info about the current tick such as time, avgspeed, and etc
     Info info;
     info.time = speedrun->TdGameData->TimeAttackClock;
     info.distance = speedrun->TdGameData->TimeAttackDistance;
@@ -365,16 +375,19 @@ static void OnTickSpeedRun(Classes::ATdSPLevelRace* speedrun, const float deltaT
     info.topspeed = topSpeed;
     info.worldTimeSeconds = speedrun->WorldInfo->TimeSeconds;
     info.worldRealTimeSeconds = speedrun->WorldInfo->RealTimeSeconds;
-    info.checkpointWeight = speedrun->TdGameData->CheckpointManager->ActiveCheckpointWeight;
+    info.checkpointWeight = checkpointManager->ActiveCheckpointWeight;
     info.unixTime = GetTimeInMillisecondsSinceEpoch();
 
     // Speedrun Restarted Using Binding
     if (isTimerAtZero && speedrun->TdGameData->TimeAttackDistance != 0.0f) {
+        printf("speedrun: \"TimeAttackDistance\" is not 0.0f! Setting it to 0.0f. Resetlevel binding used.\n");
         speedrun->TdGameData->TimeAttackDistance = 0.0f;
     }
 
     // Speedrun Start
     if (isTimerAtZero && speedrun->TdGameData->TimeAttackDistance == 0.0f) {
+        printf("speedrun: race started\n");
+
         ResetValues();
         startTimeStampUnix = info.unixTime;
     }
@@ -390,25 +403,33 @@ static void OnTickSpeedRun(Classes::ATdSPLevelRace* speedrun, const float deltaT
 
     // Reactiontime
     if (controller->bReactionTime && controller->bReactionTime != oldController.bReactionTime && !speedrun->bRaceOver) {
+        printf("speedrun: reactiontime used\n");
         speedrunReactionTimeInfo.push_back(info);
     }
 
     // Health
     if (pawn->Health <= 0 && pawn->Health != oldPawn.Health) {
+        printf("speedrun: player died\n");
         speedrunPlayerDeathsInfo.push_back(info);
     }
 
     // Speedrun Checkpoint Touched
-    if (checkpointManager->ActiveCheckpointWeight > oldSpeedrun.ActiveCheckpointWeight && speedrun->TdGameData->CheckpointManager->ActiveCheckpointWeight != 0) {
+    if (checkpointManager->ActiveCheckpointWeight > oldSpeedrun.ActiveCheckpointWeight && checkpointManager->ActiveCheckpointWeight != 0) {
+        printf("speedrun: checkpoint touched (weight: %d)\n", checkpointManager->ActiveCheckpointWeight);
+
         topSpeed = 0.0f;
         speedrunCheckpointInfo.push_back(info);
     }
 
     // Speedrun Finish
     if (speedrun->bRaceOver && speedrun->bRaceOver != oldSpeedrun.bRaceOver) {
+        printf("speedrun: race finished\n");
+
         endTimeStampUnix = info.unixTime;
 
         if (startTimeStampUnix == std::chrono::milliseconds(0)) {
+            printf("speedrun: invalid data!\n");
+            printf("- startTimeStampUnix: %lld\n\n", startTimeStampUnix.count());
             return;
         }
 
