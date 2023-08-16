@@ -3,9 +3,11 @@
 #include <chrono>
 #include "../addon.h"
 
-class Leaderboard : public Addon {
+class Leaderboard : public Addon 
+{
   public:
-    class Old {
+    class Old 
+    {
       public:
         typedef struct {
             int RaceFinishLineTime;
@@ -17,6 +19,7 @@ class Leaderboard : public Addon {
             int NumPassedTimerCheckPoints;
             float LastCheckpointTimeStamp;
             float LastPlayerResetTime;
+            unsigned char bDelayPauseUntilRaceStarted;
             Classes::TEnumAsByte<Classes::ETTStretch> ActiveTTStretch;
             float QualifyingTime;
             float StarRatingTimes[0x3];
@@ -36,6 +39,7 @@ class Leaderboard : public Addon {
         } Speedrun;
 
         typedef struct {
+            Classes::FVector Location;
             int Health;
             unsigned long bSRPauseTimer;
         } Pawn;
@@ -51,26 +55,31 @@ class Leaderboard : public Addon {
 };
 
 typedef struct {
-    float worldTimeSeconds;
-    float worldRealTimeSeconds;
-    float time;
-    float avgspeed;
-    float topspeed;
-    float distance;
-    float intermediateDistance;
-    float intermediateTime;
-    int checkpointWeight;
-    std::chrono::milliseconds unixTime;
-} Info;
+    float Time;
+    float Distance;
+    float AvgSpeed;
+    float TopSpeed;
+    float IntermediateTime;
+    float IntermediateDistance;
+    float WorldTimeSeconds;
+    float WorldRealTimeSeconds;
+    int CheckpointWeight;
+
+    Classes::FVector Location;
+    std::chrono::milliseconds UnixTime;
+} InfoStruct;
 
 typedef struct {
-    float avgspeed;
-    Info topSpeedInfo;
-    bool timedCheckpoint;
-    float intermediateDistance;
-    float accumulatedIntermediateDistance;
-    float intermediateTime;
-    float accumulatedIntermediateTime;
-    std::vector<Info> respawnInfo;
-    std::chrono::milliseconds checkpointTouchedUnixTime;
-} TimeTrialInfo;
+    float AvgSpeed;
+    bool TimedCheckpoint;
+    float IntermediateTime;
+    float AccumulatedIntermediateTime;
+    float IntermediateDistance;
+    float AccumulatedIntermediateDistance;
+
+    std::vector<InfoStruct> RespawnInfo;
+    InfoStruct TopSpeedInfo;
+    Classes::FVector Location;
+    std::chrono::milliseconds UnixTime;
+} TimeTrialInfoStruct;
+
