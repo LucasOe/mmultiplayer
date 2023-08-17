@@ -6,53 +6,48 @@
 class Leaderboard : public Addon 
 {
   public:
-    class Old 
-    {
-      public:
-        typedef struct {
-            int RaceFinishLineTime;
-            float RaceFinishLineTimer;
-            int RaceCountDownTime;
-            int RaceCountDownTimer;
-            int NumCheckPoints;
-            int NumPassedCheckPoints;
-            int NumPassedTimerCheckPoints;
-            float LastCheckpointTimeStamp;
-            float LastPlayerResetTime;
-            unsigned char bDelayPauseUntilRaceStarted;
-            Classes::TEnumAsByte<Classes::ETTStretch> ActiveTTStretch;
-            float QualifyingTime;
-            float StarRatingTimes[0x3];
-            Classes::FTrackData CurrentTackData;
-            Classes::FTimeData CurrentTimeData;
-            Classes::FTimeData TimeDataToBeat;
-            float RaceStartTimeStamp;
-            float RaceEndTimeStamp;
-            float PlayerDistance;
-        } TimeTrial;
-
-        typedef struct {
-            unsigned long bRaceOver;
-            float TimeAttackClock;
-            float TimeAttackDistance;
-            int ActiveCheckpointWeight;
-        } Speedrun;
-
-        typedef struct {
-            Classes::FVector Location;
-            int Health;
-            unsigned long bSRPauseTimer;
-        } Pawn;
-
-        typedef struct {
-            unsigned long bReactionTime;
-            float ReactionTimeEnergy;
-        } Controller;
-    };
-
     bool Initialize();
     std::string GetName();
 };
+
+typedef struct
+{
+    // ATdPlayerPawn
+    Classes::FVector Location;
+    int Health;
+    unsigned long bSRPauseTimer;
+
+    // ATdPlayerController
+    unsigned long bReactionTime;
+    float ReactionTimeEnergy;
+
+    // ATdSPLevelRace
+    unsigned long bRaceOver;
+    float TimeAttackClock;
+    float TimeAttackDistance;
+    int ActiveCheckpointWeight;
+
+    // ATdSPTimeTrialGame
+    int RaceFinishLineTime;
+    float RaceFinishLineTimer;
+    int RaceCountDownTime;
+    int RaceCountDownTimer;
+    int NumCheckPoints;
+    int NumPassedCheckPoints;
+    int NumPassedTimerCheckPoints;
+    float LastCheckpointTimeStamp;
+    float LastPlayerResetTime;
+    unsigned char bDelayPauseUntilRaceStarted;
+    Classes::TEnumAsByte<Classes::ETTStretch> ActiveTTStretch;
+    float QualifyingTime;
+    float StarRatingTimes[0x3];
+    Classes::FTrackData CurrentTackData;
+    Classes::FTimeData CurrentTimeData;
+    Classes::FTimeData TimeDataToBeat;
+    float RaceStartTimeStamp;
+    float RaceEndTimeStamp;
+    float PlayerDistance;
+} OldStruct;
 
 typedef struct {
     float Time;

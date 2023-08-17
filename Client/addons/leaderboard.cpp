@@ -16,33 +16,26 @@
 
 // clang-format off
 
-static bool enabled = false;
-static bool submitRun = true;
-static char nameInput[0x20] = {0};
-static std::string playerName;
-static std::string levelName;
+static bool Enabled = false;
+static bool SubmitRun = true;
+static char NameInput[0x20] = {0};
+static std::string PlayerName;
+static std::string LevelName;
 
-// TODO: use a structure instead and have one variable
-static Leaderboard::Old::TimeTrial oldTimeTrial;
-static Leaderboard::Old::Speedrun oldSpeedrun;
-static Leaderboard::Old::Pawn oldPawn;
-static Leaderboard::Old::Controller oldController;
+static OldStruct Old;
 
 // Info about the current tick such as time, avgspeed, and etc
-static InfoStruct info;
-static TimeTrialInfoStruct ttInfo;
+static InfoStruct Info;
+static TimeTrialInfoStruct TimeTrialInfo;
 
 // Time Trial
-static float timeTrialCheckpointPreviousTime = 0.0f;
-static float timeTrialCheckpointPreviousDistance = 0.0f;
-static std::vector<InfoStruct> timeTrialCheckpointRespawnInfo;
-static std::vector<TimeTrialInfoStruct> timeTrialCheckpointInfo;
+static std::vector<InfoStruct> TimeTrialCheckpointRespawnInfo;
+static std::vector<TimeTrialInfoStruct> TimeTrialCheckpointInfo;
 
 // Chapter Speedrun
-static float speedrunCheckpointPreviousDistance = 0.0f;
-static std::vector<InfoStruct> speedrunCheckpointInfo;
-static std::vector<InfoStruct> speedrunReactionTimeInfo;
-static std::vector<InfoStruct> speedrunPlayerDeathsInfo;
+static std::vector<InfoStruct> SpeedrunCheckpointInfo;
+static std::vector<InfoStruct> SpeedrunReactionTimeInfo;
+static std::vector<InfoStruct> SpeedrunPlayerDeathsInfo;
 
 // Timestamps in unix time. These are used to know if the run was started properly or not
 static std::chrono::milliseconds UnixTimeStampStart = std::chrono::milliseconds(0);
@@ -51,153 +44,156 @@ static std::chrono::milliseconds UnixTimeStampEnd = std::chrono::milliseconds(0)
 static float TopSpeed = 0.0f;
 static InfoStruct TopSpeedInfo = {0};
 
-static void SaveData(const Classes::ATdPlayerPawn* pawn, const Classes::ATdPlayerController* controller, const Classes::ATdSPTimeTrialGame* timetrial, const Classes::ATdSPLevelRace* speedrun) 
+static float PreviousTime = 0.0f;
+static float PreviousDistance = 0.0f;
+
+static void SaveData(const Classes::ATdPlayerPawn* pawn, const Classes::ATdPlayerController* controller, const Classes::ATdSPTimeTrialGame* timetrial, const Classes::ATdSPLevelRace* speedrun)
 {
-    if (pawn) 
+    if (pawn)
     {
-        oldPawn.Location = pawn->Location;
-        oldPawn.Health = pawn->Health;
-        oldPawn.bSRPauseTimer = pawn->bSRPauseTimer;
+        Old.Location = pawn->Location;
+        Old.Health = pawn->Health;
+        Old.bSRPauseTimer = pawn->bSRPauseTimer;
     }
 
-    if (controller) 
+    if (controller)
     {
-        oldController.bReactionTime = controller->bReactionTime;
-        oldController.ReactionTimeEnergy = controller->ReactionTimeEnergy;
+        Old.bReactionTime = controller->bReactionTime;
+        Old.ReactionTimeEnergy = controller->ReactionTimeEnergy;
     }
 
-    if (speedrun) 
+    if (speedrun)
     {
-        oldSpeedrun.bRaceOver = speedrun->bRaceOver;
-        oldSpeedrun.TimeAttackClock = speedrun->TdGameData->TimeAttackClock;
-        oldSpeedrun.TimeAttackDistance = speedrun->TdGameData->TimeAttackDistance;
-        oldSpeedrun.ActiveCheckpointWeight = speedrun->TdGameData->CheckpointManager->ActiveCheckpointWeight;
+        Old.bRaceOver = speedrun->bRaceOver;
+        Old.TimeAttackClock = speedrun->TdGameData->TimeAttackClock;
+        Old.TimeAttackDistance = speedrun->TdGameData->TimeAttackDistance;
+        Old.ActiveCheckpointWeight = speedrun->TdGameData->CheckpointManager->ActiveCheckpointWeight;
     }
 
-    if (timetrial) 
+    if (timetrial)
     {
-        oldTimeTrial.RaceFinishLineTime = timetrial->RaceFinishLineTime;
-        oldTimeTrial.RaceFinishLineTimer = timetrial->RaceFinishLineTimer;
-        oldTimeTrial.RaceCountDownTime = timetrial->RaceCountDownTime;
-        oldTimeTrial.RaceCountDownTimer = timetrial->RaceCountDownTimer;
-        oldTimeTrial.NumCheckPoints = timetrial->NumCheckPoints;
-        oldTimeTrial.NumPassedCheckPoints = timetrial->NumPassedCheckPoints;
-        oldTimeTrial.NumPassedTimerCheckPoints = timetrial->NumPassedTimerCheckPoints;
-        oldTimeTrial.LastCheckpointTimeStamp = timetrial->LastCheckpointTimeStamp;
-        oldTimeTrial.LastPlayerResetTime = timetrial->LastPlayerResetTime;
-        oldTimeTrial.bDelayPauseUntilRaceStarted = timetrial->bDelayPauseUntilRaceStarted;
-        oldTimeTrial.CurrentTackData = timetrial->CurrentTackData;
-        oldTimeTrial.CurrentTimeData = timetrial->CurrentTimeData;
-        oldTimeTrial.TimeDataToBeat = timetrial->TimeDataToBeat;
-        oldTimeTrial.RaceStartTimeStamp = timetrial->RaceStartTimeStamp;
-        oldTimeTrial.RaceEndTimeStamp = timetrial->RaceEndTimeStamp;
-        oldTimeTrial.PlayerDistance = timetrial->PlayerDistance;
+        Old.RaceFinishLineTime = timetrial->RaceFinishLineTime;
+        Old.RaceFinishLineTimer = timetrial->RaceFinishLineTimer;
+        Old.RaceCountDownTime = timetrial->RaceCountDownTime;
+        Old.RaceCountDownTimer = timetrial->RaceCountDownTimer;
+        Old.NumCheckPoints = timetrial->NumCheckPoints;
+        Old.NumPassedCheckPoints = timetrial->NumPassedCheckPoints;
+        Old.NumPassedTimerCheckPoints = timetrial->NumPassedTimerCheckPoints;
+        Old.LastCheckpointTimeStamp = timetrial->LastCheckpointTimeStamp;
+        Old.LastPlayerResetTime = timetrial->LastPlayerResetTime;
+        Old.bDelayPauseUntilRaceStarted = timetrial->bDelayPauseUntilRaceStarted;
+        Old.CurrentTackData = timetrial->CurrentTackData;
+        Old.CurrentTimeData = timetrial->CurrentTimeData;
+        Old.TimeDataToBeat = timetrial->TimeDataToBeat;
+        Old.RaceStartTimeStamp = timetrial->RaceStartTimeStamp;
+        Old.RaceEndTimeStamp = timetrial->RaceEndTimeStamp;
+        Old.PlayerDistance = timetrial->PlayerDistance;
     }
 }
 
-static void ResetData() 
+static void ResetData()
 {
-    timeTrialCheckpointPreviousTime = 0.0f;
-    timeTrialCheckpointPreviousDistance = 0.0f;
-    timeTrialCheckpointInfo.clear();
-    timeTrialCheckpointRespawnInfo.clear();
+    TimeTrialCheckpointInfo.clear();
+    TimeTrialCheckpointRespawnInfo.clear();
 
-    speedrunCheckpointInfo.clear();
-    speedrunReactionTimeInfo.clear();
-    speedrunPlayerDeathsInfo.clear();
-    speedrunCheckpointPreviousDistance = 0.0f;
+    SpeedrunCheckpointInfo.clear();
+    SpeedrunReactionTimeInfo.clear();
+    SpeedrunPlayerDeathsInfo.clear();
 
-    info = {0};
-    ttInfo = {0};
+    Info = {0};
+    TimeTrialInfo = {0};
 
     UnixTimeStampStart = std::chrono::milliseconds(0);
     UnixTimeStampEnd = std::chrono::milliseconds(0);
 
     TopSpeed = 0.0f;
     TopSpeedInfo = {0};
+
+    PreviousTime = 0.0f;
+    PreviousDistance = 0.0f;
 }
 
-static void LeaderboardTab() 
-{ 
-    if (ImGui::Checkbox("Enabled", &enabled)) 
+static void LeaderboardTab()
+{
+    if (ImGui::Checkbox("Enabled", &Enabled))
     {
-        Settings::SetSetting("race", "enabled", enabled);
+        Settings::SetSetting("race", "enabled", Enabled);
     }
 
-    if (!enabled) 
+    if (!Enabled)
     {
         return;
     }
 
-    if (ImGui::Checkbox("Submit Run", &submitRun)) 
+    if (ImGui::Checkbox("Submit Run", &SubmitRun))
     {
-        Settings::SetSetting("race", "submitRun", submitRun);
+        Settings::SetSetting("race", "submitRun", SubmitRun);
     }
 
     ImGui::SeperatorWithPadding(2.5f);
 
     ImGui::Text("Name");
-    if (ImGui::InputText("##leaderboard-name-input", nameInput, sizeof(nameInput))) 
+    if (ImGui::InputText("##leaderboard-name-input", NameInput, sizeof(NameInput)))
     {
-        if (playerName != nameInput) 
+        if (PlayerName != NameInput)
         {
             bool empty = true;
-            for (auto c : std::string(nameInput)) 
+            for (auto c : std::string(NameInput))
             {
-                if (!isblank(c)) 
+                if (!isblank(c))
                 {
                     empty = false;
                     break;
                 }
             }
 
-            Settings::SetSetting("race", "playerName", playerName = (!empty ? nameInput : ""));
+            Settings::SetSetting("race", "playerName", PlayerName = (!empty ? NameInput : ""));
         }
     }
 
     ImGui::Dummy(ImVec2(0.0f, 4.0f));
-    if (!playerName.empty() && submitRun) 
+    if (!PlayerName.empty() && SubmitRun)
     {
         ImGui::Text("Your runs that you finish will be uploaded to a server");
     }
-    else 
+    else
     {
         ImGui::Text("Your runs that you finish will >> NOT << be uploaded to a server");
-        if (playerName.empty()) 
+        if (PlayerName.empty())
         {
             ImGui::Text("- The name can't be empty!");
-        } 
-        else 
+        }
+        else
         {
             ImGui::Text("- \"Submit Run\" is off");
         }
     }
 }
 
-static void SendJsonData(json jsonData) 
+static void SendJsonData(json jsonData)
 {
-    jsonData.push_back({"Username", playerName});
+    jsonData.push_back({"Username", PlayerName});
     jsonData.push_back({"StartTimeStampUnix", UnixTimeStampStart.count()});
     jsonData.push_back({"EndTimeStampUnix", UnixTimeStampEnd.count()});
 
-    if (!playerName.empty() && submitRun) 
+    if (!PlayerName.empty() && SubmitRun)
     {
         json json = {
-            {"type", "post"},
+            {"type", "post"}, 
             {"body", jsonData.dump()}
         };
 
         Client client;
-        if (client.SendJsonMessage(json)) 
+        if (client.SendJsonMessage(json))
         {
             printf("data sent successfully! :D\n\n");
         }
-        else 
+        else
         {
             printf("data failed to send! Multiplayer disabled or no internet connection?\n\n");
         }
-    } 
-    else 
+    }
+    else
     {
         printf("data failed to send. Check leaderboard tab to see if it can send it or not\n\n");
     }
@@ -205,17 +201,18 @@ static void SendJsonData(json jsonData)
     ResetData();
 }
 
-static std::chrono::milliseconds GetTimeInMillisecondsSinceEpoch() 
+static std::chrono::milliseconds GetTimeInMillisecondsSinceEpoch()
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 }
 
-static json VectorInfoToJson(const std::vector<InfoStruct> info) {
+static json VectorInfoToJson(const std::vector<InfoStruct> info)
+{
     json json;
 
-    for (size_t i = 0; i < info.size(); i++) 
+    for (size_t i = 0; i < info.size(); i++)
     {
-		json.push_back({
+        json.push_back({
             {"Time", info[i].Time},
             {"Distance", info[i].Distance},
             {"AvgSpeed", info[i].AvgSpeed},
@@ -226,32 +223,32 @@ static json VectorInfoToJson(const std::vector<InfoStruct> info) {
             {"PlayerLocation", {
                 {"X", info[i].Location.X / 100.0f},
                 {"Y", info[i].Location.Y / 100.0f},
-                {"Z", info[i].Location.Z / 100.0f}
-            }},
-            {"UnixTime", info[i].UnixTime.count()}
+                {"Z", info[i].Location.Z / 100.0f}}
+            },
+            {"UnixTime", info[i].UnixTime.count()},
         });
-	}
+    }
 
     return json;
 }
 
-static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial) 
+static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial)
 {
-    const float distance = (timetrial->PlayerDistance / (timetrial->NumPassedCheckPoints == oldTimeTrial.NumCheckPoints ? 1 : 100)) - timeTrialCheckpointPreviousDistance;
-    const float time = timetrial->WorldInfo->TimeSeconds - (timetrial->RaceStartTimeStamp != -1.0f ? timetrial->RaceStartTimeStamp : -1.0f) - timeTrialCheckpointPreviousTime;
+    const float distance = (timetrial->PlayerDistance / (timetrial->NumPassedCheckPoints == Old.NumCheckPoints ? 1 : 100)) - PreviousDistance;
+    const float time = timetrial->WorldInfo->TimeSeconds - (timetrial->RaceStartTimeStamp != -1.0f ? timetrial->RaceStartTimeStamp : -1.0f) - PreviousTime;
     const float speed = timetrial->RacingPawn ? sqrtf(powf(timetrial->RacingPawn->Velocity.X, 2) + powf(timetrial->RacingPawn->Velocity.Y, 2)) * CMS_TO_KPH : 0.0f;
 
-    info.Time = time + timeTrialCheckpointPreviousTime;
-    info.Distance = distance + timeTrialCheckpointPreviousDistance;
-    info.AvgSpeed = (info.Distance / info.Time) * MS_TO_KPH;
-    info.TopSpeed = TopSpeed;
-    info.IntermediateTime = time;
-    info.IntermediateDistance = distance;
-    info.Location = oldPawn.Location;
-    info.UnixTime = GetTimeInMillisecondsSinceEpoch();
+    Info.Time = time + PreviousTime;
+    Info.Distance = distance + PreviousDistance;
+    Info.AvgSpeed = (Info.Distance / Info.Time) * MS_TO_KPH;
+    Info.TopSpeed = TopSpeed;
+    Info.IntermediateTime = time;
+    Info.IntermediateDistance = distance;
+    Info.Location = Old.Location;
+    Info.UnixTime = GetTimeInMillisecondsSinceEpoch();
 
-    // Time Trial Countdown 
-    if (timetrial->RaceCountDownTimer == timetrial->RaceCountDownTime + 1 && timetrial->LastPlayerResetTime == timetrial->WorldInfo->TimeSeconds) 
+    // Time Trial Countdown
+    if (timetrial->RaceCountDownTimer == timetrial->RaceCountDownTime + 1 && timetrial->LastPlayerResetTime == timetrial->WorldInfo->TimeSeconds)
     {
         printf("timetrial: countdown started\n");
 
@@ -262,65 +259,66 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial)
     }
 
     // Time Trial Start
-    if (timetrial->RaceCountDownTimer == 0 && oldTimeTrial.RaceCountDownTimer == 1) 
+    if (timetrial->RaceCountDownTimer == 0 && Old.RaceCountDownTimer == 1)
     {
         printf("timetrial: race started\n");
-        UnixTimeStampStart = info.UnixTime;
+        UnixTimeStampStart = Info.UnixTime;
     }
 
     // Top Speed
-    if (timetrial->RacingPawn && timetrial->RacingPawn->MovementState != Classes::EMovement::MOVE_FallingUncontrolled) 
+    if (timetrial->RacingPawn && timetrial->RacingPawn->MovementState != Classes::EMovement::MOVE_FallingUncontrolled)
     {
-        if (speed > TopSpeed) 
+        if (speed > TopSpeed)
         {
             TopSpeed = speed;
-            TopSpeedInfo = info;
+            TopSpeedInfo = Info;
         }
     }
 
     // Respawn
-    if (timetrial->RaceCountDownTimer == 0 && timetrial->LastPlayerResetTime != oldTimeTrial.LastPlayerResetTime) 
+    if (timetrial->RaceCountDownTimer == 0 && timetrial->LastPlayerResetTime != Old.LastPlayerResetTime)
     {
         printf("timetrial: player respawned\n");
-        timeTrialCheckpointRespawnInfo.push_back(info);
+        TimeTrialCheckpointRespawnInfo.push_back(Info);
     }
 
     // Time Trial Checkpoint Touched
-    if (timetrial->NumPassedCheckPoints > oldTimeTrial.NumPassedCheckPoints) 
+    if (timetrial->NumPassedCheckPoints > Old.NumPassedCheckPoints)
     {
         printf("timetrial: checkpoint touched (%d/%d)\n", timetrial->NumPassedCheckPoints, timetrial->NumCheckPoints);
 
-        ttInfo.AvgSpeed = info.AvgSpeed;
-        ttInfo.TimedCheckpoint = timetrial->NumPassedTimerCheckPoints > oldTimeTrial.NumPassedTimerCheckPoints;
-        ttInfo.IntermediateTime = time;
-        ttInfo.AccumulatedIntermediateTime = time + timeTrialCheckpointPreviousTime;
-        ttInfo.IntermediateDistance = distance;
-        ttInfo.AccumulatedIntermediateDistance = distance + timeTrialCheckpointPreviousDistance;
-        ttInfo.RespawnInfo = timeTrialCheckpointRespawnInfo;
-        ttInfo.TopSpeedInfo = TopSpeedInfo;
-        ttInfo.Location = info.Location;
-        ttInfo.UnixTime = info.UnixTime;
+        TimeTrialInfo.AvgSpeed = Info.AvgSpeed;
+        TimeTrialInfo.TimedCheckpoint = timetrial->NumPassedTimerCheckPoints > Old.NumPassedTimerCheckPoints;
+        TimeTrialInfo.IntermediateTime = time;
+        TimeTrialInfo.AccumulatedIntermediateTime = time + PreviousTime;
+        TimeTrialInfo.IntermediateDistance = distance;
+        TimeTrialInfo.AccumulatedIntermediateDistance = distance + PreviousDistance;
+        TimeTrialInfo.RespawnInfo = TimeTrialCheckpointRespawnInfo;
+        TimeTrialInfo.TopSpeedInfo = TopSpeedInfo;
+        TimeTrialInfo.Location = Info.Location;
+        TimeTrialInfo.UnixTime = Info.UnixTime;
 
         TopSpeed = 0.0f;
         TopSpeedInfo = {0};
 
-        timeTrialCheckpointInfo.push_back(ttInfo);
-        timeTrialCheckpointRespawnInfo.clear();
-        timeTrialCheckpointPreviousTime = time + timeTrialCheckpointPreviousTime;
-        timeTrialCheckpointPreviousDistance = distance + timeTrialCheckpointPreviousDistance;
+        PreviousTime = time + PreviousTime;
+        PreviousDistance = distance + PreviousDistance;
+
+        TimeTrialCheckpointRespawnInfo.clear();
+        TimeTrialCheckpointInfo.push_back(TimeTrialInfo);
     }
 
     // Time Trial Finish
-    if (timetrial->NumPassedCheckPoints == oldTimeTrial.NumCheckPoints && timetrial->NumPassedCheckPoints > oldTimeTrial.NumPassedCheckPoints) 
+    if (timetrial->NumPassedCheckPoints == Old.NumCheckPoints && timetrial->NumPassedCheckPoints > Old.NumPassedCheckPoints)
     {
         printf("timetrial: race finished\n");
-        UnixTimeStampEnd = info.UnixTime;
+        UnixTimeStampEnd = Info.UnixTime;
 
-        if (timeTrialCheckpointInfo.size() != timetrial->NumPassedCheckPoints || UnixTimeStampStart == std::chrono::milliseconds(0)) 
+        if (TimeTrialCheckpointInfo.size() != timetrial->NumPassedCheckPoints || UnixTimeStampStart == std::chrono::milliseconds(0))
         {
             printf("timetrial: invalid data! :(\n");
-            printf("- timeTrialCheckpointInfo.size(): %d\n", timeTrialCheckpointInfo.size());
             printf("- timetrial->NumPassedCheckPoints: %d\n", timetrial->NumPassedCheckPoints);
+            printf("- TimeTrialCheckpointInfo.size(): %d\n", TimeTrialCheckpointInfo.size());
             printf("- UnixTimeStampStart: %lld\n\n", UnixTimeStampStart.count());
             return;
         }
@@ -329,68 +327,68 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial)
         json jsonCheckpoints;
         json jsonCheckpointData;
 
-        for (int i = 0; i < timetrial->NumCheckPoints; i++) 
+        for (int i = 0; i < timetrial->NumCheckPoints; i++)
         {
             json jsonRespawns;
 
-            for (size_t j = 0; j < timeTrialCheckpointInfo[i].RespawnInfo.size(); j++) 
+            for (size_t j = 0; j < TimeTrialCheckpointInfo[i].RespawnInfo.size(); j++)
             {
-		    	jsonRespawns.push_back({
-                    {"Time", timeTrialCheckpointInfo[i].RespawnInfo[j].Time},
-                    {"Distance", timeTrialCheckpointInfo[i].RespawnInfo[j].Distance},
-                    {"AvgSpeed", timeTrialCheckpointInfo[i].RespawnInfo[j].AvgSpeed},
-                    {"TopSpeed", timeTrialCheckpointInfo[i].RespawnInfo[j].TopSpeed},
-                    {"IntermediateTime", timeTrialCheckpointInfo[i].RespawnInfo[j].IntermediateTime},
-                    {"IntermediateDistance", timeTrialCheckpointInfo[i].RespawnInfo[j].IntermediateDistance},
+                jsonRespawns.push_back({
+                    {"Time", TimeTrialCheckpointInfo[i].RespawnInfo[j].Time},
+                    {"Distance", TimeTrialCheckpointInfo[i].RespawnInfo[j].Distance},
+                    {"AvgSpeed", TimeTrialCheckpointInfo[i].RespawnInfo[j].AvgSpeed},
+                    {"TopSpeed", TimeTrialCheckpointInfo[i].RespawnInfo[j].TopSpeed},
+                    {"IntermediateTime", TimeTrialCheckpointInfo[i].RespawnInfo[j].IntermediateTime},
+                    {"IntermediateDistance", TimeTrialCheckpointInfo[i].RespawnInfo[j].IntermediateDistance},
                     {"Location", {
-                        {"X", timeTrialCheckpointInfo[i].RespawnInfo[j].Location.X / 100.0f},
-                        {"Y", timeTrialCheckpointInfo[i].RespawnInfo[j].Location.Y / 100.0f},
-                        {"Z", timeTrialCheckpointInfo[i].RespawnInfo[j].Location.Z / 100.0f}
-                    }},
-                    {"UnixTime", timeTrialCheckpointInfo[i].RespawnInfo[j].UnixTime.count()}
+                        {"X", TimeTrialCheckpointInfo[i].RespawnInfo[j].Location.X / 100.0f}, 
+                        {"Y", TimeTrialCheckpointInfo[i].RespawnInfo[j].Location.Y / 100.0f}, 
+                        {"Z", TimeTrialCheckpointInfo[i].RespawnInfo[j].Location.Z / 100.0f}}
+                    },
+                    {"UnixTime", TimeTrialCheckpointInfo[i].RespawnInfo[j].UnixTime.count()}
                 });
-		    }
+            }
 
             jsonCheckpoints.push_back({
-                {"AvgSpeed", timeTrialCheckpointInfo[i].AvgSpeed},
-                {"TimedCheckpoint", timeTrialCheckpointInfo[i].TimedCheckpoint},
-                {"IntermediateTime", timeTrialCheckpointInfo[i].IntermediateTime},
-                {"AccumulatedIntermediateTime", timeTrialCheckpointInfo[i].AccumulatedIntermediateTime},
-                {"IntermediateDistance", timeTrialCheckpointInfo[i].IntermediateDistance},
-                {"AccumulatedIntermediateDistance", timeTrialCheckpointInfo[i].AccumulatedIntermediateDistance},
-                {"UnixTime", timeTrialCheckpointInfo[i].UnixTime.count()},
+                {"AvgSpeed", TimeTrialCheckpointInfo[i].AvgSpeed},
+                {"TimedCheckpoint", TimeTrialCheckpointInfo[i].TimedCheckpoint},
+                {"IntermediateTime", TimeTrialCheckpointInfo[i].IntermediateTime},
+                {"AccumulatedIntermediateTime", TimeTrialCheckpointInfo[i].AccumulatedIntermediateTime},
+                {"IntermediateDistance", TimeTrialCheckpointInfo[i].IntermediateDistance},
+                {"AccumulatedIntermediateDistance", TimeTrialCheckpointInfo[i].AccumulatedIntermediateDistance},
+                {"UnixTime", TimeTrialCheckpointInfo[i].UnixTime.count()},
                 {"RespawnInfo", jsonRespawns},
                 {"TopSpeedInfo", {
-                    {"Time", timeTrialCheckpointInfo[i].TopSpeedInfo.Time},
-                    {"Distance", timeTrialCheckpointInfo[i].TopSpeedInfo.Distance},
-                    {"AvgSpeed", timeTrialCheckpointInfo[i].TopSpeedInfo.AvgSpeed},
-                    {"TopSpeed", timeTrialCheckpointInfo[i].TopSpeedInfo.TopSpeed},
-                    {"IntermediateTime", timeTrialCheckpointInfo[i].TopSpeedInfo.IntermediateTime},
-                    {"IntermediateDistance", timeTrialCheckpointInfo[i].TopSpeedInfo.IntermediateDistance},
+                    {"Time", TimeTrialCheckpointInfo[i].TopSpeedInfo.Time},
+                    {"Distance", TimeTrialCheckpointInfo[i].TopSpeedInfo.Distance},
+                    {"AvgSpeed", TimeTrialCheckpointInfo[i].TopSpeedInfo.AvgSpeed},
+                    {"TopSpeed", TimeTrialCheckpointInfo[i].TopSpeedInfo.TopSpeed},
+                    {"IntermediateTime", TimeTrialCheckpointInfo[i].TopSpeedInfo.IntermediateTime},
+                    {"IntermediateDistance", TimeTrialCheckpointInfo[i].TopSpeedInfo.IntermediateDistance},
                     {"Location", {
-                        {"X", timeTrialCheckpointInfo[i].TopSpeedInfo.Location.X / 100.0f},
-                        {"Y", timeTrialCheckpointInfo[i].TopSpeedInfo.Location.Y / 100.0f},
-                        {"Z", timeTrialCheckpointInfo[i].TopSpeedInfo.Location.Z / 100.0f}
+                        {"X", TimeTrialCheckpointInfo[i].TopSpeedInfo.Location.X / 100.0f},
+                        {"Y", TimeTrialCheckpointInfo[i].TopSpeedInfo.Location.Y / 100.0f},
+                        {"Z", TimeTrialCheckpointInfo[i].TopSpeedInfo.Location.Z / 100.0f}
                     }},
-                    {"UnixTime", timeTrialCheckpointInfo[i].TopSpeedInfo.UnixTime.count()}
+                    {"UnixTime", TimeTrialCheckpointInfo[i].TopSpeedInfo.UnixTime.count()}
                 }}
             });
         }
 
-        for (int i = 0; i < timetrial->NumPassedCheckPoints; i++) 
+        for (int i = 0; i < timetrial->NumPassedCheckPoints; i++)
         {
             const auto track = static_cast<Classes::ATdTimerCheckpoint*>(timetrial->CheckpointManager->ActiveTrack[i]);
 
             json jsonBelongToTracks;
 
-            for (size_t j = 0; j < track->BelongToTracks.Num(); j++) 
+            for (size_t j = 0; j < track->BelongToTracks.Num(); j++)
             {
-			    jsonBelongToTracks.push_back({
+                jsonBelongToTracks.push_back({
                     {"TrackIndex", track->BelongToTracks[j].TrackIndex.GetValue()},
                     {"OrderIndex", track->BelongToTracks[j].OrderIndex},
                     {"bNoIntermediateTime", track->BelongToTracks[j].bNoIntermediateTime == 1 ? true : false}
                 });
-		    }
+            }
 
             jsonCheckpointData.push_back({
                 // UObject
@@ -414,14 +412,14 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial)
             });
         }
 
-        for (int i = 0; i < timetrial->NumPassedTimerCheckPoints; i++) 
+        for (int i = 0; i < timetrial->NumPassedTimerCheckPoints; i++)
         {
-			jsonIntermediateDistances.push_back(timetrial->CurrentTackData.IntermediateDistance[i] / 100.0f);
+            jsonIntermediateDistances.push_back(timetrial->CurrentTackData.IntermediateDistance[i] / 100.0f);
         }
 
         json jsonData = {
             // The current map name in lower case
-            {"MapName", levelName},
+            {"MapName", LevelName},
 
             // Time Trial data
             {"TotalTime", timetrial->CurrentTimeData.TotalTime},
@@ -450,30 +448,30 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial)
     }
 }
 
-static void OnTickSpeedRun(Classes::ATdSPLevelRace* speedrun) 
+static void OnTickSpeedRun(Classes::ATdSPLevelRace* speedrun)
 {
     const auto pawn = Engine::GetPlayerPawn();
     const auto controller = Engine::GetPlayerController();
-    
-    info.Time = speedrun->TdGameData->TimeAttackClock;
-    info.Distance = speedrun->TdGameData->TimeAttackDistance;
-    info.AvgSpeed = (info.Distance / info.Time) * MS_TO_KPH;
-    info.TopSpeed = TopSpeed;
-    info.WorldTimeSeconds = speedrun->WorldInfo->TimeSeconds;
-    info.WorldRealTimeSeconds = speedrun->WorldInfo->RealTimeSeconds;
-    info.CheckpointWeight = speedrun->TdGameData->CheckpointManager->ActiveCheckpointWeight;
-    info.Location = oldPawn.Location; 
-    info.UnixTime = GetTimeInMillisecondsSinceEpoch();
+
+    Info.Time = speedrun->TdGameData->TimeAttackClock;
+    Info.Distance = speedrun->TdGameData->TimeAttackDistance;
+    Info.AvgSpeed = (Info.Distance / Info.Time) * MS_TO_KPH;
+    Info.TopSpeed = TopSpeed;
+    Info.WorldTimeSeconds = speedrun->WorldInfo->TimeSeconds;
+    Info.WorldRealTimeSeconds = speedrun->WorldInfo->RealTimeSeconds;
+    Info.CheckpointWeight = speedrun->TdGameData->CheckpointManager->ActiveCheckpointWeight;
+    Info.Location = Old.Location;
+    Info.UnixTime = GetTimeInMillisecondsSinceEpoch();
 
     // Speedrun Restarted Using Binding
-    if (pawn->WorldInfo->RealTimeSeconds == 0.0f && speedrun->TdGameData->TimeAttackClock == 0.0f && speedrun->TdGameData->TimeAttackDistance != 0.0f) 
+    if (pawn->WorldInfo->RealTimeSeconds == 0.0f && speedrun->TdGameData->TimeAttackClock == 0.0f && speedrun->TdGameData->TimeAttackDistance != 0.0f)
     {
         printf("speedrun: \"TimeAttackDistance\" is not 0.0f! Setting it to 0.0f\n");
         speedrun->TdGameData->TimeAttackDistance = 0.0f;
     }
 
     // Speedrun Start
-    if (pawn->WorldInfo->RealTimeSeconds == 0.0f && speedrun->TdGameData->TimeAttackClock == 0.0f && speedrun->TdGameData->TimeAttackDistance == 0.0f) 
+    if (pawn->WorldInfo->RealTimeSeconds == 0.0f && speedrun->TdGameData->TimeAttackClock == 0.0f && speedrun->TdGameData->TimeAttackDistance == 0.0f)
     {
         printf("speedrun: race started\n");
 
@@ -482,48 +480,48 @@ static void OnTickSpeedRun(Classes::ATdSPLevelRace* speedrun)
     }
 
     // Top Speed
-    if (pawn->bAllowMoveChange && pawn->Health > 0) 
+    if (pawn->bAllowMoveChange && pawn->Health > 0)
     {
         const float speed = sqrtf(powf(pawn->Velocity.X, 2) + powf(pawn->Velocity.Y, 2)) * CMS_TO_KPH;
 
-        if (speed > TopSpeed && pawn->MovementState != Classes::EMovement::MOVE_FallingUncontrolled) 
+        if (speed > TopSpeed && pawn->MovementState != Classes::EMovement::MOVE_FallingUncontrolled)
         {
             TopSpeed = speed;
         }
     }
 
     // ReactionTime
-    if (controller->bReactionTime && controller->bReactionTime != oldController.bReactionTime) 
+    if (controller->bReactionTime && controller->bReactionTime != Old.bReactionTime)
     {
         printf("speedrun: reactiontime used\n");
-        speedrunReactionTimeInfo.push_back(info);
+        SpeedrunReactionTimeInfo.push_back(Info);
     }
 
     // Health
-    if (pawn->Health <= 0 && pawn->Health != oldPawn.Health) 
+    if (pawn->Health <= 0 && pawn->Health != Old.Health)
     {
         printf("speedrun: player died\n");
-        speedrunPlayerDeathsInfo.push_back(info);
+        SpeedrunPlayerDeathsInfo.push_back(Info);
     }
 
     // Speedrun Checkpoint Touched
-    if (speedrun->TdGameData->CheckpointManager->ActiveCheckpointWeight > oldSpeedrun.ActiveCheckpointWeight && speedrun->TdGameData->CheckpointManager->ActiveCheckpointWeight != 0 && speedrun->TdGameData->TimeAttackDistance != speedrunCheckpointPreviousDistance) 
+    if (speedrun->TdGameData->CheckpointManager->ActiveCheckpointWeight > Old.ActiveCheckpointWeight && speedrun->TdGameData->CheckpointManager->ActiveCheckpointWeight != 0 && speedrun->TdGameData->TimeAttackDistance != PreviousDistance)
     {
         printf("speedrun: checkpoint touched (weight: %d)\n", speedrun->TdGameData->CheckpointManager->ActiveCheckpointWeight);
 
         TopSpeed = 0.0f;
-        speedrunCheckpointInfo.push_back(info);
-        speedrunCheckpointPreviousDistance = speedrun->TdGameData->TimeAttackDistance;
+        SpeedrunCheckpointInfo.push_back(Info);
+        PreviousDistance = speedrun->TdGameData->TimeAttackDistance;
     }
 
     // Speedrun Finish
-    if (speedrun->bRaceOver && speedrun->bRaceOver != oldSpeedrun.bRaceOver) 
+    if (speedrun->bRaceOver && speedrun->bRaceOver != Old.bRaceOver)
     {
         printf("speedrun: race finished\n");
-        UnixTimeStampEnd = info.UnixTime;
+        UnixTimeStampEnd = Info.UnixTime;
 
-        // If this is zero, that means that multiplayer was launched or leaderboard got toggled on during the race and therefor is invalid
-        if (UnixTimeStampStart == std::chrono::milliseconds(0)) 
+        // If this is zero, that means that multiplayer was launched or leaderboard got toggled on during the race and therefore is invalid
+        if (UnixTimeStampStart == std::chrono::milliseconds(0))
         {
             printf("speedrun: invalid data! :(\n- UnixTimeStampStart: %lld\n\n", UnixTimeStampStart.count());
             return;
@@ -531,30 +529,30 @@ static void OnTickSpeedRun(Classes::ATdSPLevelRace* speedrun)
 
         json jsonData = {
             // The current map name in lower case
-            {"MapName", levelName},
-            
+            {"MapName", LevelName},
+
             // Speedrun
             {"TimeAttackClock", speedrun->TdGameData->TimeAttackClock},
             {"TimeAttackDistance", speedrun->TdGameData->TimeAttackDistance},
-            
+
             // World Info Time
             {"WorldTimeSeconds", pawn->WorldInfo->TimeSeconds},
             {"WorldRealTimeSeconds", pawn->WorldInfo->RealTimeSeconds},
-            
+
             // Custom data
             {"AvgSpeed", (speedrun->TdGameData->TimeAttackDistance / speedrun->TdGameData->TimeAttackClock) * MS_TO_KPH},
-            {"CheckpointInfo", VectorInfoToJson(speedrunCheckpointInfo)},
-            {"ReactionTimeInfo", VectorInfoToJson(speedrunReactionTimeInfo)},
-            {"PlayerDeathsInfo", VectorInfoToJson(speedrunPlayerDeathsInfo)}
+            {"CheckpointInfo", VectorInfoToJson(SpeedrunCheckpointInfo)},
+            {"ReactionTimeInfo", VectorInfoToJson(SpeedrunReactionTimeInfo)},
+            {"PlayerDeathsInfo", VectorInfoToJson(SpeedrunPlayerDeathsInfo)}
         };
 
         SendJsonData(jsonData);
     }
 }
 
-static void OnTick(const float deltaTime) 
+static void OnTick(const float deltaTime)
 {
-    if (!enabled || playerName.empty() || levelName.empty() || levelName == Map_MainMenu) 
+    if (!Enabled || PlayerName.empty() || LevelName.empty() || LevelName == Map_MainMenu)
     {
         return;
     }
@@ -563,23 +561,23 @@ static void OnTick(const float deltaTime)
     const auto pawn = Engine::GetPlayerPawn();
     const auto controller = Engine::GetPlayerController();
 
-    if (!world || !pawn || !controller) 
+    if (!world || !pawn || !controller)
     {
         return;
     }
 
-    if (world) 
+    if (world)
     {
         std::string game = world->Game->GetName();
 
-        if (game.find("TdSPTimeTrialGame") != -1) 
+        if (game.find("TdSPTimeTrialGame") != -1)
         {
             auto timetrial = static_cast<Classes::ATdSPTimeTrialGame*>(world->Game);
 
             OnTickTimeTrial(timetrial);
             SaveData(pawn, controller, timetrial, nullptr);
-        } 
-        else if (game.find("TdSPLevelRace") != -1) 
+        }
+        else if (game.find("TdSPLevelRace") != -1)
         {
             auto speedrun = static_cast<Classes::ATdSPLevelRace*>(world->Game);
 
@@ -589,30 +587,28 @@ static void OnTick(const float deltaTime)
     }
 }
 
-bool Leaderboard::Initialize() 
+bool Leaderboard::Initialize()
 {
-    enabled = Settings::GetSetting("race", "enabled", false);
-    submitRun = Settings::GetSetting("race", "submitRun", true);
-    playerName = Settings::GetSetting("race", "playerName", "").get<std::string>();
-    strncpy_s(nameInput, sizeof(nameInput) - 1, playerName.c_str(), sizeof(nameInput) - 1);
+    Enabled = Settings::GetSetting("race", "enabled", false);
+    SubmitRun = Settings::GetSetting("race", "submitRun", true);
+    PlayerName = Settings::GetSetting("race", "playerName", "").get<std::string>();
+    strncpy_s(NameInput, sizeof(NameInput) - 1, PlayerName.c_str(), sizeof(NameInput) - 1);
 
-	Menu::AddTab("Leaderboard", LeaderboardTab);
+    Menu::AddTab("Leaderboard", LeaderboardTab);
     Engine::OnTick(OnTick);
 
-	Engine::OnPreLevelLoad([](const wchar_t *levelNameW) 
-    {
-		levelName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(levelNameW);
+    Engine::OnPreLevelLoad([](const wchar_t* levelNameW) {
+        LevelName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(levelNameW);
 
-		std::transform(levelName.begin(), levelName.end(), levelName.begin(), [](char c) 
-        { 
-			return tolower(c); 
-		});
-	});
+        std::transform(LevelName.begin(), LevelName.end(), LevelName.begin(), [](char c) {
+            return tolower(c);
+        });
+    });
 
-	return true;
+    return true;
 }
 
-std::string Leaderboard::GetName() 
+std::string Leaderboard::GetName()
 {
-    return "Leaderboard"; 
+    return "Leaderboard";
 }
