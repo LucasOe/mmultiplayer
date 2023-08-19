@@ -580,7 +580,7 @@ static void OnTickSpeedRun(Classes::ATdSPLevelRace* speedrun)
 
 static void OnTick(const float deltaTime)
 {
-    if (!Enabled || PlayerName.empty() || LevelName.empty() || LevelName == Map_MainMenu)
+    if (!Enabled || PlayerName.empty() || Key.empty() || LevelName.empty() || LevelName == Map_MainMenu)
     {
         return;
     }
