@@ -166,8 +166,8 @@ bool Menu::Initialize() {
 		levelName = newLevelName;
 	});
 
-	AddTab("Engine", EngineTab);
-	AddTab("World", WorldTab);
+	//AddTab("Engine", EngineTab);
+	//AddTab("World", WorldTab);
 
 	return true;
 }

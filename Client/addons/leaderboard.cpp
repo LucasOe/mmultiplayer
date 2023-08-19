@@ -16,11 +16,8 @@
 
 // clang-format off
 
-static bool Enabled = false;
-static bool SubmitRun = true;
-
 static char NameInput[0x20] = {0};
-static char KeyInput[0x20] = {0};
+static char KeyInput[0x14] = {0};
 static std::string PlayerName;
 static std::string Key;
 static std::string LevelName;
@@ -118,23 +115,6 @@ static void ResetData()
 
 static void LeaderboardTab()
 {
-    if (ImGui::Checkbox("Enabled", &Enabled))
-    {
-        Settings::SetSetting("race", "enabled", Enabled);
-    }
-
-    if (!Enabled)
-    {
-        return;
-    }
-
-    if (ImGui::Checkbox("Submit Run", &SubmitRun))
-    {
-        Settings::SetSetting("race", "submitRun", SubmitRun);
-    }
-
-    ImGui::SeperatorWithPadding(2.5f);
-
     ImGui::Text("Name");
     if (ImGui::InputText("##leaderboard-name-input", NameInput, sizeof(NameInput)))
     {
@@ -155,27 +135,17 @@ static void LeaderboardTab()
     }
 
     ImGui::Text("Key");
-    if (ImGui::InputText("##leaderboard-key-input", KeyInput, sizeof(KeyInput)))
+    if (ImGui::InputText("##leaderboard-key-input", KeyInput, sizeof(KeyInput), ImGuiInputTextFlags_Password))
     {
         if (Key != KeyInput)
         {
-            bool empty = true;
-            for (auto c : std::string(KeyInput))
-            {
-                if (!isblank(c))
-                {
-                    empty = false;
-                    break;
-                }
-            }
-
-            Settings::SetSetting("race", "key", Key = (!empty ? KeyInput : ""));
+            Settings::SetSetting("race", "key", Key = KeyInput);
         }
     }
 
     ImGui::SeperatorWithPadding(2.5f);
 
-    if (!PlayerName.empty() && !Key.empty() && SubmitRun)
+    if (!PlayerName.empty() && !Key.empty())
     {
         ImGui::Text("Your runs that you finish will be uploaded to a server");
     }
@@ -190,10 +160,6 @@ static void LeaderboardTab()
         {
             ImGui::Text("- The key can't be empty!");
         }
-        if (!SubmitRun)
-        {
-            ImGui::Text("- \"Submit Run\" is off");
-        }
     }
 }
 
@@ -204,7 +170,7 @@ static void SendJsonData(json jsonData)
     jsonData.push_back({"StartTimeStampUnix", UnixTimeStampStart.count()});
     jsonData.push_back({"EndTimeStampUnix", UnixTimeStampEnd.count()});
 
-    if (!PlayerName.empty() && !Key.empty() && SubmitRun)
+    if (!PlayerName.empty() && !Key.empty())
     {
         json json = {
             {"type", "post"}, 
@@ -580,7 +546,7 @@ static void OnTickSpeedRun(Classes::ATdSPLevelRace* speedrun)
 
 static void OnTick(const float deltaTime)
 {
-    if (!Enabled || PlayerName.empty() || Key.empty() || LevelName.empty() || LevelName == Map_MainMenu)
+    if (PlayerName.empty() || Key.empty() || LevelName.empty() || LevelName == Map_MainMenu)
     {
         return;
     }
@@ -617,14 +583,11 @@ static void OnTick(const float deltaTime)
 
 bool Leaderboard::Initialize()
 {
-    Enabled = Settings::GetSetting("race", "enabled", false);
-    SubmitRun = Settings::GetSetting("race", "submitRun", true);
-
     PlayerName = Settings::GetSetting("race", "playerName", "").get<std::string>();
-    strncpy_s(NameInput, sizeof(NameInput) - 1, PlayerName.c_str(), sizeof(NameInput) - 1);
+    strncpy_s(NameInput, sizeof(NameInput), PlayerName.c_str(), sizeof(NameInput) - 1);
 
     Key = Settings::GetSetting("race", "key", "").get<std::string>();
-    strncpy_s(KeyInput, sizeof(KeyInput) - 1, Key.c_str(), sizeof(KeyInput) - 1);
+    strncpy_s(KeyInput, sizeof(KeyInput), Key.c_str(), sizeof(KeyInput) - 1);
 
     Menu::AddTab("Leaderboard", LeaderboardTab);
     Engine::OnTick(OnTick);

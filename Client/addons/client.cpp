@@ -1268,6 +1268,7 @@ static void MultiplayerTab() {
         Settings::SetSetting("client", "showChatOverlay", chat.ShowOverlay);
     }
 
+    /*
     ImGui::SameLine();
 
     if (ImGui::Checkbox("Disable Multiplayer##client-disabled", &disabled)) {
@@ -1277,6 +1278,7 @@ static void MultiplayerTab() {
 
         Settings::SetSetting("client", "disabled", disabled);
     }
+    */
 
     ImGui::SeperatorWithPadding(2.5f);
     ImGui::Text("Chat");
@@ -1432,17 +1434,17 @@ bool Client::Initialize() {
     chat.Keybind = Settings::GetSetting("client", "chatKeybind", VK_T);
     players.ShowNameTags = Settings::GetSetting("client", "showNameTags", true);
     chat.ShowOverlay = Settings::GetSetting("client", "showChatOverlay", true);
-    disabled = Settings::GetSetting("client", "disabled", false);
+    //disabled = Settings::GetSetting("client", "disabled", false);
 
     // Functions
     Menu::AddTab("Multiplayer", MultiplayerTab);
-    Menu::AddTab("Tag", TagTab);
+    //Menu::AddTab("Tag", TagTab);
 
     Engine::OnTick(OnTick);
-    Engine::OnTick(OnTickTag);
+    //Engine::OnTick(OnTickTag);
 
     Engine::OnRenderScene(OnRender);
-    Engine::OnRenderScene(OnRenderTag);
+    //Engine::OnRenderScene(OnRenderTag);
 
     Engine::OnInput([](unsigned int &msg, int keycode) {
         if (!chat.Focused && msg == WM_KEYDOWN && keycode == chat.Keybind) {
