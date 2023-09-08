@@ -18,7 +18,7 @@
 
 static char NameInput[0x20] = {0};
 static char KeyInput[0x14] = {0};
-static std::string PlayerName;
+static std::string Name;
 static std::string Key;
 static std::string LevelName;
 
@@ -118,24 +118,14 @@ static void LeaderboardTab()
     ImGui::Text("Name");
     if (ImGui::InputText("##leaderboard-name-input", NameInput, sizeof(NameInput)))
     {
-        if (PlayerName != NameInput)
+        if (Name != NameInput)
         {
-            bool empty = true;
-            for (auto c : std::string(NameInput))
-            {
-                if (!isblank(c))
-                {
-                    empty = false;
-                    break;
-                }
-            }
-
-            Settings::SetSetting("race", "playerName", PlayerName = (!empty ? NameInput : ""));
+            Settings::SetSetting("race", "playerName", Name = NameInput);
         }
     }
 
-    ImGui::Text("Key");
-    if (ImGui::InputText("##leaderboard-key-input", KeyInput, sizeof(KeyInput), ImGuiInputTextFlags_Password))
+    ImGui::Text("Key (%d chars)", strlen(Key.c_str()));
+    if (ImGui::InputText("##leaderboard-key-input", KeyInput, sizeof(KeyInput)))
     {
         if (Key != KeyInput)
         {
@@ -145,32 +135,32 @@ static void LeaderboardTab()
 
     ImGui::SeperatorWithPadding(2.5f);
 
-    if (!PlayerName.empty() && !Key.empty())
+    if (!Name.empty() && !Key.empty())
     {
         ImGui::Text("Your runs that you finish will be uploaded to a server");
     }
     else
     {
         ImGui::Text("Your runs that you finish will >> NOT << be uploaded to a server");
-        if (PlayerName.empty())
+        if (Name.empty())
         {
-            ImGui::Text("- The name can't be empty!");
+            ImGui::Text("- The Name can't be empty!");
         }
         if (Key.empty())
         {
-            ImGui::Text("- The key can't be empty!");
+            ImGui::Text("- The Key can't be empty!");
         }
     }
 }
 
 static void SendJsonData(json jsonData)
 {
-    jsonData.push_back({"Username", PlayerName});
+    jsonData.push_back({"Username", Name});
     jsonData.push_back({"Key", Key});
     jsonData.push_back({"StartTimeStampUnix", UnixTimeStampStart.count()});
     jsonData.push_back({"EndTimeStampUnix", UnixTimeStampEnd.count()});
 
-    if (!PlayerName.empty() && !Key.empty())
+    if (!Name.empty() && !Key.empty())
     {
         json json = {
             {"type", "post"}, 
@@ -546,7 +536,7 @@ static void OnTickSpeedRun(Classes::ATdSPLevelRace* speedrun)
 
 static void OnTick(const float deltaTime)
 {
-    if (PlayerName.empty() || Key.empty() || LevelName.empty() || LevelName == Map_MainMenu)
+    if (Name.empty() || Key.empty() || LevelName.empty() || LevelName == Map_MainMenu)
     {
         return;
     }
@@ -583,8 +573,8 @@ static void OnTick(const float deltaTime)
 
 bool Leaderboard::Initialize()
 {
-    PlayerName = Settings::GetSetting("race", "playerName", "").get<std::string>();
-    strncpy_s(NameInput, sizeof(NameInput), PlayerName.c_str(), sizeof(NameInput) - 1);
+    Name = Settings::GetSetting("race", "playerName", "").get<std::string>();
+    strncpy_s(NameInput, sizeof(NameInput), Name.c_str(), sizeof(NameInput) - 1);
 
     Key = Settings::GetSetting("race", "key", "").get<std::string>();
     strncpy_s(KeyInput, sizeof(KeyInput), Key.c_str(), sizeof(KeyInput) - 1);
