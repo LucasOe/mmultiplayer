@@ -2,7 +2,7 @@
 #include "../engine.h"
 #include "../hook.h"
 #include "../imgui/imgui.h"
-#include "../imgui/imgui_internal.h"
+#include "../imgui/imgui_mmultiplayer.h"
 #include "../menu.h"
 #include "../pattern.h"
 #include "../settings.h"
@@ -180,6 +180,7 @@ static void Save(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
     case Classes::EMovement::MOVE_WallRunningLeft:
     case Classes::EMovement::MOVE_WallClimbing:
     case Classes::EMovement::MOVE_SpringBoarding:
+    case Classes::EMovement::MOVE_Snatch:
     case Classes::EMovement::MOVE_Jump:
     case Classes::EMovement::MOVE_WallRunJump:
     case Classes::EMovement::MOVE_GrabJump:
@@ -191,6 +192,7 @@ static void Save(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
     case Classes::EMovement::MOVE_GrabTransfer:
     case Classes::EMovement::MOVE_Coil:
     case Classes::EMovement::MOVE_WallClimb180TurnJump:
+    case Classes::EMovement::MOVE_SkillRoll:
         break;
     default:
         save.Pawn.bCollideWorld = true;

@@ -18,6 +18,9 @@
     <Filter Include="Header Files\imgui">
       <UniqueIdentifier>{61a8c71f-ba6a-4654-8bbe-d062f6ca4692}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\addons">
+      <UniqueIdentifier>{78e177e8-1b0e-4bbd-b22d-192ed0d7b535}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source Files">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
@@ -30,9 +33,6 @@
     </Filter>
     <Filter Include="Source Files\imgui">
       <UniqueIdentifier>{de3a21d4-1cf5-4438-b254-66369edbec2a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\addons">
-      <UniqueIdentifier>{78e177e8-1b0e-4bbd-b22d-192ed0d7b535}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\addons">
       <UniqueIdentifier>{b5dd9396-45e2-4559-a7b7-e19e6779427a}</UniqueIdentifier>
@@ -228,6 +228,9 @@
     <ClInclude Include="imgui\imgui_impl_dx9.h">
       <Filter>Header Files\imgui</Filter>
     </ClInclude>
+    <ClInclude Include="imgui\imgui_mmultiplayer.h">
+      <Filter>Header Files\imgui</Filter>
+    </ClInclude>
     <ClInclude Include="sdk.h">
       <Filter>Header Files\sdk</Filter>
     </ClInclude>
@@ -338,10 +341,19 @@
     <ClCompile Include="imgui\imgui_draw.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="imgui\imgui_demo.cpp">
+      <Filter>Source Files\imgui</Filter>
+    </ClCompile>
     <ClCompile Include="imgui\imgui_impl_dx9.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
     <ClCompile Include="imgui\imgui_impl_win32.cpp">
+      <Filter>Source Files\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_mmultiplayer.cpp">
+      <Filter>Source Files\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_tables.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
     <ClCompile Include="imgui\imgui_widgets.cpp">
