@@ -17,7 +17,7 @@ static std::wstring levelName;
 
 static void RenderMenu(IDirect3DDevice9 *device) {
 	if (show) {
-		ImGui::Begin("MMultiplayer 2.1.2");
+		ImGui::Begin("MMultiplayer 2.1.3");
 		ImGui::BeginTabBar("");
 
 		for (auto tab : tabs) {
