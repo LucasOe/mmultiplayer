@@ -180,6 +180,7 @@ static void Save(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
     case Classes::EMovement::MOVE_WallRunningLeft:
     case Classes::EMovement::MOVE_WallClimbing:
     case Classes::EMovement::MOVE_SpringBoarding:
+    case Classes::EMovement::MOVE_Snatch:
     case Classes::EMovement::MOVE_Jump:
     case Classes::EMovement::MOVE_WallRunJump:
     case Classes::EMovement::MOVE_GrabJump:
@@ -191,6 +192,7 @@ static void Save(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
     case Classes::EMovement::MOVE_GrabTransfer:
     case Classes::EMovement::MOVE_Coil:
     case Classes::EMovement::MOVE_WallClimb180TurnJump:
+    case Classes::EMovement::MOVE_SkillRoll:
         break;
     default:
         save.Pawn.bCollideWorld = true;
@@ -378,7 +380,7 @@ static void TrainerTab() {
         }
 
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("S = Movement State (Enum)\nH = Health\nRT = Reaction Time Energy");
+            ImGui::SetTooltip("S = Movement State (Enum)\nH = Health\nRT = Reaction Time Energy\n \nSZ = Stored Z (LastJumpLocation.Z)\nSZD = Delta of Location.Z - LastJumpLocation.Z");
         }
     }
 
@@ -690,15 +692,15 @@ static void OnRender(IDirect3DDevice9 *) {
         auto controller = Engine::GetPlayerController();
 
         if (pawn && controller) {
-            static const auto rightPadding = 100.0f;
+            static const auto rightPadding = 110.0f;
 
             auto window = ImGui::BeginRawScene("##player-info");
             auto &io = ImGui::GetIO();
             auto width = io.DisplaySize.x - padding;
 
             auto yIncrement = ImGui::GetTextLineHeight();
-            auto count = (showTopHeightInfo ? 1 : 0) + (showExtraPlayerInfo ? 11 : 8);
-            auto y = io.DisplaySize.y - (count * yIncrement) - padding - ((yIncrement / 2) * 3);
+            auto count = (showTopHeightInfo ? 1 : 0) + (showExtraPlayerInfo ? 13 : 8);
+            auto y = io.DisplaySize.y - (count * yIncrement) - padding - ((yIncrement / 2) * (showExtraPlayerInfo ? 4: 3));
             auto color = ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 
             window->DrawList->AddRectFilled(ImVec2(width - rightPadding - padding, y - (padding / 2)), io.DisplaySize, ImColor(ImVec4(0, 0, 0, 0.4f)));
@@ -748,7 +750,10 @@ static void OnRender(IDirect3DDevice9 *) {
             if (showExtraPlayerInfo) {
                 AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "S", "%d", pawn->MovementState.GetValue());
                 AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "H", "%d", pawn->Health);
-                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "RT", "%.2f", min(100.00f, controller->ReactionTimeEnergy));
+                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "RT", "%.2f", min(100.00f, controller->ReactionTimeEnergy));
+
+                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "SZ", "%.2f", pawn->LastJumpLocation.Z / 100.0f);
+                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "SZD", "%.2f", (pawn->Location.Z - pawn->LastJumpLocation.Z) / 100.0f);
             }
 
             ImGui::EndRawScene();
