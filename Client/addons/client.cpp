@@ -25,7 +25,7 @@ static char chatInput[0x200] = {0};
 static auto connected = false, loading = false, disabled = false;
 static std::string room;
 
-static bool showTagDistanceOverlay = true;
+static bool showTagDistanceOverlay = false;
 static bool showTagCooldownOverlay = true;
 static bool playerDiedAndSentJsonMessage = false;
 static int tagCooldown = 5;
@@ -1328,7 +1328,7 @@ static void TagTab() {
     ImGui::Checkbox("Distance Overlay##tag-distance-overlay", &showTagDistanceOverlay);
 
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-		ImGui::SetTooltip("Shows the distance to other players in meters.");
+		ImGui::SetTooltip("Shows the distance to other players in meters");
 	}
 
     if (client.GameMode == GameMode_Tag) {
