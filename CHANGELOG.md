@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - 2 more stuff to the speedometer in the "Show Extra Info"
-  - SZ: (Stored Z of LastJumpLocation.Z)
-  - SZD: Delta of (Location.Z - LastJumpLocation.Z)
+  - SZ = Stored Z of LastJumpLocation.Z
+  - SZD = Delta of Location.Z - LastJumpLocation.Z
 
 ### Fixed
 - Faith being unable to move after teleporting while grabbing or rolling 
