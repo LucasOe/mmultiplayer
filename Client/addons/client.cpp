@@ -1325,7 +1325,9 @@ static void MultiplayerTab() {
 }
 
 static void TagTab() {
-    ImGui::Checkbox("Distance Overlay##tag-distance-overlay", &showTagDistanceOverlay);
+    if (ImGui::Checkbox("Distance Overlay##tag-distance-overlay", &showTagDistanceOverlay)) {
+        Settings::SetSetting("tag", "showDistanceOverlay", showTagDistanceOverlay);
+    }
 
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
 		ImGui::SetTooltip("Shows the distance to other players in meters");
@@ -1422,6 +1424,8 @@ bool Client::Initialize() {
     players.ShowNameTags = Settings::GetSetting("client", "showNameTags", true);
     chat.ShowOverlay = Settings::GetSetting("client", "showChatOverlay", true);
     disabled = Settings::GetSetting("client", "disabled", false);
+
+    showTagDistanceOverlay = Settings::GetSetting("tag", "showDistanceOverlay", false);
 
     // Functions
     Menu::AddTab("Multiplayer", MultiplayerTab);
