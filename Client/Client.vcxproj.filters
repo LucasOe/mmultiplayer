@@ -267,6 +267,12 @@
     <ClInclude Include="addons\misc.h">
       <Filter>Header Files\addons</Filter>
     </ClInclude>
+    <ClInclude Include="mmultiplayer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\imgui_spinner.h">
+      <Filter>Header Files\imgui</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
