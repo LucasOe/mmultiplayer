@@ -117,7 +117,13 @@ static void WorldTab() {
 			auto level = levels.GetByIndex(i);
 			if (level) {
 				bool check = level->bShouldBeLoaded;
-				ImGui::Checkbox(level->PackageName.GetName().c_str(), &check);
+				auto label = level->PackageName.GetName();
+
+				if (level->PackageName.Number > 0) {
+					label += "_" + std::to_string(level->PackageName.Number - 1);
+				}
+
+				ImGui::Checkbox(label.c_str(), &check);
 
 				if (check) {
 					level->bShouldBeLoaded = level->bShouldBeVisible = true;
