@@ -123,12 +123,8 @@ static void WorldTab() {
 					label += "_" + std::to_string(level->PackageName.Number - 1);
 				}
 
-				ImGui::Checkbox(label.c_str(), &check);
-
-				if (check) {
-					level->bShouldBeLoaded = level->bShouldBeVisible = true;
-				} else {
-					level->bShouldBeLoaded = false;
+				if (ImGui::Checkbox(label.c_str(), &check)) {
+					level->bShouldBeLoaded = level->bShouldBeVisible = check;
 				}
 			}
 		}
