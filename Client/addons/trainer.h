@@ -471,6 +471,9 @@ class Trainer : public Addon {
             int SimulatedBadFPS;
             float FocusLocationInterpolationSpeed;
             float LastResetTimeStamp;
+            
+            float CollisionHeight;
+            float CollisionRadius;
         } Pawn;
 
         struct {
