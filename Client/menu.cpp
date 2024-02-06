@@ -17,7 +17,7 @@ static std::wstring levelName;
 
 static void RenderMenu(IDirect3DDevice9 *device) {
 	if (show) {
-		ImGui::Begin("MMultiplayer 2.1.3");
+		ImGui::Begin("MMultiplayer 2.1.4");
 		ImGui::BeginTabBar("");
 
 		for (auto tab : tabs) {
@@ -103,7 +103,7 @@ static void WorldTab() {
 	}
 
 	ImGui::InputFloat("Time Dilation##world-time-dilation", &world->TimeDilation);
-	ImGui::InputFloat("Gravity##-world-gravity", &world->WorldGravityZ);
+	ImGui::InputFloat("Gravity##world-gravity", &world->WorldGravityZ);
 
 	if (levelName.empty()) {
 		levelName = world->GetMapName(false).c_str();
