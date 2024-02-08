@@ -248,7 +248,9 @@ static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
     controller->ReactionTimeEnergy = save.Controller.ReactionTimeEnergy;
     controller->SetSoundMode(save.Controller.CurrentSoundMode, 0.0f, true, 0.0f);
 
-    Engine::GetWorld()->Game->SetGameSpeed(save.WorldInfo.TimeDilation);
+    auto world = Engine::GetWorld();
+    world->TimeDilation = save.WorldInfo.TimeDilation;
+    world->Game->GameSpeed = save.WorldInfo.TimeDilation;
 
     pawn->LeftHandWorldIKController->StrengthTarget = 0.0f;
     pawn->RightHandWorldIKController->StrengthTarget = 0.0f;
