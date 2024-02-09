@@ -7,7 +7,7 @@
 #include "engine.h"
 #include "settings.h"
 #include "imgui/imgui.h"
-#include "imgui/imgui_internal.h"
+#include "imgui/imgui_mmultiplayer.h"
 #include "menu.h"
 
 static auto show = false;
@@ -17,7 +17,7 @@ static std::wstring levelName;
 
 static void RenderMenu(IDirect3DDevice9 *device) {
 	if (show) {
-		ImGui::Begin("MMultiplayer 2.1.4");
+		ImGui::Begin("MMultiplayer 2.2.0");
 		ImGui::BeginTabBar("");
 
 		for (auto tab : tabs) {
@@ -34,6 +34,10 @@ static void RenderMenu(IDirect3DDevice9 *device) {
 
 /*** Basic Tabs ***/
 static void EngineTab() {
+	// Temp
+	ImGui::Text("ImGui Version: %s", IMGUI_VERSION);
+	ImGui::SeperatorWithPadding(2.5f);
+
 	auto engine = Engine::GetEngine();
 	if (!engine) {
 		return;
