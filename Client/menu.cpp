@@ -107,7 +107,7 @@ static void WorldTab() {
 	}
 
 	ImGui::InputFloat("Time Dilation##world-time-dilation", &world->TimeDilation);
-	ImGui::InputFloat("Gravity##-world-gravity", &world->WorldGravityZ);
+	ImGui::InputFloat("Gravity##world-gravity", &world->WorldGravityZ);
 
 	if (levelName.empty()) {
 		levelName = world->GetMapName(false).c_str();
@@ -121,12 +121,14 @@ static void WorldTab() {
 			auto level = levels.GetByIndex(i);
 			if (level) {
 				bool check = level->bShouldBeLoaded;
-				ImGui::Checkbox(level->PackageName.GetName().c_str(), &check);
+				auto label = level->PackageName.GetName();
 
-				if (check) {
-					level->bShouldBeLoaded = level->bShouldBeVisible = true;
-				} else {
-					level->bShouldBeLoaded = false;
+				if (level->PackageName.Number > 0) {
+					label += "_" + std::to_string(level->PackageName.Number - 1);
+				}
+
+				if (ImGui::Checkbox(label.c_str(), &check)) {
+					level->bShouldBeLoaded = level->bShouldBeVisible = check;
 				}
 			}
 		}

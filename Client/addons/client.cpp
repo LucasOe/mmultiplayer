@@ -24,7 +24,7 @@ static char chatInput[0x200] = {0};
 static auto connected = false, loading = false, disabled = false;
 static std::string room;
 
-static bool showTagDistanceOverlay = true;
+static bool showTagDistanceOverlay = false;
 static bool showTagCooldownOverlay = true;
 static bool playerDiedAndSentJsonMessage = false;
 static int tagCooldown = 5;
@@ -1324,10 +1324,12 @@ static void MultiplayerTab() {
 }
 
 static void TagTab() {
-    ImGui::Checkbox("Distance Overlay##tag-distance-overlay", &showTagDistanceOverlay);
+    if (ImGui::Checkbox("Distance Overlay##tag-distance-overlay", &showTagDistanceOverlay)) {
+        Settings::SetSetting("tag", "showDistanceOverlay", showTagDistanceOverlay);
+    }
 
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-		ImGui::SetTooltip("Shows the distance to other players in meters.");
+		ImGui::SetTooltip("Shows the distance to other players in meters");
 	}
 
     if (client.GameMode == GameMode_Tag) {
@@ -1421,6 +1423,8 @@ bool Client::Initialize() {
     players.ShowNameTags = Settings::GetSetting("client", "showNameTags", true);
     chat.ShowOverlay = Settings::GetSetting("client", "showChatOverlay", true);
     disabled = Settings::GetSetting("client", "disabled", false);
+
+    showTagDistanceOverlay = Settings::GetSetting("tag", "showDistanceOverlay", false);
 
     // Functions
     Menu::AddTab("Multiplayer", MultiplayerTab);
