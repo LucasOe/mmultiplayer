@@ -18,6 +18,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed 
 - 4 selectable models added in 2.1.0 (caused mmultiplayer to crash)
 
+## [2.1.4] - 2024-02-06
+
+### Fixed
+- Being unable to load or unload sublevels if names were similar and if you rapidly loaded and unloaded sublevels
+- Being unable to wallrun after climbing a pipe and teleporting away from it
+
+## [2.1.3] - 2023-10-14
+
+### Added
+- 2 more stuff to the speedometer in the "Show Extra Info"
+  - SZ = Stored Z of LastJumpLocation.Z
+  - SZD = Delta of Location.Z - LastJumpLocation.Z
+
+### Fixed
+- Faith being unable to move after teleporting while grabbing or rolling 
+
 ## [2.1.2] - 2023-07-16
 
 ### Fixed
