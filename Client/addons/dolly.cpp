@@ -1,7 +1,7 @@
 #include <algorithm>
 
 #include "../imgui/imgui.h"
-#include "../imgui/imgui_internal.h"
+#include "../imgui/imgui_mmultiplayer.h"
 #include "../menu.h"
 #include "../pattern.h"
 #include "dolly.h"
@@ -266,13 +266,7 @@ static void DollyTab() {
         }
     }
 
-    auto highlights = new int[markers.size()];
-    for (auto i = 0UL; i < markers.size(); ++i) {
-        highlights[i] = markers[i].Frame;
-    }
-
-    ImGui::SliderInt("Timeline##dolly", &frame, 0, duration, highlights, markers.size());
-    delete[] highlights;
+    ImGui::SliderInt("Timeline##dolly", &frame, 0, duration);
 
     auto fov = controller->PlayerCamera->GetFOVAngle();
     if (ImGui::SliderFloat("FOV##dolly", &fov, 0, 160) && !cameraView) {
