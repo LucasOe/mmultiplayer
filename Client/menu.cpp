@@ -35,7 +35,7 @@ static void RenderMenu(IDirect3DDevice9 *device) {
 static void EngineTab() {
 	// Temp
 	ImGui::Text("ImGui Version: %s", IMGUI_VERSION);
-	ImGui::SeperatorWithPadding(2.5f);
+	ImGui::Separator(5.0f);
 
 	auto engine = Engine::GetEngine();
 	if (!engine) {
@@ -61,7 +61,7 @@ static void EngineTab() {
 		commandInputCallback();
 	}
 
-	ImGui::SeperatorWithPadding(2.5f);
+	ImGui::Separator(5.0f);
 
 	bool check = engine->bSmoothFrameRate;
 	ImGui::Checkbox("Smooth Framerate##engine-smooth-framerate", &check);
@@ -76,7 +76,7 @@ static void EngineTab() {
 		ImGui::InputFloat("Gamma##engine-gamma", &client->DisplayGamma);
 	}
 
-	ImGui::SeperatorWithPadding(2.5f);
+	ImGui::Separator(5.0f);
 
 	if (ImGui::Hotkey("Menu Keybind##menu-show", &showKeybind)) {
 		Settings::SetSetting("menu", "showKeybind", showKeybind);
@@ -112,7 +112,7 @@ static void WorldTab() {
 		levelName = world->GetMapName(false).c_str();
 	}
 
-	ImGui::SeperatorWithPadding(2.5f);
+	ImGui::Separator();
 
 	auto levels = world->StreamingLevels;
 	if (ImGui::TreeNode("world##world-levels", "%ws (%d)", levelName.c_str(), levels.Num())) {

@@ -396,9 +396,9 @@ namespace ImGui {
         return value_changed;
     }
 
-    void SeperatorWithPadding(float paddingVeritcal) { 
-        ImGui::Dummy(ImVec2(0.0f, paddingVeritcal));
+    void Separator(const float height) { 
+        ImGui::Dummy(ImVec2(0.0f, height / 2.0f));
         ImGui::Separator();
-        ImGui::Dummy(ImVec2(0.0f, paddingVeritcal));
+        ImGui::Dummy(ImVec2(0.0f, height / 2.0f));
     }
 }
