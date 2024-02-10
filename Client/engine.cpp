@@ -89,6 +89,9 @@ static struct {
     void(__thiscall *Original)(float *, int, float) = nullptr;
 } tick;
 
+// Forward declaration (required)
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 // D3D9 and window hook implementations
 LRESULT CALLBACK WndProcHook(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 HRESULT WINAPI EndSceneHook(IDirect3DDevice9 *device) {
