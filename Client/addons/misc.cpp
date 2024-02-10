@@ -44,7 +44,7 @@ static void MiscTab() {
         return;
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
 
     // Auto Roll
     if (ImGui::Checkbox("Auto Roll", &autorollEnabled)) {

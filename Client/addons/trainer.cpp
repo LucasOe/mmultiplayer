@@ -421,7 +421,7 @@ static void TrainerTab() {
         }
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
     #pragma endregion
 
     if (ImGui::Checkbox("Trainer Enabled##trainer-enabled", &enabled)) {
@@ -441,7 +441,7 @@ static void TrainerTab() {
         Settings::SetSetting("trainer", "tooltip", tooltip);
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
 
     #pragma region Reset
     if (hasSave) {
@@ -531,7 +531,7 @@ static void TrainerTab() {
     }
     #pragma endregion
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
 
     #pragma region Keybinds
     if (ImGui::Hotkey("God##trainer-god", &godKeybind)) {
@@ -683,7 +683,7 @@ static void TrainerTab() {
     }
     #pragma endregion
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
 
     if (ImGui::Checkbox("Toggle Reset Keybinds##toggleResetKeybinds", &toggleResetKeybinds)) {
         Settings::SetSetting("trainer", "toggleResetKeybinds", toggleResetKeybinds);
