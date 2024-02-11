@@ -396,9 +396,23 @@ namespace ImGui {
         return value_changed;
     }
 
-    void Separator(const float height) { 
+    void Separator(const float height) 
+    { 
         ImGui::Dummy(ImVec2(0.0f, height / 2.0f));
         ImGui::Separator();
         ImGui::Dummy(ImVec2(0.0f, height / 2.0f));
+    }
+    
+    void HelpMarker(const char* desc)
+    {
+        ImGui::SameLine();
+        ImGui::TextDisabled("(?)");
+        if (ImGui::BeginItemTooltip())
+        {
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+            ImGui::TextUnformatted(desc);
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
     }
 }
