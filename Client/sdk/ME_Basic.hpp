@@ -229,12 +229,19 @@ struct FName
 
 	inline std::string GetName() const
 	{
-		return GetGlobalNames()[Index]->GetName();
+		auto name = GetGlobalNames()[Index]->GetName();
+
+		if (Number > 0)
+		{
+			name += "_" + std::to_string(Number - 1);
+		}
+
+		return name;
 	};
 
 	inline bool operator==(const FName& other) const
 	{
-		return Index == other.Index;
+		return Index == other.Index && Number == other.Number;
 	};
 };
 

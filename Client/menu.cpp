@@ -112,7 +112,7 @@ static void WorldTab() {
 		levelName = world->GetMapName(false).c_str();
 	}
 
-	ImGui::Separator();
+	ImGui::Separator(5.0f);
 
 	auto levels = world->StreamingLevels;
 	if (ImGui::TreeNode("world##world-levels", "%ws (%d)", levelName.c_str(), levels.Num())) {
@@ -122,11 +122,14 @@ static void WorldTab() {
 				bool check = level->bShouldBeLoaded;
 				auto label = level->PackageName.GetName();
 
-				if (level->PackageName.Number > 0) {
-					label += "_" + std::to_string(level->PackageName.Number - 1);
-				}
-
-				if (ImGui::Checkbox(label.c_str(), &check)) {
+				if (level->bHasLoadRequestPending || level->bHasUnloadRequestPending) 
+				{
+					ImGui::BeginDisabled();
+					ImGui::Checkbox(label.c_str(), &check);
+					ImGui::EndDisabled();
+				} 
+				else if (ImGui::Checkbox(label.c_str(), &check)) 
+				{
 					level->bShouldBeLoaded = level->bShouldBeVisible = check;
 				}
 			}
