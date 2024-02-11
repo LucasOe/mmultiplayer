@@ -7,4 +7,5 @@ namespace ImGui {
 	void EndRawScene();
 	bool Hotkey(const char *label, int *k, const ImVec2 &size_arg = ImVec2(0, 0));
 	void Separator(const float height);
+	void HelpMarker(const char* desc);
 } 
