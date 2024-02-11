@@ -2,7 +2,6 @@
 #include "../engine.h"
 #include "../hook.h"
 #include "../imgui/imgui.h"
-#include "../imgui/imgui_internal.h"
 #include "../menu.h"
 #include "../pattern.h"
 #include "../settings.h"
@@ -233,6 +232,11 @@ static void Save(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
     save.Pawn.CollisionHeight = pawn->CylinderComponent->CollisionHeight;
     save.Pawn.CollisionRadius = pawn->CylinderComponent->CollisionRadius;
 
+    save.Pawn.RootMotionMode = pawn->Mesh->RootMotionMode;
+    save.Pawn.StartTranslateAtDegree = pawn->SwanNeck1p->StartTranslateAtDegree;
+    save.Pawn.QuadraticForwardTranslation = pawn->SwanNeck1p->QuadraticForwardTranslation;
+    save.Pawn.QuadraticDownwardTranslation = pawn->SwanNeck1p->QuadraticDownwardTranslation;
+
 	const auto walking = static_cast<Classes::UTdMove_Walking *>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_Walking)]);
 	if (walking) {
 		save.Walking.SpeedModifier = walking->SpeedModifier; save.Walking.FrictionModifier = walking->FrictionModifier; save.Walking.bDebugMove = walking->bDebugMove; save.Walking.bTriggersCompliment = walking->bTriggersCompliment; save.Walking.bDisableCollision = walking->bDisableCollision; save.Walking.bShouldHolsterWeapon = walking->bShouldHolsterWeapon; save.Walking.bShouldUnzoom = walking->bShouldUnzoom; save.Walking.bIsTimedMove = walking->bIsTimedMove; save.Walking.bConstrainLook = walking->bConstrainLook; save.Walking.bUseAbsoluteYawConstraint = walking->bUseAbsoluteYawConstraint; save.Walking.bDisableActorCollision = walking->bDisableActorCollision; save.Walking.bLookAtTargetLocation = walking->bLookAtTargetLocation; save.Walking.bLookAtTargetAngle = walking->bLookAtTargetAngle; save.Walking.bDisableFaceRotation = walking->bDisableFaceRotation; save.Walking.bDisableControllerFacingPawnYawRotation = walking->bDisableControllerFacingPawnYawRotation; save.Walking.bAvoidLedges = walking->bAvoidLedges; save.Walking.bUsePreciseLocation = walking->bUsePreciseLocation; save.Walking.bReachedPreciseLocation = walking->bReachedPreciseLocation; save.Walking.bDebugPreciseLocation = walking->bDebugPreciseLocation; save.Walking.bUsePreciseRotation = walking->bUsePreciseRotation; save.Walking.bReachedPreciseRotation = walking->bReachedPreciseRotation; save.Walking.bDelayRotationAndLocationCallback = walking->bDelayRotationAndLocationCallback; save.Walking.bResetCameraLook = walking->bResetCameraLook; save.Walking.bUseCustomCollision = walking->bUseCustomCollision; save.Walking.bUseCameraCollision = walking->bUseCameraCollision; save.Walking.bTwoHandedFullBodyAnimations = walking->bTwoHandedFullBodyAnimations; save.Walking.bStickyAim = walking->bStickyAim; save.Walking.bStopAfterMove = walking->bStopAfterMove; save.Walking.bEnableFootPlacement = walking->bEnableFootPlacement; save.Walking.bEnableAgainstWall = walking->bEnableAgainstWall; save.Walking.bAllowPickup = walking->bAllowPickup; save.Walking.AiAimPenalty = walking->AiAimPenalty; save.Walking.AiAimOneShotPenalty = walking->AiAimOneShotPenalty; save.Walking.MovementGroup = walking->MovementGroup; save.Walking.FirstPersonDPG = walking->FirstPersonDPG; save.Walking.FirstPersonLowerBodyDPG = walking->FirstPersonLowerBodyDPG; save.Walking.PreciseLocationInterpMode = walking->PreciseLocationInterpMode; save.Walking.AimMode = walking->AimMode; save.Walking.DisableMovementTime = walking->DisableMovementTime; save.Walking.DisableLookTime = walking->DisableLookTime; save.Walking.LastStopMoveTime = walking->LastStopMoveTime; save.Walking.MoveActiveTime = walking->MoveActiveTime; save.Walking.RedoMoveTime = walking->RedoMoveTime; save.Walking.PreciseLocationSpeed = walking->PreciseLocationSpeed; save.Walking.PreciseLocation = walking->PreciseLocation; save.Walking.PreciseRotationInterpolationTime = walking->PreciseRotationInterpolationTime; save.Walking.PreciseRotation = walking->PreciseRotation; save.Walking.LookAtTargetLocation = walking->LookAtTargetLocation; save.Walking.LookAtTargetAngle = walking->LookAtTargetAngle; save.Walking.LookAtTargetInterpolationTime = walking->LookAtTargetInterpolationTime; save.Walking.LookAtTargetDuration = walking->LookAtTargetDuration; save.Walking.CancelResetCameraLookTime = walking->CancelResetCameraLookTime; save.Walking.ResetCameraLookTime = walking->ResetCameraLookTime; save.Walking.MinLookConstraint = walking->MinLookConstraint; save.Walking.MaxLookConstraint = walking->MaxLookConstraint; save.Walking.CustomCollisionRadius = walking->CustomCollisionRadius; save.Walking.CustomCollisionHeight = walking->CustomCollisionHeight; save.Walking.WeaponInactivePitchAimingLimit = walking->WeaponInactivePitchAimingLimit; save.Walking.RootMotionScale = walking->RootMotionScale; save.Walking.RootOffset = walking->RootOffset; save.Walking.SwanNeckEnableAtPitch = walking->SwanNeckEnableAtPitch; save.Walking.SwanNeckForward = walking->SwanNeckForward; save.Walking.SwanNeckDown = walking->SwanNeckDown; save.Walking.AnimBlendTime = walking->AnimBlendTime; save.Walking.StickyAngle = walking->StickyAngle; save.Walking.StickyAimedModifier = walking->StickyAimedModifier; save.Walking.Timer = walking->Timer; save.Walking.PawnPhysics = walking->PawnPhysics; save.Walking.HandPlantExtentCheckHeight = walking->HandPlantExtentCheckHeight; save.Walking.HandPlantExtentCheckWidth = walking->HandPlantExtentCheckWidth; save.Walking.HandPlantCheckDistance = walking->HandPlantCheckDistance; save.Walking.HandPlantCheckHeight = walking->HandPlantCheckHeight; save.Walking.ContextMoveDistanceMultiplier = walking->ContextMoveDistanceMultiplier; save.Walking.bCheckForGrab = walking->bCheckForGrab; save.Walking.bCheckForVaultOver = walking->bCheckForVaultOver; save.Walking.bCheckForWallClimb = walking->bCheckForWallClimb; save.Walking.bCheckForEdgeInVelDir = walking->bCheckForEdgeInVelDir; save.Walking.bCheckExitToFalling = walking->bCheckExitToFalling; save.Walking.bCheckExitToUncontrolledFalling = walking->bCheckExitToUncontrolledFalling; save.Walking.bCheckForSoftLanding = walking->bCheckForSoftLanding; save.Walking.bDelayTimeCheckAutoMoves = walking->bDelayTimeCheckAutoMoves; save.Walking.ExitToFallingZSpeed = walking->ExitToFallingZSpeed; save.Walking.SoftLandingZSpeedThreshold = walking->SoftLandingZSpeedThreshold; save.Walking.TimeToSoftLandingThreshold = walking->TimeToSoftLandingThreshold; save.Walking.bIsPlayingIdleAnim = walking->bIsPlayingIdleAnim; save.Walking.TriggerIdleAnimMinTime = walking->TriggerIdleAnimMinTime; save.Walking.TriggerIdleAnimMaxTime = walking->TriggerIdleAnimMaxTime;
@@ -397,7 +401,9 @@ static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
     controller->ReactionTimeEnergy = save.Controller.ReactionTimeEnergy;
     controller->SetSoundMode(save.Controller.CurrentSoundMode, 0.0f, true, 0.0f);
 
-    Engine::GetWorld()->Game->SetGameSpeed(save.WorldInfo.TimeDilation);
+    auto world = Engine::GetWorld();
+    world->TimeDilation = save.WorldInfo.TimeDilation;
+    world->Game->GameSpeed = save.WorldInfo.TimeDilation;
 
     pawn->LeftHandWorldIKController->StrengthTarget = 0.0f;
     pawn->RightHandWorldIKController->StrengthTarget = 0.0f;
@@ -416,6 +422,11 @@ static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
 
     pawn->CylinderComponent->CollisionHeight = save.Pawn.CollisionHeight;
     pawn->CylinderComponent->CollisionRadius = save.Pawn.CollisionRadius;
+
+    pawn->Mesh->RootMotionMode = save.Pawn.RootMotionMode;
+    pawn->SwanNeck1p->StartTranslateAtDegree = save.Pawn.StartTranslateAtDegree;
+    pawn->SwanNeck1p->QuadraticForwardTranslation = save.Pawn.QuadraticForwardTranslation;
+    pawn->SwanNeck1p->QuadraticDownwardTranslation = save.Pawn.QuadraticDownwardTranslation;
 
 	const auto walking = static_cast<Classes::UTdMove_Walking *>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_Walking)]);
 	if (walking) {
@@ -540,7 +551,7 @@ static void TrainerTab() {
         }
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
     #pragma endregion
 
     if (ImGui::Checkbox("Trainer Enabled##trainer-enabled", &enabled)) {
@@ -560,7 +571,7 @@ static void TrainerTab() {
         Settings::SetSetting("trainer", "tooltip", tooltip);
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
 
     #pragma region Reset
     if (hasSave) {
@@ -650,7 +661,7 @@ static void TrainerTab() {
     }
     #pragma endregion
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
 
     #pragma region Keybinds
     if (ImGui::Hotkey("God##trainer-god", &godKeybind)) {
@@ -802,7 +813,7 @@ static void TrainerTab() {
     }
     #pragma endregion
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
 
     if (ImGui::Checkbox("Toggle Reset Keybinds##toggleResetKeybinds", &toggleResetKeybinds)) {
         Settings::SetSetting("trainer", "toggleResetKeybinds", toggleResetKeybinds);

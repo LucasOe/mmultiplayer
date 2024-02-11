@@ -10,7 +10,6 @@
 
 #include "../engine.h"
 #include "../imgui/imgui.h"
-#include "../imgui/imgui_internal.h"
 #include "../json.h"
 #include "../menu.h"
 #include "../settings.h"
@@ -1138,7 +1137,7 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
 
 static void MultiplayerTab() {
     ImGui::Text("Status: %s", connected ? "Connected" : disabled ? "Multiplayer Disabled" : "Connecting");
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
 
     const auto nameInputCallback = []() {
         if (client.Name != nameInput) {
@@ -1243,7 +1242,7 @@ static void MultiplayerTab() {
         roomInputCallback();
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
 
     if (ImGui::Checkbox("Show Nametags##client-show-nametags",
                         &players.ShowNameTags)) {
@@ -1269,7 +1268,7 @@ static void MultiplayerTab() {
         Settings::SetSetting("client", "disabled", disabled);
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
     ImGui::Text("Chat");
 
     chat.Mutex.lock();
@@ -1299,7 +1298,7 @@ static void MultiplayerTab() {
         Settings::SetSetting("client", "chatKeybind", chat.Keybind = VK_T);
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
 
     players.Mutex.lock_shared();
     if (ImGui::TreeNode("##client-players", "Players (%d)",
@@ -1341,7 +1340,7 @@ static void TagTab() {
         }
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
 
     if (client.Level == Map_MainMenu) {
         ImGui::Text("You can't start tag when you're in the main menu");

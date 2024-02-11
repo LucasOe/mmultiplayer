@@ -7,7 +7,6 @@
 #include "engine.h"
 #include "settings.h"
 #include "imgui/imgui.h"
-#include "imgui/imgui_internal.h"
 #include "menu.h"
 
 static auto show = false;
@@ -17,7 +16,7 @@ static std::wstring levelName;
 
 static void RenderMenu(IDirect3DDevice9 *device) {
 	if (show) {
-		ImGui::Begin("MMultiplayer 2.1.4");
+		ImGui::Begin("MMultiplayer 2.2.0");
 		ImGui::BeginTabBar("");
 
 		for (auto tab : tabs) {
@@ -34,6 +33,10 @@ static void RenderMenu(IDirect3DDevice9 *device) {
 
 /*** Basic Tabs ***/
 static void EngineTab() {
+	// Temp
+	ImGui::Text("ImGui Version: %s", IMGUI_VERSION);
+	ImGui::Separator(5.0f);
+
 	auto engine = Engine::GetEngine();
 	if (!engine) {
 		return;
@@ -58,7 +61,7 @@ static void EngineTab() {
 		commandInputCallback();
 	}
 
-	ImGui::SeperatorWithPadding(2.5f);
+	ImGui::Separator(5.0f);
 
 	bool check = engine->bSmoothFrameRate;
 	ImGui::Checkbox("Smooth Framerate##engine-smooth-framerate", &check);
@@ -73,7 +76,7 @@ static void EngineTab() {
 		ImGui::InputFloat("Gamma##engine-gamma", &client->DisplayGamma);
 	}
 
-	ImGui::SeperatorWithPadding(2.5f);
+	ImGui::Separator(5.0f);
 
 	if (ImGui::Hotkey("Menu Keybind##menu-show", &showKeybind)) {
 		Settings::SetSetting("menu", "showKeybind", showKeybind);
@@ -109,7 +112,7 @@ static void WorldTab() {
 		levelName = world->GetMapName(false).c_str();
 	}
 
-	ImGui::SeperatorWithPadding(2.5f);
+	ImGui::Separator(5.0f);
 
 	auto levels = world->StreamingLevels;
 	if (ImGui::TreeNode("world##world-levels", "%ws (%d)", levelName.c_str(), levels.Num())) {
@@ -119,11 +122,14 @@ static void WorldTab() {
 				bool check = level->bShouldBeLoaded;
 				auto label = level->PackageName.GetName();
 
-				if (level->PackageName.Number > 0) {
-					label += "_" + std::to_string(level->PackageName.Number - 1);
-				}
-
-				if (ImGui::Checkbox(label.c_str(), &check)) {
+				if (level->bHasLoadRequestPending || level->bHasUnloadRequestPending) 
+				{
+					ImGui::BeginDisabled();
+					ImGui::Checkbox(label.c_str(), &check);
+					ImGui::EndDisabled();
+				} 
+				else if (ImGui::Checkbox(label.c_str(), &check)) 
+				{
 					level->bShouldBeLoaded = level->bShouldBeVisible = check;
 				}
 			}

@@ -3,7 +3,6 @@
 #include "../engine.h"
 #include "../hook.h"
 #include "../imgui/imgui.h"
-#include "../imgui/imgui_internal.h"
 #include "../menu.h"
 #include "../pattern.h"
 #include "../settings.h"
@@ -45,7 +44,7 @@ static void MiscTab() {
         return;
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::Separator(5.0f);
 
     // Auto Roll
     if (ImGui::Checkbox("Auto Roll", &autorollEnabled)) {
@@ -128,7 +127,7 @@ static void MiscTab() {
     }
 
     if (permanentGameSpeedEnabled) {
-        if (ImGui::InputFloat("Game Speed", &permanentGameSpeed, 0.1f, 0.5f, 2, ImGuiInputTextFlags_EnterReturnsTrue)) {
+        if (ImGui::InputFloat("Game Speed", &permanentGameSpeed, 0.1f, 0.5f, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue)) {
             Settings::SetSetting("misc", "permanentGameSpeed", permanentGameSpeed = max(0.1f, permanentGameSpeed));
         }
     }

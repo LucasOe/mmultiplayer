@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [Unreleased]
+
+## [2.2.0] - 2023-08-18
+
+### Fixed
+- Faith being unable to move after teleporting in a few movement states
+
+### Changed
+- Updated Dear ImGui to 1.89.7 from 1.73
+- Updated Nlohmann Json to 3.11.2 from 3.7.3
+
+### Removed 
+- 4 selectable models added in 2.1.0 (caused mmultiplayer to crash)
 
 ## [2.1.4] - 2024-02-06
 
