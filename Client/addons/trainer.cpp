@@ -36,22 +36,176 @@ static int strangKeybind = VK_NONE;
 static int sidestepBeamerLeftKeybind = VK_A;
 static int sidestepBeamerRightKeybind = VK_D;
 
-static bool showPlayerInfo = false; 
-static bool showTopHeightInfo = false;
-static bool showExtraPlayerInfo = false;
-
-static float topSpeed = 0.0f;
-static float topSpeedTimeHit = 0.0f;
-static float topSpeedResetAfterSeconds = 2.75f;
-
-static float topHeight = 0.0f;
-static float topHeightTimeHit = 0.0f;
-static float topHeightResetAfterSeconds = 2.75f;
-
 static bool hasCheckpoint = false;
 static float checkpointTime = 0.0f;
 static bool checkpointUpdateTimer = false;
 static Classes::FVector checkpointLocation;
+
+static bool ShowSpeedometer = false;
+static bool EditSpeedometer = false;
+static std::string SpeedometerLabel = "Speedometer##trainer-speedometer";
+static std::string SpeedometerEditLabel = "Speedometer Edit##trainer-speedometer-edit";
+
+template<typename T>
+struct Item
+{
+    bool IsVisible;
+
+    bool ModifyValue;
+    bool Multiply;
+    float Factor;
+
+    bool AddSpaceBelow;
+    float Height;
+    float ValueOffset;
+
+    char Label[64];
+    char Format[64];
+    float LabelColor[4];
+    float ValueColor[4];
+
+    Item()
+    {
+        IsVisible = true;
+        ModifyValue = false;
+        Multiply = false;
+        Factor = 1.0f;
+        AddSpaceBelow = false;
+        Height = 5.0f;
+        ValueOffset = 128.0f;
+
+        for (size_t i = 0; i < 4; i++)
+        {
+            LabelColor[i] = 1.0f;
+            ValueColor[i] = 1.0f;
+        }
+
+        strcpy_s(Label, "?");
+        strcpy_s(Format, "%.2f");
+    }
+
+    inline void Draw(T value)
+    {
+        if (!IsVisible)
+        {
+            return;
+        }
+
+        const auto colorLabel = ImVec4(LabelColor[0], LabelColor[1], LabelColor[2], LabelColor[3]);
+        const auto colorValue = ImVec4(ValueColor[0], ValueColor[1], ValueColor[2], ValueColor[3]);
+
+        ImGui::Begin(SpeedometerLabel.c_str());
+        ImGui::TextColored(colorLabel, Label);
+        ImGui::SameLine(ValueOffset);
+
+        if (ModifyValue)
+        {
+            if (Multiply)
+            {
+                value *= Factor;
+            }
+            else
+            {
+                if (Factor == 0.0f)
+                {
+                    Factor = 1.0f;
+                }
+
+                value /= Factor;
+            }
+        }
+        
+        ImGui::TextColored(colorValue, Format, value);
+
+        if (AddSpaceBelow)
+        {
+            ImGui::Dummy(ImVec2(0.0f, Height));
+        }
+
+        ImGui::End();
+    }
+
+    inline void Edit()
+    {
+        ImGui::Begin(SpeedometerEditLabel.c_str(), &EditSpeedometer, ImGuiWindowFlags_NoCollapse);
+        ImGui::Checkbox("IsVisible", &IsVisible);
+        ImGui::InputText("Label", Label, sizeof(Label), ImGuiInputTextFlags_EnterReturnsTrue);
+        ImGui::InputText("Format", Format, sizeof(Format), ImGuiInputTextFlags_EnterReturnsTrue);
+        ImGui::Checkbox("AddSpaceBelow", &AddSpaceBelow);
+        ImGui::DragFloat("Height", &Height);
+        ImGui::DragFloat("Offset", &ValueOffset);
+        ImGui::Checkbox("ModifyValue", &ModifyValue);
+        ImGui::Checkbox("Multiply", &Multiply);
+        ImGui::InputFloat("Factor", &Factor);
+        ImGui::ColorEdit4("LabelColor", LabelColor);
+        ImGui::ColorEdit4("ValueColor", ValueColor);
+        ImGui::End();
+    }
+};
+
+static Item<float> LocationX;
+static Item<float> LocationY;
+static Item<float> LocationZ;
+static Item<float> TopHeight;
+static Item<float> Speed;
+static Item<float> TopSpeed;
+static Item<float> Pitch;
+static Item<float> Yaw;
+static Item<float> Checkpoint;
+static Item<int> MovementState;
+static Item<int> Health;
+static Item<float> ReactionTime;
+static Item<float> LastJumpLocation;
+static Item<float> LastJumpLocationDelta;
+
+struct Tracker
+{
+    float Value;
+    float TimeHit;
+
+    // TODO: Allow user to edit these
+    bool UseRealTime;
+    float ResetAfterSeconds;
+
+    Tracker()
+    {
+        Value = 0.0f;
+        TimeHit = 0.0f;
+        UseRealTime = true;
+
+        // 2.75f Comes from checking how long it took for the original speedometer to reset
+        ResetAfterSeconds = 2.75f;
+    }
+
+    inline void Reset()
+    {
+        Value = 0.0f;
+        TimeHit = 0.0f;
+    }
+
+    inline void Update(const float current)
+    {
+        const auto pawn = Engine::GetPlayerPawn();
+        if (pawn)
+        {
+            const float time = UseRealTime ? pawn->WorldInfo->RealTimeSeconds : pawn->WorldInfo->TimeSeconds;
+
+            if (time - TimeHit > ResetAfterSeconds)
+            {
+                Reset();
+            }
+
+            if (current > Value)
+            {
+                Value = current;
+                TimeHit = time;
+            }
+        }
+    }
+};
+
+static Tracker TopSpeedTracker;
+static Tracker TopHeightTracker;
 
 static struct {
     bool Enabled = false;
@@ -362,32 +516,8 @@ static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
 
 static void TrainerTab() {
     #pragma region Player
-    if (ImGui::Checkbox("Show Player Info", &showPlayerInfo)) {
-        Settings::SetSetting("player", "showInfo", showPlayerInfo);
-    }
-
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        if (showTopHeightInfo) {
-            ImGui::SetTooltip("X = Location X\nY = Location Y\nZ = Location Z\nZT = Location Z Top\n \nV = Velocity\nVT = Velocity Top\n \nRX = Rotation Pitch\nRY = Rotation Yaw\n \nT = Time");
-        } else {
-            ImGui::SetTooltip("X = Location X\nY = Location Y\nZ = Location Z\n \nV = Velocity\nVT = Velocity Top\n \nRX = Rotation Pitch\nRY = Rotation Yaw\n \nT = Time");
-        }
-    }
-
-    if (showPlayerInfo) {
-        if (ImGui::Checkbox("Show Top Height", &showTopHeightInfo)) {
-            Settings::SetSetting("player", "showTopHeightInfo", showTopHeightInfo);
-            topHeight = 0.0f;
-            topHeightTimeHit = 0.0f;
-        }
-
-        if (ImGui::Checkbox("Show Extra Player Info", &showExtraPlayerInfo)) {
-            Settings::SetSetting("player", "showExtraPlayerInfo", showExtraPlayerInfo);
-        }
-
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("S = Movement State (Enum)\nH = Health\nRT = Reaction Time Energy\n \nSZ = Stored Z (LastJumpLocation.Z)\nSZD = Delta of Location.Z - LastJumpLocation.Z");
-        }
+    if (ImGui::Checkbox("Show Speedometer", &ShowSpeedometer)) {
+        Settings::SetSetting("player", "showInfo", ShowSpeedometer);
     }
 
     auto pawn = Engine::GetPlayerPawn();
@@ -398,12 +528,12 @@ static void TrainerTab() {
     }
 
     if (!(Engine::GetTimeTrialGame() || controller->ReactionTimeEnergy >= 100.0f ||
-        controller->bReactionTime ||  pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled)) {
+        controller->bReactionTime || pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled)) {
 
         ImGui::Dummy(ImVec2(0.0f, 6.0f));
 
         if (ImGui::Button("Refill ReactionTimeEnergy##controller-reactiontime")) {
-            auto tdhud = static_cast<Classes::ATdHUD *>(controller->myHUD);
+            auto tdhud = static_cast<Classes::ATdHUD*>(controller->myHUD);
 
             controller->ReactionTimeEnergy = 100.0f;
             tdhud->EffectManager->ActivateReactionTimeTeaser();
@@ -468,7 +598,7 @@ static void TrainerTab() {
     if (ImGui::Checkbox("Sidestep Beamer##trainer-beamer-sidestep", &sidestepBeamer)) {
         Settings::SetSetting("trainer", "sidestepBeamer", sidestepBeamer);
     }
-    
+
     if (sidestepBeamer) {
         if (ImGui::Checkbox("Auto Sidestep Beamer##trainer-beamer-sidestepForMe", &sidestepBeamerForMe)) {
             Settings::SetSetting("trainer", "sidestepBeamerForMe", sidestepBeamerForMe);
@@ -476,7 +606,7 @@ static void TrainerTab() {
 
         if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
             ImGui::SetTooltip("If set to false, you need to manually hold your left keybind or right keybind when beamer is active");
-        } 
+        }
 
         if (sidestepBeamerForMe) {
             ImGui::Dummy(ImVec2(0.0f, 6.0f));
@@ -485,7 +615,7 @@ static void TrainerTab() {
                 Settings::SetSetting("trainer", "sidestepBeamerPressRightKeybind", sidestepBeamerPressRightKeybind = false);
                 Settings::SetSetting("trainer", "sidestepBeamerPressLeftKeybind", sidestepBeamerPressLeftKeybind = true);
             }
-            
+
             if (ImGui::RadioButton("Press Right Keybind##trainer-sidestepBeamerRight", sidestepBeamerPressRightKeybind)) {
                 Settings::SetSetting("trainer", "sidestepBeamerPressRightKeybind", sidestepBeamerPressRightKeybind = true);
                 Settings::SetSetting("trainer", "sidestepBeamerPressLeftKeybind", sidestepBeamerPressLeftKeybind = false);
@@ -679,95 +809,49 @@ static void TrainerTab() {
     }
 }
 
-template <typename T>
-void AddTextToDrawList(ImDrawList* drawList, float width, float rightPadding, float& y, float yIncrement, ImColor color, const char* label, const char* format, T value) {
-    char buffer[0xFF];
-    sprintf_s(buffer, format, value);
+static void OnRender(IDirect3DDevice9*)
+{
+    if (ShowSpeedometer)
+    {
+        const auto pawn = Engine::GetPlayerPawn();
+        const auto controller = Engine::GetPlayerController();
 
-    drawList->AddText(ImVec2(width - ImGui::CalcTextSize(buffer, nullptr, false).x, y), color, buffer);
-    drawList->AddText(ImVec2(width - rightPadding, y), color, label);
+        if (pawn && controller)
+        {
+            if (ImGui::Begin(SpeedometerLabel.c_str(), &ShowSpeedometer, ImGuiWindowFlags_NoCollapse))
+            {
+                const float speed = sqrtf(powf(pawn->Velocity.X, 2) + powf(pawn->Velocity.Y, 2));
+                const float pitch = static_cast<float>(controller->Rotation.Pitch % 0x10000) / static_cast<float>(0x10000) * 360.0f;
+                const float yaw = static_cast<float>(controller->Rotation.Yaw % 0x10000) / static_cast<float>(0x10000) * 360.0f;
 
-    y += yIncrement;
-}
+                TopSpeedTracker.Update(speed);
+                TopHeightTracker.Update(pawn->Location.Z);
 
-static void OnRender(IDirect3DDevice9 *) {
-    static const float padding = 5.0f;
+                LocationX.Draw(pawn->Location.X);
+                LocationY.Draw(pawn->Location.Y);
+                LocationZ.Draw(pawn->Location.Z);
+                TopHeight.Draw(TopHeightTracker.Value);
 
-    if (showPlayerInfo) {
-        auto pawn = Engine::GetPlayerPawn();
-        auto controller = Engine::GetPlayerController();
+                Speed.Draw(speed);
+                TopSpeed.Draw(TopSpeedTracker.Value);
 
-        if (pawn && controller) {
-            static const auto rightPadding = 110.0f;
+                Pitch.Draw(pitch);
+                Yaw.Draw(yaw);
 
-            auto window = ImGui::BeginRawScene("##player-info");
-            auto &io = ImGui::GetIO();
-            auto width = io.DisplaySize.x - padding;
+                Checkpoint.Draw(checkpointTime);
+                MovementState.Draw(static_cast<int>(pawn->MovementState.GetValue()));
+                Health.Draw(pawn->Health);
+                ReactionTime.Draw(min(100.0f, controller->ReactionTimeEnergy));
+                LastJumpLocation.Draw(pawn->LastJumpLocation.Z);
+                LastJumpLocationDelta.Draw(pawn->Location.Z - pawn->LastJumpLocation.Z);
 
-            auto yIncrement = ImGui::GetTextLineHeight();
-            auto count = (showTopHeightInfo ? 1 : 0) + (showExtraPlayerInfo ? 13 : 8);
-            auto y = io.DisplaySize.y - (count * yIncrement) - padding - ((yIncrement / 2) * (showExtraPlayerInfo ? 4: 3));
-            auto color = ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-            window->DrawList->AddRectFilled(ImVec2(width - rightPadding - padding, y - (padding / 2)), io.DisplaySize, ImColor(ImVec4(0, 0, 0, 0.4f)));
-
-            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "X", "%.2f", pawn->Location.X / 100.0f);
-            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "Y", "%.2f", pawn->Location.Y / 100.0f);
-            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + (showTopHeightInfo ? 0 : yIncrement / 2), color, "Z", "%.2f", pawn->Location.Z / 100.0f);
-
-            if (showTopHeightInfo) {
-                float height = pawn->Location.Z / 100.0f;
-
-                if (pawn->WorldInfo->RealTimeSeconds - topHeightTimeHit > topHeightResetAfterSeconds) {
-                    topHeight = 0.0f;
-                    topHeightTimeHit = 0.0f;
-                }
-
-                if (height > topHeight) {
-                    topHeight = height;
-                    topHeightTimeHit = pawn->WorldInfo->RealTimeSeconds;
-                }
-
-                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "ZT", "%.2f", topHeight);
+                ImGui::End();
             }
-
-            float speed = sqrtf(powf(pawn->Velocity.X, 2) + powf(pawn->Velocity.Y, 2)) * 0.036f;
-
-            if (pawn->WorldInfo->RealTimeSeconds - topSpeedTimeHit > topSpeedResetAfterSeconds) {
-                topSpeed = 0.0f;
-                topSpeedTimeHit = 0.0f;
-            }
-
-            if (speed > topSpeed) {
-                topSpeed = speed;
-                topSpeedTimeHit = pawn->WorldInfo->RealTimeSeconds;
-            }
-
-            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "V", "%.2f", speed);
-            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "VT", "%.2f", topSpeed);
-
-            float pitch = (static_cast<float>(controller->Rotation.Pitch % 0x10000) / static_cast<float>(0x10000)) * 360.0f;
-            pitch = pitch == 0.0f ? pitch : pitch > 180.0f ? pitch - 360.0f + 0.01f : pitch + 0.01f;
-
-            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "RX", "%.2f", pitch);
-            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "RY", "%.2f", (static_cast<float>(controller->Rotation.Yaw % 0x10000) / static_cast<float>(0x10000)) * 360.0f);
-            AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "T", "%.2f", checkpointTime);
-
-            if (showExtraPlayerInfo) {
-                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "S", "%d", pawn->MovementState.GetValue());
-                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "H", "%d", pawn->Health);
-                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement + yIncrement / 2, color, "RT", "%.2f", min(100.00f, controller->ReactionTimeEnergy));
-
-                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "SZ", "%.2f", pawn->LastJumpLocation.Z / 100.0f);
-                AddTextToDrawList(window->DrawList, width, rightPadding, y, yIncrement, color, "SZD", "%.2f", (pawn->Location.Z - pawn->LastJumpLocation.Z) / 100.0f);
-            }
-
-            ImGui::EndRawScene();
-        } else {
-            topSpeed = 0.0f;
-            topSpeedTimeHit = 0.0f;
-            topHeight = 0.0f;
-            topHeightTimeHit = 0.0f;
+        }
+        else
+        {
+            TopSpeedTracker.Reset();
+            TopHeightTracker.Reset();
         }
     }
 
@@ -784,23 +868,23 @@ static void OnRender(IDirect3DDevice9 *) {
 
     if (text != "") {
         const auto window = ImGui::BeginRawScene("##trainer-state");
-        const auto &io = ImGui::GetIO();
+        const auto& io = ImGui::GetIO();
         const auto width = ImGui::CalcTextSize(text.c_str(), nullptr, false).x;
 
         window->DrawList->AddRectFilled(
-            ImVec2(io.DisplaySize.x - width - padding, 0),
+            ImVec2(io.DisplaySize.x - width - 5.0f, 0),
             ImVec2(io.DisplaySize.x, ImGui::GetTextLineHeight()),
             ImColor(ImVec4(0, 0, 0, 0.4f)));
         window->DrawList->AddText(ImVec2(io.DisplaySize.x - width, 0),
-                                  ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)),
-                                  text.c_str());
+            ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)),
+            text.c_str());
 
         ImGui::EndRawScene();
     }
 }
 
 static void OnTick(float deltaTime) {
-    if (!enabled && !showPlayerInfo) {
+    if (!enabled && !ShowSpeedometer) {
         return;
     }
 
@@ -809,7 +893,7 @@ static void OnTick(float deltaTime) {
         return;
     }
 
-    if (showPlayerInfo) {
+    if (ShowSpeedometer) {
         if (Engine::IsKeyDown(checkpointKeybind)) {
             hasCheckpoint = true;
             checkpointTime = 0.0f;
@@ -973,6 +1057,48 @@ void __fastcall StateHandlerHook(void *pawn, void *idle, float delta,
 }
 
 bool Trainer::Initialize() {
+
+    strcpy_s(LocationX.Label, "X");
+    strcpy_s(LocationY.Label, "Y");
+    strcpy_s(LocationZ.Label, "Z");
+    strcpy_s(TopHeight.Label, "ZT");
+    strcpy_s(Speed.Label, "V");
+    strcpy_s(TopSpeed.Label, "VT");
+    strcpy_s(Pitch.Label, "RX");
+    strcpy_s(Yaw.Label, "RY");
+    strcpy_s(Checkpoint.Label, "T");
+    strcpy_s(MovementState.Label, "S");
+    strcpy_s(Health.Label, "H");
+    strcpy_s(ReactionTime.Label, "RT");
+    strcpy_s(LastJumpLocation.Label, "SZ");
+    strcpy_s(LastJumpLocationDelta.Label, "SZD");
+
+    strcpy_s(Health.Format, "%d");
+    strcpy_s(MovementState.Format, "%d");
+
+    TopHeight.AddSpaceBelow = true;
+    TopSpeed.AddSpaceBelow = true;
+    Yaw.AddSpaceBelow = true;
+
+    LocationX.ModifyValue = true;
+    LocationX.Factor = 100;
+    LocationY.ModifyValue = true;
+    LocationY.Factor = 100;
+    LocationZ.ModifyValue = true;
+    LocationZ.Factor = 100;
+    TopHeight.ModifyValue = true;
+    TopHeight.Factor = 100;
+    Speed.ModifyValue = true;
+    Speed.Multiply = true;
+    Speed.Factor = 0.036f;
+    TopSpeed.ModifyValue = true;
+    TopSpeed.Multiply = true;
+    TopSpeed.Factor = 0.036f;
+    LastJumpLocation.ModifyValue = true;
+    LastJumpLocation.Factor = 100;
+    LastJumpLocationDelta.ModifyValue = true;
+    LastJumpLocationDelta.Factor = 100;
+
     // Settings
     enabled = Settings::GetSetting("trainer", "enabled", false);
     tooltip = Settings::GetSetting("trainer", "tooltip", true);
@@ -983,9 +1109,7 @@ bool Trainer::Initialize() {
     toggleResetKeybinds = Settings::GetSetting("trainer", "toggleResetKeybinds", false);
 
     // Player Info
-    showPlayerInfo = Settings::GetSetting("player", "showInfo", false);
-    showTopHeightInfo = Settings::GetSetting("player", "showTopHeightInfo", false);
-    showExtraPlayerInfo = Settings::GetSetting("player", "showExtraPlayerInfo", false);
+    ShowSpeedometer = Settings::GetSetting("player", "showInfo", false);
 
     // Flying Settings
     fly.Keybind = Settings::GetSetting("trainer", "flyKeybind", VK_2);
