@@ -249,6 +249,19 @@ class Trainer : public Addon {
             float LastStartTime;
             Classes::FVector TakeHitLocation;
             Classes::FVector TearOffMomentum;
+
+            //* Start CylinderComponent
+
+            float CollisionHeight;
+            float CollisionRadius;
+
+            //* End CylinderComponent
+            //* Start Mesh
+
+            Classes::TEnumAsByte<Classes::ERootMotionMode> RootMotionMode;
+
+            //* End Mesh
+
             float RBPushRadius;
             float RBPushStrength;
             float AlwaysRelevantDistanceSquared;
@@ -306,6 +319,15 @@ class Trainer : public Addon {
             float AmountTilUnarmed;
             float GravityModifier;
             float GravityModifierTimer;
+
+            //* Start TdSwanNeck
+
+            float QuadraticForwardTranslation;
+            float QuadraticDownwardTranslation;
+            float StartTranslateAtDegree;
+
+            //* End TdSwanNeck 
+
             Classes::TEnumAsByte<Classes::EAgainstWallState> AgainstWallState;
             Classes::TEnumAsByte<Classes::EWeaponAnimState> WeaponAnimState;
             unsigned char AnimLockRefCount;
@@ -471,9 +493,6 @@ class Trainer : public Addon {
             int SimulatedBadFPS;
             float FocusLocationInterpolationSpeed;
             float LastResetTimeStamp;
-            
-            float CollisionHeight;
-            float CollisionRadius;
         } Pawn;
 
         struct {
