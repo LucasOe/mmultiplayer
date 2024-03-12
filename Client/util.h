@@ -48,7 +48,7 @@
 #define Map_MainMenu            "tdmainmenu"
 #define Map_Prologue            "edge_p"
 #define Map_Flight              "escape_p"
-#define Map_Jacknife            "stromdrains_p"
+#define Map_Jacknife            "stromdrain_p"
 #define Map_Heat                "cranes_p"
 #define Map_Ropeburn            "subway_p"
 #define Map_NewEden             "mall_p"
@@ -66,25 +66,27 @@ inline static float Distance(Classes::FVector from, Classes::FVector to)
 	return sqrt(((from.X - to.X) * (from.X - to.X)) + ((from.Y - to.Y) * (from.Y - to.Y)) + ((from.Z - to.Z) * (from.Z - to.Z))) / 100;
 }
 
-static INPUT input = {0};
+static INPUT Input = {0};
 
-inline static void PressKey(int keyCode) {
-    input.type = INPUT_KEYBOARD;
-    input.ki.wScan = 0;
-    input.ki.time = 0;
-    input.ki.dwExtraInfo = 0;
+inline static void PressKey(int keyCode) 
+{
+    Input.type = INPUT_KEYBOARD;
+    Input.ki.wScan = 0;
+    Input.ki.time = 0;
+    Input.ki.dwExtraInfo = 0;
 
-    input.ki.wVk = keyCode;
-    input.ki.dwFlags = 0;
-    SendInput(1, &input, sizeof(INPUT));
+    Input.ki.wVk = keyCode;
+    Input.ki.dwFlags = 0;
+    SendInput(1, &Input, sizeof(INPUT));
 }
 
-inline static void ReleaseKey() {
-    input.type = INPUT_KEYBOARD;
-    input.ki.wScan = 0;
-    input.ki.time = 0;
-    input.ki.dwExtraInfo = 0;
+inline static void ReleaseKey() 
+{
+    Input.type = INPUT_KEYBOARD;
+    Input.ki.wScan = 0;
+    Input.ki.time = 0;
+    Input.ki.dwExtraInfo = 0;
 
-    input.ki.dwFlags = KEYEVENTF_KEYUP;
-    SendInput(1, &input, sizeof(INPUT));
+    Input.ki.dwFlags = KEYEVENTF_KEYUP;
+    SendInput(1, &Input, sizeof(INPUT));
 }
