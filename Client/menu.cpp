@@ -9,18 +9,26 @@
 #include "imgui/imgui.h"
 #include "menu.h"
 
-static auto show = false;
-static std::vector<MenuTab> tabs;
-static int showKeybind = 0;
-static std::wstring levelName;
+static bool ShowMenu = false;
+static int ShowKeybind = VK_INSERT;
+static std::vector<MenuTab> Tabs;
+static std::wstring LevelName;
 
-static void RenderMenu(IDirect3DDevice9 *device) {
-	if (show) {
-		ImGui::Begin("MMultiplayer 2.2.0");
+static struct {
+	std::vector<MenuCallback> Callbacks;
+} menu;
+
+static void RenderMenu(IDirect3DDevice9 *device) 
+{
+	if (ShowMenu)
+	{
+		ImGui::Begin("MMultiplayer 2.2.0", NULL, ImGuiWindowFlags_NoCollapse);
 		ImGui::BeginTabBar("");
 
-		for (auto tab : tabs) {
-			if (ImGui::BeginTabItem(tab.Name.c_str())) {
+		for (auto tab : Tabs) 
+		{
+			if (ImGui::BeginTabItem(tab.Name.c_str())) 
+			{
 				tab.Callback();
 				ImGui::EndTabItem();
 			}
@@ -31,33 +39,34 @@ static void RenderMenu(IDirect3DDevice9 *device) {
 	}
 }
 
-/*** Basic Tabs ***/
-static void EngineTab() {
-	// Temp
-	ImGui::Text("ImGui Version: %s", IMGUI_VERSION);
-	ImGui::Separator(5.0f);
-
+static void EngineTab() 
+{
 	auto engine = Engine::GetEngine();
-	if (!engine) {
+	if (!engine) 
+	{
 		return;
 	}
 
 	static char command[0xFFF] = { 0 };
 
-	auto commandInputCallback = []() {
-		if (command[0]) {
+	auto commandInputCallback = []() 
+	{
+		if (command[0]) 
+		{
 			Engine::ExecuteCommand(std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().from_bytes(command).c_str());
 
 			command[0] = 0;
 		}
 	};
 
-	if (ImGui::InputText("##command", command, sizeof(command), ImGuiInputTextFlags_EnterReturnsTrue)) {
+	if (ImGui::InputText("##command", command, sizeof(command), ImGuiInputTextFlags_EnterReturnsTrue)) 
+	{
 		commandInputCallback();
 	}
 
 	ImGui::SameLine();
-	if (ImGui::Button("Execute Command##engine-execute-command")) {
+	if (ImGui::Button("Execute Command##engine-execute-command")) 
+	{
 		commandInputCallback();
 	}
 
@@ -66,59 +75,71 @@ static void EngineTab() {
 	bool check = engine->bSmoothFrameRate;
 	ImGui::Checkbox("Smooth Framerate##engine-smooth-framerate", &check);
 	engine->bSmoothFrameRate = check;
-	if (check) {
+	if (check) 
+	{
 		ImGui::InputFloat("Min Smoothed Framerate##engine-max-smoothed", &engine->MinSmoothedFrameRate);
 		ImGui::InputFloat("Max Smoothed Framerate##engine-min-smoothed", &engine->MaxSmoothedFrameRate);
 	}
 
 	auto client = engine->Client;
-	if (client) {
+	if (client) 
+	{
 		ImGui::InputFloat("Gamma##engine-gamma", &client->DisplayGamma);
 	}
 
 	ImGui::Separator(5.0f);
 
-	if (ImGui::Hotkey("Menu Keybind##menu-show", &showKeybind)) {
-		Settings::SetSetting("menu", "showKeybind", showKeybind);
+	if (ImGui::Hotkey("Menu Keybind##menu-show", &ShowKeybind)) 
+	{
+		Settings::SetSetting({ "Menu", "ShowKeybind" }, ShowKeybind);
 	}
 
 	ImGui::SameLine();
 
-	if (ImGui::Button("Reset##showKeybind")) {
-		Settings::SetSetting("menu", "showKeybind", showKeybind = VK_INSERT);
+	if (ImGui::Button("Reset##showKeybind")) 
+	{
+		Settings::SetSetting({ "Menu", "ShowKeybind" }, ShowKeybind = VK_INSERT);
 	}
 
 	ImGui::SameLine();
 
-	if (ImGui::Button("Debug Console##client-show-console")) {
+	if (ImGui::Button("Debug Console##client-show-console")) 
+	{
 		Debug::CreateConsole();
 	}
 	
-	if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) 
+	{
 		ImGui::SetTooltip("Creates a console window that will display debug info.\nIf you're trying to close the debug console, it will close Mirror's Edge too.");
 	}
 }
 
-static void WorldTab() {
+static void WorldTab() 
+{
 	auto world = Engine::GetWorld();
-	if (!world) {
+	if (!world) 
+	{
 		return;
 	}
 
 	ImGui::InputFloat("Time Dilation##world-time-dilation", &world->TimeDilation);
 	ImGui::InputFloat("Gravity##world-gravity", &world->WorldGravityZ);
 
-	if (levelName.empty()) {
-		levelName = world->GetMapName(false).c_str();
+	if (LevelName.empty())
+	{
+		LevelName = world->GetMapName(false).c_str();
 	}
 
 	ImGui::Separator(5.0f);
 
 	auto levels = world->StreamingLevels;
-	if (ImGui::TreeNode("world##world-levels", "%ws (%d)", levelName.c_str(), levels.Num())) {
-		for (auto i = 0UL; i < levels.Num(); ++i) {
+	if (ImGui::TreeNode("world##world-levels", "%ws (%d)", LevelName.c_str(), levels.Num()))
+	{
+		for (auto i = 0UL; i < levels.Num(); ++i) 
+		{
 			auto level = levels.GetByIndex(i);
-			if (level) {
+			if (level) 
+			{
 				bool check = level->bShouldBeLoaded;
 				auto label = level->PackageName.GetName();
 
@@ -139,39 +160,61 @@ static void WorldTab() {
 	}
 }
 
-void Menu::AddTab(const char *name, MenuTabCallback callback) {
-	tabs.push_back({ name, callback });
+void Menu::AddTab(const char *name, MenuTabCallback callback) 
+{
+	Tabs.push_back({ name, callback });
 }
 
-void Menu::Hide() {
-	show = false;
-	Engine::BlockInput(false);
+void Menu::Hide() 
+{
+	Engine::BlockInput(ShowMenu = false);
+
+	for (const auto& callback : menu.Callbacks) 
+	{
+		callback(false);
+	}
 }
 
-void Menu::Show() {
-	show = true;
-	Engine::BlockInput(true);
+void Menu::Show() 
+{
+	Engine::BlockInput(ShowMenu = true);
+
+	for (const auto& callback : menu.Callbacks) 
+	{
+		callback(true);
+	}
 }
 
-bool Menu::Initialize() {
-	showKeybind = Settings::GetSetting("menu", "showKeybind", VK_INSERT);
+void Menu::OnVisibilityChange(MenuCallback callback)
+{
+	menu.Callbacks.push_back(callback);
+}
+
+bool Menu::Initialize() 
+{
+	ShowKeybind = Settings::GetSetting({ "Menu", "ShowKeybind" }, VK_INSERT);
 
 	Engine::OnRenderScene(RenderMenu);
 
-	Engine::OnInput([](unsigned int &msg, int keycode) {
-		if (!show && msg == WM_KEYUP && keycode == showKeybind) {
+	Engine::OnInput([](unsigned int &msg, int keycode) 
+	{
+		if (!ShowMenu && msg == WM_KEYUP && keycode == ShowKeybind)
+		{
 			Show();
 		}
 	});
 
-	Engine::OnSuperInput([](unsigned int &msg, int keycode) {
-		if (show && msg == WM_KEYUP && (keycode == showKeybind || keycode == VK_ESCAPE)) {
+	Engine::OnSuperInput([](unsigned int &msg, int keycode) 
+	{
+		if (ShowMenu && msg == WM_KEYUP && (keycode == ShowKeybind || keycode == VK_ESCAPE))
+		{
 			Hide();
 		}
 	});
 
-	Engine::OnPostLevelLoad([](const wchar_t *newLevelName) {
-		levelName = newLevelName;
+	Engine::OnPostLevelLoad([](const wchar_t *newLevelName) 
+	{
+		LevelName = newLevelName;
 	});
 
 	AddTab("Engine", EngineTab);
