@@ -17,42 +17,51 @@
 #include "client.h"
 #include "../util.h"
 
-static char roomInput[0xFF] = {0};
-static char nameInput[0xFF] = {0};
-static char chatInput[0x200] = {0};
+static char RoomInput[0xFF] = {0};
+static char NameInput[0xFF] = {0};
+static char ChatInput[0x200] = {0};
 
-static auto connected = false, loading = false, disabled = false;
-static std::string room;
+static bool IsConnected = false;
+static bool IsLoading = false;
+static bool IsMultiplayerDisabled = false;
+static std::string Room;
 
-static bool showTagDistanceOverlay = false;
-static bool showTagCooldownOverlay = true;
-static bool playerDiedAndSentJsonMessage = false;
-static int tagCooldown = 5;
-static ULONGLONG taggedTimed = 0;
-static int previousTaggedId = 0;
+static bool ShowTagDistanceOverlay = false;
+static bool ShowTagCooldownOverlay = true;
+static bool PlayerDiedAndSentJsonMessage = false;
+static int TagCooldown = 5;
+static ULONGLONG TaggedTimed = 0;
+static int PreviousTaggedId = 0;
 
-static sockaddr_in server = {0};
-static SOCKET tcpSocket = 0, udpSocket = 0;
+static sockaddr_in Server = {0};
+static SOCKET TCPSocket = 0;
+static SOCKET UDPSocket = 0;
 
-static struct {
-    bool Focused = false, ShowOverlay = true;
+static struct 
+{
+    bool Focused = false;
+    bool ShowOverlay = true;
     int Keybind = 0;
     std::string Raw;
     unsigned long long LastTime;
     std::mutex Mutex;
-} chat;
+} Chat;
 
-static Client::Player client = {0};
+static Client::Player UserClient = {0};
 
-static struct {
+static struct 
+{
     bool ShowNameTags = true;
     std::vector<Client::Player *> List;
     std::shared_mutex Mutex;
-} players;
+} Players;
 
-static Client::Player *GetPlayerById(unsigned int id) {
-    for (const auto &p : players.List) {
-        if (p->Id == id) {
+static Client::Player *GetPlayerById(unsigned int id) 
+{
+    for (const auto &p : Players.List) 
+    {
+        if (p->Id == id) 
+        {
             return p;
         }
     }
@@ -60,12 +69,17 @@ static Client::Player *GetPlayerById(unsigned int id) {
     return nullptr;
 }
 
-std::vector<Client::Player *> Client::GetPlayerList() { return players.List; }
+std::vector<Client::Player *> Client::GetPlayerList() 
+{ 
+    return Players.List; 
+}
 
-static void IgnorePlayerInput(bool ignoreInput) {
+static void IgnorePlayerInput(bool ignoreInput) 
+{
     const auto controller = Engine::GetPlayerController();
 
-    if (!controller) {
+    if (!controller) 
+    {
         return;
     }
 
@@ -74,54 +88,65 @@ static void IgnorePlayerInput(bool ignoreInput) {
     controller->bIgnoreMovementFocus = ignoreInput;
 }
 
-static bool Setup() {
+static bool Setup() 
+{
     WSADATA wsa;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa)) {
+    if (WSAStartup(MAKEWORD(2, 2), &wsa)) 
+    {
         printf("client: WSAStartup failed\n");
         return false;
     }
 
     addrinfo *result = nullptr;
-    if (getaddrinfo("176.58.101.83", nullptr, nullptr, &result)) {
+    if (getaddrinfo("176.58.101.83", nullptr, nullptr, &result)) 
+    {
         printf("client: getaddrinfo failed\n");
         return false;
     }
 
     IN_ADDR serverAddr = {0};
-    for (; result; result = result->ai_next) {
-        if (result->ai_family == AF_INET) {
-            serverAddr =
-                reinterpret_cast<SOCKADDR_IN *>(result->ai_addr)->sin_addr;
+    for (; result; result = result->ai_next) 
+    {
+        if (result->ai_family == AF_INET) 
+        {
+            serverAddr = reinterpret_cast<SOCKADDR_IN *>(result->ai_addr)->sin_addr;
         }
     }
 
     freeaddrinfo(result);
-    if (!serverAddr.S_un.S_addr) {
+    if (!serverAddr.S_un.S_addr) 
+    {
         printf("client: found no server address\n");
         return false;
     }
 
-    server = {0};
-    server.sin_family = AF_INET;
-    server.sin_port = htons(Client::Port);
-    server.sin_addr = serverAddr;
+    Server = {0};
+    Server.sin_family = AF_INET;
+    Server.sin_port = htons(Client::Port);
+    Server.sin_addr = serverAddr;
 
     return true;
 }
 
-static bool RecvJsonMessage(json &msg) {
+static bool RecvJsonMessage(json &msg) 
+{
     static char buffer[0xFFF] = {0};
     static char *nextMessage = nullptr;
 
-    for (;;) {
-        if (nextMessage && *nextMessage) {
+    for (;;) 
+    {
+        if (nextMessage && *nextMessage) 
+        {
             const auto message = nextMessage;
             nextMessage += strlen(message) + 1;
 
-            try {
+            try 
+            {
                 msg = json::parse(message);
                 return true;
-            } catch (...) {
+            } 
+            catch (...) 
+            {
                 printf("client: failed parse -> %s\n", message);
 
                 nextMessage = nullptr;
@@ -132,7 +157,8 @@ static bool RecvJsonMessage(json &msg) {
         nextMessage = nullptr;
         memset(buffer, 0, sizeof(buffer));
 
-        if (recv(tcpSocket, buffer, sizeof(buffer), 0) <= 0) {
+        if (recv(TCPSocket, buffer, sizeof(buffer), 0) <= 0) 
+        {
             return false;
         }
 
@@ -140,13 +166,15 @@ static bool RecvJsonMessage(json &msg) {
     }
 }
 
-static bool SendJsonMessage(json msg) {
+static bool SendJsonMessage(json msg) 
+{
     static std::mutex sendMutex;
 
     const auto data = msg.dump();
 
     sendMutex.lock();
-    if (send(tcpSocket, data.c_str(), data.length(), 0) != data.length()) {
+    if (send(TCPSocket, data.c_str(), data.length(), 0) != data.length()) 
+    {
         sendMutex.unlock();
         return false;
     }
@@ -155,38 +183,43 @@ static bool SendJsonMessage(json msg) {
     return true;
 }
 
-static void AddChatMessage(std::string message) {
+static void AddChatMessage(std::string message) 
+{
     static const auto maxMessages = 100;
 
     SYSTEMTIME time;
     GetLocalTime(&time);
 
     char formattedTime[0xFF];
-    sprintf_s(formattedTime, sizeof(formattedTime), "%d:%02d: ", time.wHour,
-              time.wMinute);
+    sprintf_s(formattedTime, sizeof(formattedTime), "%d:%02d: ", time.wHour, time.wMinute);
 
     const auto formattedMsg = formattedTime + message + "\n";
 
-    chat.Mutex.lock();
+    Chat.Mutex.lock();
 
-    chat.Raw += formattedMsg;
-    chat.LastTime = GetTickCount64();
+    Chat.Raw += formattedMsg;
+    Chat.LastTime = GetTickCount64();
 
-    if (std::count(chat.Raw.begin(), chat.Raw.end(), '\n') > maxMessages) {
-        chat.Raw.erase(0, chat.Raw.find('\n') + 1);
+    if (std::count(Chat.Raw.begin(), Chat.Raw.end(), '\n') > maxMessages) 
+    {
+        Chat.Raw.erase(0, Chat.Raw.find('\n') + 1);
     }
 
-    chat.Mutex.unlock();
+    Chat.Mutex.unlock();
 }
 
-static void SendChatInput() {
-    if (connected) {
-        for (auto c = &chatInput[0]; *c; ++c) {
-            if (!isblank(*c)) {
+static void SendChatInput() 
+{
+    if (IsConnected) 
+    {
+        for (auto c = &ChatInput[0]; *c; ++c) 
+        {
+            if (!isblank(*c)) 
+            {
                 SendJsonMessage({
                     {"type", "chat"},
-                    {"id", client.Id},
-                    {"body", chatInput},
+                    {"id", UserClient.Id},
+                    {"body", ChatInput},
                 });
 
                 break;
@@ -194,114 +227,122 @@ static void SendChatInput() {
         }
     }
 
-    chatInput[0] = 0;
+    ChatInput[0] = 0;
 }
 
-static void Disconnect() {
-    if (connected) {
+static void Disconnect() 
+{
+    if (IsConnected) 
+    {
         SendJsonMessage({
             {"type", "disconnect"},
-            {"id", client.Id},
+            {"id", UserClient.Id},
         });
 
         AddChatMessage("Disconnected");
     }
 
-    if (tcpSocket) {
-        shutdown(tcpSocket, SD_BOTH);
-        closesocket(tcpSocket);
-        tcpSocket = 0;
+    if (TCPSocket) 
+    {
+        shutdown(TCPSocket, SD_BOTH);
+        closesocket(TCPSocket);
+        TCPSocket = 0;
     }
 
-    if (udpSocket) {
-        shutdown(udpSocket, SD_BOTH);
-        closesocket(udpSocket);
-        udpSocket = 0;
+    if (UDPSocket) 
+    {
+        shutdown(UDPSocket, SD_BOTH);
+        closesocket(UDPSocket);
+        UDPSocket = 0;
     }
 
-    players.Mutex.lock();
-    for (const auto &p : players.List) {
-        if (p->Actor) {
+    Players.Mutex.lock();
+    for (const auto &p : Players.List) 
+    {
+        if (p->Actor) 
+        {
             Engine::Despawn(p->Actor);
         }
 
         delete p;
     }
 
-    players.List.clear();
-    players.List.shrink_to_fit();
-    players.Mutex.unlock();
+    Players.List.clear();
+    Players.List.shrink_to_fit();
+    Players.Mutex.unlock();
 
-    connected = false;
+    IsConnected = false;
 }
 
-static void PlayerHandler() {
-    while (connected) {
+static void PlayerHandler() 
+{
+    while (IsConnected) 
+    {
         Client::PACKET_COMPRESSED packet;
 
-        int serverSize = sizeof(server);
-        if (recvfrom(udpSocket, reinterpret_cast<char *>(&packet),
-                     sizeof(packet), 0, reinterpret_cast<sockaddr *>(&server),
-                     &serverSize) < 0) {
-
+        int serverSize = sizeof(Server);
+        if (recvfrom(UDPSocket, reinterpret_cast<char *>(&packet), sizeof(packet), 0, reinterpret_cast<sockaddr *>(&Server), &serverSize) < 0) 
+        {
             continue;
         }
 
-        players.Mutex.lock_shared();
+        Players.Mutex.lock_shared();
 
         const auto player = GetPlayerById(packet.Id);
-        if (player) {
-            memcpy(&player->LastPacket, &packet,
-                   FIELD_OFFSET(Client::PACKET_COMPRESSED, CompressedBones));
+        if (player) 
+        {
+            memcpy(&player->LastPacket, &packet, FIELD_OFFSET(Client::PACKET_COMPRESSED, CompressedBones));
 
-            const auto bonesBase =
-                reinterpret_cast<byte *>(player->LastPacket.Bones);
-            for (auto i = 0; i < ARRAYSIZE(CompressedBoneOffsets); ++i) {
-
-                *reinterpret_cast<float *>(bonesBase +
-                                           CompressedBoneOffsets[i]) =
-                    static_cast<float>(packet.CompressedBones[i]) / 215.f;
+            const auto bonesBase = reinterpret_cast<byte *>(player->LastPacket.Bones);
+            for (auto i = 0; i < ARRAYSIZE(CompressedBoneOffsets); ++i) 
+            {
+                *reinterpret_cast<float *>(bonesBase + CompressedBoneOffsets[i]) = static_cast<float>(packet.CompressedBones[i]) / 215.f;
             }
         }
 
-        players.Mutex.unlock_shared();
+        Players.Mutex.unlock_shared();
     }
 }
 
-static bool Join() {
-    if (client.Level == "") {
+static bool Join() 
+{
+    if (UserClient.Level == "") 
+    {
         const auto world = Engine::GetWorld();
-        if (!world) {
+        if (!world) 
+        {
             printf("client: no world available\n");
             return false;
         }
 
-        client.Level =
-            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(
-                world->GetMapName(false).c_str());
+        UserClient.Level = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(world->GetMapName(false).c_str());
 
-        std::transform(client.Level.begin(), client.Level.end(),
-                       client.Level.begin(), [](char c) { return tolower(c); });
+        std::transform(UserClient.Level.begin(), UserClient.Level.end(), UserClient.Level.begin(), [](char c) 
+        { 
+            return tolower(c); 
+        });
 
-        if (client.Level == Map_MainMenu) {
-            loading = true;
+        if (UserClient.Level == Map_MainMenu) 
+        {
+            IsLoading = true;
         }
     }
 
     if (!SendJsonMessage({
             {"type", "connect"},
-            {"room", room},
-            {"name", client.Name},
-            {"level", client.Level},
-            {"character", client.Character},
-        })) {
-
+            {"room", Room},
+            {"name", UserClient.Name},
+            {"level", UserClient.Level},
+            {"character", UserClient.Character},
+        })) 
+    {
         printf("client: failed to send connect msg\n");
         return false;
     }
 
     json msg;
-    if (!RecvJsonMessage(msg)) {
+    if (!RecvJsonMessage(msg)) 
+    {
         printf("client: failed to receive connect\n");
         return false;
     }
@@ -312,71 +353,80 @@ static bool Join() {
     const auto msgTaggedPlayerId = msg["taggedPlayerId"];
     const auto msgCanTag = msg["canTag"];
 
-    if (!msgType.is_string() || msgType != "id" || !msgId.is_number_integer() ||
-        !msgGameMode.is_string() || !msgTaggedPlayerId.is_number_integer() ||
-        !msgCanTag.is_boolean()) {
+    if (!msgType.is_string() || msgType != "id" || !msgId.is_number_integer() || !msgGameMode.is_string() || !msgTaggedPlayerId.is_number_integer() || !msgCanTag.is_boolean()) 
+    {
         printf("client: malformed connect response\n");
         return false;
     }
 
-    client.Id = msgId;
-    client.GameMode = msgGameMode.get<std::string>();
-    client.TaggedPlayerId = previousTaggedId = msgTaggedPlayerId;
-    client.CanTag = msgCanTag;
+    UserClient.Id = msgId;
+    UserClient.GameMode = msgGameMode.get<std::string>();
+    UserClient.TaggedPlayerId = PreviousTaggedId = msgTaggedPlayerId;
+    UserClient.CanTag = msgCanTag;
 
-    printf("client: joined with id %x\n", client.Id);
+    printf("client: joined with id %x\n", UserClient.Id);
     return true;
 }
 
-static void ClientListener() {
-    for (;; Disconnect(), Sleep(500)) {
-        if (disabled) {
+static void ClientListener() 
+{
+    for (;; Disconnect(), Sleep(500)) 
+    {
+        if (IsMultiplayerDisabled) 
+        {
             continue;
         }
 
         printf("client: connecting\n");
 
-        if (!Setup()) {
+        if (!Setup()) 
+        {
             continue;
         }
 
-        tcpSocket = socket(AF_INET, SOCK_STREAM, 0);
-        if (tcpSocket < 0) {
-            tcpSocket = 0;
+        TCPSocket = socket(AF_INET, SOCK_STREAM, 0);
+        if (TCPSocket < 0) 
+        {
+            TCPSocket = 0;
 
             printf("client: failed to create tcp socket\n");
             continue;
         }
 
-        udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
-        if (udpSocket < 0) {
-            udpSocket = 0;
+        UDPSocket = socket(AF_INET, SOCK_DGRAM, 0);
+        if (UDPSocket < 0) 
+        {
+            UDPSocket = 0;
 
             printf("client: failed to create udp socket\n");
             continue;
         }
 
-        if (connect(tcpSocket, reinterpret_cast<const sockaddr *>(&server),
-                    sizeof(server))) {
+        if (connect(TCPSocket, reinterpret_cast<const sockaddr *>(&Server), sizeof(Server))) 
+        {
             printf("client: failed to connect\n");
             continue;
         }
 
-        if (!Join()) {
+        if (!Join()) 
+        {
             continue;
         }
 
-        connected = true;
+        IsConnected = true;
         AddChatMessage("Connected");
 
         std::thread playerHandlerThread(PlayerHandler);
 
         auto lastPing = GetTickCount64();
-        std::thread statusThread([&lastPing]() {
-            while (connected) {
+        std::thread statusThread([&lastPing]() 
+        {
+            while (IsConnected) 
+            {
                 Sleep(500);
 
-                if (GetTickCount64() - lastPing > 5000) {
+                if (GetTickCount64() - lastPing > 5000) 
+                {
                     printf("client: timed out\n");
                     Disconnect();
                     return;
@@ -385,25 +435,27 @@ static void ClientListener() {
         });
 
         json msg;
-        while (RecvJsonMessage(msg)) {
+        while (RecvJsonMessage(msg)) 
+        {
             auto msgType = msg["type"];
-            if (!msgType.is_string()) {
+            if (!msgType.is_string()) 
+            {
                 continue;
             }
 
-            if (msgType == "connect") {
+            if (msgType == "connect") 
+            {
                 const auto msgId = msg["id"];
                 const auto msgName = msg["name"];
                 const auto msgCharacter = msg["character"];
                 const auto msgLevel = msg["level"];
 
-                if (!msgId.is_number_integer() || !msgName.is_string() ||
-                    !msgCharacter.is_number_integer() ||
-                    !msgLevel.is_string()) {
+                if (!msgId.is_number_integer() || !msgName.is_string() || !msgCharacter.is_number_integer() || !msgLevel.is_string()) 
+                {
                     continue;
                 }
 
-                players.Mutex.lock();
+                Players.Mutex.lock();
 
                 const auto player = new Client::Player();
                 player->Id = msgId;
@@ -587,174 +639,202 @@ static void ClientListener() {
                     0x3f7fffff, 0x3a049678, 0x3d3ec44a, 0x3bb2a169, 0x3f7fb7e6,
                     0x0,        0x37800000, 0xb5800000, 0x3f7fffff};
 
-                memcpy(player->LastPacket.Bones, defaultBones,
-                       sizeof(defaultBones));
+                memcpy(player->LastPacket.Bones, defaultBones, sizeof(defaultBones));
 
-                if (player->Level == client.Level && !loading) {
+                if (player->Level == UserClient.Level && !IsLoading) 
+                {
                     Engine::SpawnCharacter(player->Character, player->Actor);
-                } else {
+                } 
+                else 
+                {
                     player->Actor = nullptr;
                 }
 
                 AddChatMessage(player->Name + " joined the room");
 
-                players.List.push_back(player);
-                players.Mutex.unlock();
+                Players.List.push_back(player);
+                Players.Mutex.unlock();
             } 
-            else if (msgType == "name") {
+            else if (msgType == "name") 
+            {
                 const auto msgId = msg["id"];
                 const auto msgName = msg["name"];
 
-                if (!msgId.is_number_integer() || !msgName.is_string()) {
+                if (!msgId.is_number_integer() || !msgName.is_string()) 
+                {
                     continue;
                 }
 
-                players.Mutex.lock_shared();
+                Players.Mutex.lock_shared();
 
                 const auto player = GetPlayerById(msgId);
-                if (player) {
+                if (player) 
+                {
                     auto newName = msgName.get<std::string>();
                     AddChatMessage(player->Name + " renamed to " + newName);
                     player->Name = newName;
                 }
 
-                players.Mutex.unlock_shared();
+                Players.Mutex.unlock_shared();
             } 
-            else if (msgType == "chat" || msgType == "announce") {
+            else if (msgType == "chat" || msgType == "announce") 
+            {
                 const auto msgBody = msg["body"];
-                if (!msgBody.is_string()) {
+                if (!msgBody.is_string()) 
+                {
                     continue;
                 }
 
-                players.Mutex.lock_shared();
+                Players.Mutex.lock_shared();
                 AddChatMessage(msgBody.get<std::string>());
-                players.Mutex.unlock_shared();
+                Players.Mutex.unlock_shared();
             } 
-            else if (msgType == "level") {
+            else if (msgType == "level") 
+            {
                 const auto msgId = msg["id"];
                 const auto msgLevel = msg["level"];
 
-                if (!msgId.is_number_integer() || !msgLevel.is_string()) {
+                if (!msgId.is_number_integer() || !msgLevel.is_string()) 
+                {
                     continue;
                 }
 
-                players.Mutex.lock_shared();
+                Players.Mutex.lock_shared();
 
                 const auto player = GetPlayerById(msgId);
-                if (player) {
+                if (player) 
+                {
                     player->Level = msgLevel.get<std::string>();
 
-                    if (player->Level == client.Level) {
-                        if (!player->Actor && !loading) {
-                            Engine::SpawnCharacter(player->Character,
-                                                   player->Actor);
+                    if (player->Level == UserClient.Level) 
+                    {
+                        if (!player->Actor && !IsLoading) 
+                        {
+                            Engine::SpawnCharacter(player->Character, player->Actor);
                         }
-                    } else {
-                        if (player->Actor) {
+                    } 
+                    else 
+                    {
+                        if (player->Actor) 
+                        {
                             Engine::Despawn(player->Actor);
                             player->Actor = nullptr;
                         }
                     }
                 }
 
-                players.Mutex.unlock_shared();
+                Players.Mutex.unlock_shared();
             } 
-            else if (msgType == "character") {
+            else if (msgType == "character") 
+            {
                 const auto msgId = msg["id"];
                 const auto msgCharacter = msg["character"];
 
-                if (!msgId.is_number_integer() ||
-                    !msgCharacter.is_number_integer() || msgCharacter < 0 ||
-                    msgCharacter >= Engine::Character::Max) {
+                if (!msgId.is_number_integer() || !msgCharacter.is_number_integer() || msgCharacter < 0 || msgCharacter >= Engine::Character::Max) 
+                {
                     continue;
                 }
 
-                players.Mutex.lock_shared();
+                Players.Mutex.lock_shared();
 
                 const auto player = GetPlayerById(msgId);
-                if (player) {
+                if (player) 
+                {
                     player->Character = msgCharacter;
 
-                    if (!loading) {
-                        if (player->Actor) {
+                    if (!IsLoading) 
+                    {
+                        if (player->Actor) 
+                        {
                             Engine::Despawn(player->Actor);
                             player->Actor = nullptr;
                         }
 
-                        Engine::SpawnCharacter(player->Character,
-                                               player->Actor);
+                        Engine::SpawnCharacter(player->Character, player->Actor);
                     }
                 }
 
-                players.Mutex.unlock_shared();
+                Players.Mutex.unlock_shared();
             } 
-            else if (msgType == "ping") {
+            else if (msgType == "ping") 
+            {
                 if (SendJsonMessage({
                         {"type", "pong"},
-                        {"id", client.Id},
-                    })) {
+                        {"id", UserClient.Id},
+                    })) 
+                {
                     lastPing = GetTickCount64();
                 }
             } 
-            else if (msgType == "disconnect") {
+            else if (msgType == "disconnect") 
+            {
                 const auto msgId = msg["id"];
-                if (!msgId.is_number_integer()) {
+                if (!msgId.is_number_integer()) 
+                {
                     continue;
                 }
 
-                players.Mutex.lock();
-                players.List.erase(std::remove_if(
-                    players.List.begin(), players.List.end(),
-                    [&msgId](Client::Player *p) {
-                        if (p->Id != msgId) {
-                            return false;
-                        }
+                Players.Mutex.lock();
+                Players.List.erase(std::remove_if(Players.List.begin(), Players.List.end(),[&msgId](Client::Player *p) 
+                {
+                    if (p->Id != msgId) 
+                    {
+                        return false;
+                    }
 
-                        if (p->Actor) {
-                            Engine::Despawn(p->Actor);
-                            p->Actor = nullptr;
-                        }
+                    if (p->Actor) 
+                    {
+                        Engine::Despawn(p->Actor);
+                        p->Actor = nullptr;
+                    }
 
-                        AddChatMessage(p->Name + " left the room");
+                    AddChatMessage(p->Name + " left the room");
 
-                        delete p;
-                        return true;
-                    }));
-                players.Mutex.unlock();
+                    delete p;
+                    return true;
+                }));
+                Players.Mutex.unlock();
             }
-            else if (msgType == "gameMode") {
+            else if (msgType == "gameMode") 
+            {
                 const auto msgGameMode = msg["gameMode"];
 
-                if (!msgGameMode.is_string()) {
+                if (!msgGameMode.is_string()) 
+                {
                     continue;
                 }
 
-                taggedTimed = 0;
-                previousTaggedId = 0;
+                TaggedTimed = 0;
+                PreviousTaggedId = 0;
 
                 IgnorePlayerInput(false);
 
-                client.CanTag = false;
-                client.TaggedPlayerId = 0;
-                client.GameMode = msgGameMode.get<std::string>();
+                UserClient.CanTag = false;
+                UserClient.TaggedPlayerId = 0;
+                UserClient.GameMode = msgGameMode.get<std::string>();
             } 
-            else if (msgType == "canTag") {
-                taggedTimed = 0;
-                client.CanTag = true;
+            else if (msgType == "canTag") 
+            {
+                TaggedTimed = 0;
+                UserClient.CanTag = true;
 
-                if (client.Id == client.TaggedPlayerId) {
+                if (UserClient.Id == UserClient.TaggedPlayerId) 
+                {
                     IgnorePlayerInput(false);
                 }
             } 
-            else if (msgType == "tagged") {
+            else if (msgType == "tagged") 
+            {
                 const auto msgTaggedPlayerId = msg["taggedPlayerId"];
                 const auto msgTagCooldown = msg["coolDown"];
 
-                if (!msgTaggedPlayerId.is_number_integer() || !msgTagCooldown.is_number_integer()) {
+                if (!msgTaggedPlayerId.is_number_integer() || !msgTagCooldown.is_number_integer()) 
+                {
                     continue;
                 }
 
-                if (players.List.size() == 0) {
+                if (Players.List.size() == 0) 
+                {
                     SendJsonMessage({
                         {"type", "endGameMode"},
                     });
@@ -763,20 +843,25 @@ static void ClientListener() {
                     continue;
                 }
 
-                client.TaggedPlayerId = msgTaggedPlayerId;
-                client.CanTag = false;
-                client.CoolDownTag = msgTagCooldown;
+                UserClient.TaggedPlayerId = msgTaggedPlayerId;
+                UserClient.CanTag = false;
+                UserClient.CoolDownTag = msgTagCooldown;
 
-                if (client.Id == client.TaggedPlayerId && playerDiedAndSentJsonMessage == false) {
+                if (UserClient.Id == UserClient.TaggedPlayerId && PlayerDiedAndSentJsonMessage == false) 
+                {
                     char buffer[0xFF];
 
-                    if (previousTaggedId == 0) {
-                        sprintf_s(buffer, sizeof(buffer), "[Tag] %s was randomly choosen to be tagged", client.Name.c_str());
-                    } else {
-                        auto previousTaggedPlayer = GetPlayerById(previousTaggedId);
+                    if (PreviousTaggedId == 0) 
+                    {
+                        sprintf_s(buffer, sizeof(buffer), "[Tag] %s was randomly choosen to be tagged", UserClient.Name.c_str());
+                    } 
+                    else 
+                    {
+                        auto previousTaggedPlayer = GetPlayerById(PreviousTaggedId);
 
-                        if (previousTaggedPlayer) {
-                            sprintf_s(buffer, sizeof(buffer), "[Tag] %s tagged %s", previousTaggedPlayer->Name.c_str(), client.Name.c_str());
+                        if (previousTaggedPlayer) 
+                        {
+                            sprintf_s(buffer, sizeof(buffer), "[Tag] %s tagged %s", previousTaggedPlayer->Name.c_str(), UserClient.Name.c_str());
                         }
                     }
 
@@ -786,17 +871,19 @@ static void ClientListener() {
                     });
                 }
 
-                taggedTimed = GetTickCount64();
-                previousTaggedId = msgTaggedPlayerId;
-                IgnorePlayerInput(client.Id == msgTaggedPlayerId);
+                TaggedTimed = GetTickCount64();
+                PreviousTaggedId = msgTaggedPlayerId;
+                IgnorePlayerInput(UserClient.Id == msgTaggedPlayerId);
             }
         }
 
-        if (statusThread.joinable()) {
+        if (statusThread.joinable()) 
+        {
             statusThread.join();
         }
 
-        if (playerHandlerThread.joinable()) {
+        if (playerHandlerThread.joinable()) 
+        {
             playerHandlerThread.join();
         }
 
@@ -804,121 +891,130 @@ static void ClientListener() {
     }
 }
 
-static void OnTick(float deltaTime) {
+static void OnTick(float deltaTime) 
+{
     static float sum = 0;
     sum += deltaTime;
 
-    if (!loading && connected && sum > 0.016f) {
+    if (!IsLoading && IsConnected && sum > 0.016f) 
+    {
         auto pawn = Engine::GetPlayerPawn();
-        if (pawn && pawn->Mesh3p) {
+        if (pawn && pawn->Mesh3p) 
+        {
             Client::PACKET_COMPRESSED packet;
-            packet.Id = client.Id;
+            packet.Id = UserClient.Id;
             packet.Position = pawn->Location;
             packet.Position.Z += pawn->TargetMeshTranslationZ;
             packet.Yaw = pawn->Rotation.Yaw % 0x10000;
 
-            const auto bonesBase =
-                reinterpret_cast<byte *>(pawn->Mesh3p->LocalAtoms.Buffer());
+            const auto bonesBase = reinterpret_cast<byte *>(pawn->Mesh3p->LocalAtoms.Buffer());
 
-            for (auto i = 0; i < ARRAYSIZE(CompressedBoneOffsets); ++i) {
-                packet.CompressedBones[i] = static_cast<short>(
-                    roundf(*reinterpret_cast<float *>(
-                               bonesBase + CompressedBoneOffsets[i]) *
-                           215.0f));
+            for (auto i = 0; i < ARRAYSIZE(CompressedBoneOffsets); ++i) 
+            {
+                packet.CompressedBones[i] = static_cast<short>( roundf(*reinterpret_cast<float *>(bonesBase + CompressedBoneOffsets[i]) * 215.0f));
             }
 
-            sendto(udpSocket, reinterpret_cast<const char *>(&packet),
-                   sizeof(packet), 0,
-                   reinterpret_cast<const sockaddr *>(&server), sizeof(server));
+            sendto(UDPSocket, reinterpret_cast<const char *>(&packet), sizeof(packet), 0, reinterpret_cast<const sockaddr *>(&Server), sizeof(Server));
 
             sum = 0;
         }
     }
 }
 
-static void OnTickTag(float deltaTime) {
-    if (client.GameMode != GameMode_Tag) {
+static void OnTickGames(float deltaTime) 
+{
+    if (UserClient.GameMode != GameMode_Tag) 
+    {
         return;
     }
 
     static float sum = 0;
     sum += deltaTime;
 
-    if (!loading && connected && sum > 0.16f) {
+    if (!IsLoading && IsConnected && sum > 0.16f) 
+    {
         auto pawn = Engine::GetPlayerPawn();
 
-        if (!pawn) {
+        if (!pawn) 
+        {
             return;
         }
 
         sum = 0;
 
-        if (client.Id != client.TaggedPlayerId) {
-            if (pawn->Health <= 0 && playerDiedAndSentJsonMessage == false) {
+        if (UserClient.Id != UserClient.TaggedPlayerId) 
+        {
+            if (pawn->Health <= 0 && PlayerDiedAndSentJsonMessage == false) 
+            {
                 SendJsonMessage({
                     {"type", "dead"},
                 });
 
                 char buffer[0xFF];
-                sprintf_s(buffer, sizeof(buffer), "[Tag] %s died and they will chase instead",
-                          client.Name.c_str());
+                sprintf_s(buffer, sizeof(buffer), "[Tag] %s died and they will chase instead", UserClient.Name.c_str());
 
                 SendJsonMessage({
                     {"type", "announce"},
                     {"body", buffer},
                 });
 
-                playerDiedAndSentJsonMessage = true;
-                client.CanTag = false;
+                PlayerDiedAndSentJsonMessage = true;
+                UserClient.CanTag = false;
             }
-        } else {
-            if (!client.CanTag) {
+        }
+        else 
+        {
+            if (!UserClient.CanTag) 
+            {
                 IgnorePlayerInput(true);
             }
         }
 
-        if (playerDiedAndSentJsonMessage == true && pawn->Health == 100) {
-            playerDiedAndSentJsonMessage = false;
+        if (PlayerDiedAndSentJsonMessage == true && pawn->Health == 100) 
+        {
+            PlayerDiedAndSentJsonMessage = false;
         }
     }
 }
 
-static void OnRender(IDirect3DDevice9 *device) {
+static void OnRender(IDirect3DDevice9 *device) 
+{
     static const auto inputHeightOffset = 50.0f;
     static const auto inputWidthOffset = 50.0f;
     static const auto unfocusedChatMessages = 5;
 
-    if (players.ShowNameTags) {
+    if (Players.ShowNameTags) 
+    {
         auto window = ImGui::BeginRawScene("##client-backbuffer-nametags");
-        players.Mutex.lock_shared();
+        Players.Mutex.lock_shared();
 
-        for (auto p : players.List) {
-            if (p->Level == client.Level && p->Actor &&
-                p->Actor->SkeletalMeshComponent) {
+        for (auto p : Players.List) 
+        {
+            if (p->Level == UserClient.Level && p->Actor && p->Actor->SkeletalMeshComponent) 
+            {
                 auto pos = p->Actor->Location;
                 pos.Z = p->MaxZ + 27.5f;
 
-                if (Engine::WorldToScreen(device, pos)) {
+                if (Engine::WorldToScreen(device, pos)) 
+                {
                     auto size = ImGui::CalcTextSize(p->Name.c_str());
-                    auto topLeft =
-                        ImVec2(pos.X - size.x / 2.0f, pos.Y - size.y);
+                    auto topLeft = ImVec2(pos.X - size.x / 2.0f, pos.Y - size.y);
 
-                    window->DrawList->AddRectFilled(
-                        topLeft - ImVec2(3.0f, 1.0f),
-                        ImVec2(pos.X + size.x / 2.0f, pos.Y) +
-                            ImVec2(3.0f, 1.0f),
-                        ImColor(ImVec4(0, 0, 0, 0.4f)));
+                    window->DrawList->AddRectFilled(topLeft - ImVec2(3.0f, 1.0f), ImVec2(pos.X + size.x / 2.0f, pos.Y) + ImVec2(3.0f, 1.0f), ImColor(ImVec4(0, 0, 0, 0.4f)));
 
-                    if (client.GameMode == GameMode_Tag && p->Id == client.TaggedPlayerId) {
+                    if (UserClient.GameMode == GameMode_Tag && p->Id == UserClient.TaggedPlayerId) 
+                    {
                         window->DrawList->AddText(topLeft, ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f)), p->Name.c_str());
-                    } else {
+                    } 
+                    else 
+                    {
                         window->DrawList->AddText(topLeft, ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), p->Name.c_str());
                     }
                 }
             }
         }
 
-        players.Mutex.unlock_shared();
+        Players.Mutex.unlock_shared();
         ImGui::EndRawScene();
     }
 
@@ -928,50 +1024,53 @@ static void OnRender(IDirect3DDevice9 *device) {
     const auto width = io.DisplaySize.x / 3.0f;
 
     auto opacity = 1.0f;
-    if (!chat.Focused) {
-        if (chat.ShowOverlay) {
-            auto diff =
-                static_cast<float>(GetTickCount64() - chat.LastTime) / 1000.0f;
-            if (diff > 5.0f) {
+    if (!Chat.Focused) 
+    {
+        if (Chat.ShowOverlay) 
+        {
+            auto diff = static_cast<float>(GetTickCount64() - Chat.LastTime) / 1000.0f;
+            if (diff > 5.0f) 
+            {
                 opacity = max(0, 1.0f - (diff - 5.0f));
             }
-        } else {
+        } 
+        else 
+        {
             opacity = 0.0f;
         }
     }
 
-    if (opacity > 0.0f) {
-        chat.Mutex.lock();
+    if (opacity > 0.0f) 
+    {
+        Chat.Mutex.lock();
 
-        auto body = chat.Raw;
-        if (!chat.Focused) {
+        auto body = Chat.Raw;
+        if (!Chat.Focused) 
+        {
             auto messages = 0;
-            for (auto i = static_cast<int>(body.size()) - 1; i >= 0; --i) {
-                if (body[i] == '\n') {
+
+            for (auto i = static_cast<int>(body.size()) - 1; i >= 0; --i) 
+            {
+                if (body[i] == '\n') 
+                {
                     ++messages;
                 }
 
-                if (messages > unfocusedChatMessages) {
+                if (messages > unfocusedChatMessages) 
+                {
                     body = body.substr(i + 1);
                     break;
                 }
             }
         }
 
-        const auto height =
-            ImGui::CalcTextSize(body.c_str(), nullptr, false, width).y +
-            (ImGui::GetTextLineHeight() / 6.0f);
-
-        const auto pos = ImVec2(inputWidthOffset,
-                                io.DisplaySize.y - inputHeightOffset - height);
+        const auto height = ImGui::CalcTextSize(body.c_str(), nullptr, false, width).y + (ImGui::GetTextLineHeight() / 6.0f);
+        const auto pos = ImVec2(inputWidthOffset, io.DisplaySize.y - inputHeightOffset - height);
 
         ImGui::SetWindowPos(pos, ImGuiCond_Always);
-        ImGui::SetWindowSize(
-            ImVec2(window->Size.x, max(window->Size.y, height)));
+        ImGui::SetWindowSize(ImVec2(window->Size.x, max(window->Size.y, height)));
 
-        window->DrawList->AddRectFilled(
-            pos, ImVec2(pos.x + width, pos.y + height),
-            ImColor(ImVec4(0, 0, 0, 0.4f * opacity)));
+        window->DrawList->AddRectFilled(pos, ImVec2(pos.x + width, pos.y + height), ImColor(ImVec4(0, 0, 0, 0.4f * opacity)));
 
         ImGui::PushTextWrapPos(width);
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, opacity));
@@ -979,59 +1078,65 @@ static void OnRender(IDirect3DDevice9 *device) {
         ImGui::PopStyleColor();
         ImGui::PopTextWrapPos();
 
-        chat.Mutex.unlock();
+        Chat.Mutex.unlock();
     }
 
     ImGui::EndRawScene();
 
-    if (chat.Focused) {
+    if (Chat.Focused) 
+    {
         ImGui::BeginRawScene("##client-backbuffer-chatinput");
 
-        ImGui::SetWindowPos(
-            ImVec2(inputWidthOffset, io.DisplaySize.y - inputHeightOffset),
-            ImGuiCond_Always);
+        ImGui::SetWindowPos(ImVec2(inputWidthOffset, io.DisplaySize.y - inputHeightOffset), ImGuiCond_Always);
         ImGui::SetKeyboardFocusHere(0);
 
         ImGui::PushItemWidth(io.DisplaySize.x - inputWidthOffset * 2);
-        ImGui::InputText("##client-chat-overlay-input", chatInput,
-                         sizeof(chatInput));
+        ImGui::InputText("##client-chat-overlay-input", ChatInput, sizeof(ChatInput));
         ImGui::PopItemWidth();
 
         ImGui::EndRawScene();
     }
 }
 
-static void OnRenderTag(IDirect3DDevice9 *device) {
-    if (!showTagDistanceOverlay && !showTagCooldownOverlay) {
+static void OnRenderGames(IDirect3DDevice9 *device) 
+{
+    if (!ShowTagDistanceOverlay && !ShowTagCooldownOverlay) 
+    {
         return;
     }
 
     auto pawn = Engine::GetPlayerPawn();
     auto controller = Engine::GetPlayerController();
 
-    if (!pawn || !controller) {
+    if (!pawn || !controller) 
+    {
         return;
     }
 
-    if (client.Level.empty() || client.Level == Map_MainMenu) {
+    if (UserClient.Level.empty() || UserClient.Level == Map_MainMenu) 
+    {
         return;
     }
 
     int playersInTheSameLevel = 0;
     float longestNameWidth = 0.0f;
 
-    for (const auto &p : players.List) {
-        if (p->Level == client.Level && p->Actor) {
+    for (const auto &p : Players.List) 
+    {
+        if (p->Level == UserClient.Level && p->Actor) 
+        {
             playersInTheSameLevel++;
             float nameWidth = ImGui::CalcTextSize(p->Name.c_str(), nullptr, false).x;
 
-            if (nameWidth > longestNameWidth) {
+            if (nameWidth > longestNameWidth) 
+            {
                 longestNameWidth = nameWidth;
             }
         }
     }
 
-    if (playersInTheSameLevel == 0) {
+    if (playersInTheSameLevel == 0) 
+    {
         return;
     }
 
@@ -1042,7 +1147,8 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
     static float padding = 5.0f;
     static float maxNameWidth = 192.0f;
 
-    if (showTagDistanceOverlay) {
+    if (ShowTagDistanceOverlay) 
+    {
         auto window = ImGui::BeginRawScene("##tag-info");
 
         static float rightPadding = 80.0f;
@@ -1051,23 +1157,28 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
 
         window->DrawList->AddRectFilled(ImVec2(), ImVec2(rightPadding + x + padding, y + padding + textHeight), ImColor(ImVec4(0, 0, 0, 0.4f)));
 
-        for (const auto &p : players.List) {
-            if (!p->Actor || p->Level != client.Level) {
+        for (const auto &p : Players.List) 
+        {
+            if (!p->Actor || p->Level != UserClient.Level) 
+            {
                 continue;
             }
 
             float dist = Distance(p->Actor->Location, pawn->Location);
 
-            if (dist >= 10.0f) {
+            if (dist >= 10.0f) 
+            {
                 sprintf_s(buffer, "%.0f m", dist);
-            } else {
+            } 
+            else 
+            {
                 sprintf_s(buffer, "%.1f m", dist);
             }
 
             auto name = p->Name;
             auto color = ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 
-            if (client.GameMode == GameMode_Tag && p->Id == client.TaggedPlayerId) {
+            if (UserClient.GameMode == GameMode_Tag && p->Id == UserClient.TaggedPlayerId) {
                 color = ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
             }
 
@@ -1088,24 +1199,29 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
         ImGui::EndRawScene();
     }
 
-    if (showTagCooldownOverlay) {
-        if (taggedTimed == 0) {
+    if (ShowTagCooldownOverlay) 
+    {
+        if (TaggedTimed == 0) 
+        {
             return;
         }
 
-        auto timeLeftTick = taggedTimed + (client.CoolDownTag * 1000) - GetTickCount64();
+        auto timeLeftTick = TaggedTimed + (UserClient.CoolDownTag * 1000) - GetTickCount64();
         auto timeLeft = (float)timeLeftTick / 1000;
 
-        if (timeLeft < 0.0f || timeLeft > UINT_MAX) {
+        if (timeLeft < 0.0f || timeLeft > UINT_MAX) 
+        {
             return;
         }
 
-        auto playerName = client.Name;
+        auto playerName = UserClient.Name;
 
-        if (client.Id != client.TaggedPlayerId) {
-            auto player = GetPlayerById(client.TaggedPlayerId);
+        if (UserClient.Id != UserClient.TaggedPlayerId) 
+        {
+            auto player = GetPlayerById(UserClient.TaggedPlayerId);
 
-            if (!player) {
+            if (!player) 
+            {
                 return;
             }
 
@@ -1113,9 +1229,12 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
         }
 
         auto name = playerName;
-        if (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth) {
+        if (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth) 
+        {
             int charactersToRemove = 3;
-            do {
+
+            do 
+            {
                 name = playerName;
                 name = name.substr(0, name.size() - charactersToRemove++) + "...";
             } while (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth);
@@ -1135,30 +1254,37 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
     }
 }
 
-static void MultiplayerTab() {
-    ImGui::Text("Status: %s", connected ? "Connected" : disabled ? "Multiplayer Disabled" : "Connecting");
+static void MultiplayerTab() 
+{
+    ImGui::Text("Status: %s", IsConnected ? "Connected" : IsMultiplayerDisabled ? "Multiplayer Disabled" : "Connecting");
     ImGui::Separator(5.0f);
 
-    const auto nameInputCallback = []() {
-        if (client.Name != nameInput) {
+    const auto nameInputCallback = []() 
+    {
+        if (UserClient.Name != NameInput) 
+        {
             bool empty = true;
-            for (auto c : std::string(nameInput)) {
-                if (!isblank(c)) {
+            for (auto c : std::string(NameInput)) 
+            {
+                if (!isblank(c)) 
+                {
                     empty = false;
                     break;
                 }
             }
 
-            if (!empty) {
-                AddChatMessage(client.Name + " renamed to " + nameInput);
-                client.Name = nameInput;
-                Settings::SetSetting("client", "name", client.Name);
+            if (!empty) 
+            {
+                AddChatMessage(UserClient.Name + " renamed to " + NameInput);
+                UserClient.Name = NameInput;
+                Settings::SetSetting({ "Client", "Name" }, UserClient.Name);
 
-                if (connected) {
+                if (IsConnected) 
+                {
                     SendJsonMessage({
                         {"type", "name"},
-                        {"id", client.Id},
-                        {"name", client.Name},
+                        {"id", UserClient.Id},
+                        {"name", UserClient.Name},
                     });
                 }
             }
@@ -1167,41 +1293,46 @@ static void MultiplayerTab() {
 
     ImGui::Text("Name");
     ImGui::SameLine();
-    if (ImGui::InputText("##client-name-input", nameInput, sizeof(nameInput),
-                         ImGuiInputTextFlags_EnterReturnsTrue)) {
+    if (ImGui::InputText("##client-name-input", NameInput, sizeof(NameInput), ImGuiInputTextFlags_EnterReturnsTrue)) 
+    {
         nameInputCallback();
     }
 
     ImGui::SameLine();
-    if (ImGui::Button("Change##client-name-button")) {
+    if (ImGui::Button("Change##client-name-button")) 
+    {
         nameInputCallback();
     }
 
     ImGui::Text("Character");
     ImGui::SameLine();
 
-    const auto selectedCharacter =
-        Engine::Characters[static_cast<size_t>(client.Character)];
+    const auto selectedCharacter = Engine::Characters[static_cast<size_t>(UserClient.Character)];
 
-    if (ImGui::BeginCombo("##client-character", selectedCharacter)) {
-        for (auto i = 0; i < IM_ARRAYSIZE(Engine::Characters); ++i) {
+    if (ImGui::BeginCombo("##client-character", selectedCharacter)) 
+    {
+        for (auto i = 0; i < IM_ARRAYSIZE(Engine::Characters); ++i) 
+        {
             const auto label = Engine::Characters[i];
             const auto selected = (label == selectedCharacter);
 
-            if (ImGui::Selectable(label, selected)) {
-                client.Character = static_cast<Engine::Character>(i);
-                Settings::SetSetting("client", "character", client.Character);
+            if (ImGui::Selectable(label, selected)) 
+            {
+                UserClient.Character = static_cast<Engine::Character>(i);
+                Settings::SetSetting({ "Client", "Character" }, UserClient.Character);
 
-                if (connected) {
+                if (IsConnected) 
+                {
                     SendJsonMessage({
                         {"type", "character"},
-                        {"id", client.Id},
-                        {"character", client.Character},
+                        {"id", UserClient.Id},
+                        {"character", UserClient.Character},
                     });
                 }
             }
 
-            if (selected) {
+            if (selected) 
+            {
                 ImGui::SetItemDefaultFocus();
             }
         }
@@ -1209,21 +1340,27 @@ static void MultiplayerTab() {
         ImGui::EndCombo();
     }
 
-    const auto roomInputCallback = []() {
-        if (room != roomInput) {
+    const auto roomInputCallback = []() 
+    {
+        if (Room != RoomInput) 
+        {
             auto empty = true;
-            for (auto c : std::string(roomInput)) {
-                if (!isblank(c)) {
+            for (auto c : std::string(RoomInput)) 
+            {
+                if (!isblank(c)) 
+                {
                     empty = false;
                     break;
                 }
             }
 
-            if (!empty) {
-                room = roomInput;
-                Settings::SetSetting("client", "room", room);
+            if (!empty) 
+            {
+                Room = RoomInput;
+                Settings::SetSetting({ "Client", "Room" }, Room);
 
-                if (connected) {
+                if (IsConnected) 
+                {
                     Disconnect();
                 }
             }
@@ -1232,330 +1369,363 @@ static void MultiplayerTab() {
 
     ImGui::Text("Room");
     ImGui::SameLine();
-    if (ImGui::InputText("##client-room-input", roomInput, sizeof(roomInput),
-                         ImGuiInputTextFlags_EnterReturnsTrue)) {
+    if (ImGui::InputText("##client-room-input", RoomInput, sizeof(RoomInput), ImGuiInputTextFlags_EnterReturnsTrue)) 
+    {
         roomInputCallback();
     }
 
     ImGui::SameLine();
-    if (ImGui::Button("Join##client-room-button")) {
+    if (ImGui::Button("Join##client-room-button")) 
+    {
         roomInputCallback();
     }
 
     ImGui::Separator(5.0f);
 
-    if (ImGui::Checkbox("Show Nametags##client-show-nametags",
-                        &players.ShowNameTags)) {
-
-        Settings::SetSetting("client", "showNameTags", players.ShowNameTags);
+    if (ImGui::Checkbox("Show Nametags##client-show-nametags", &Players.ShowNameTags)) 
+    {
+        Settings::SetSetting({ "Client", "ShowNameTags" }, Players.ShowNameTags);
     }
 
     ImGui::SameLine();
 
-    if (ImGui::Checkbox("Show Chat Overlay##client-show-chat",
-                        &chat.ShowOverlay)) {
-
-        Settings::SetSetting("client", "showChatOverlay", chat.ShowOverlay);
+    if (ImGui::Checkbox("Show Chat Overlay##client-show-chat", &Chat.ShowOverlay)) 
+    {
+        Settings::SetSetting({ "Client", "ShowChatOverlay" }, Chat.ShowOverlay);
     }
 
     ImGui::SameLine();
 
-    if (ImGui::Checkbox("Disable Multiplayer##client-disabled", &disabled)) {
-        if (disabled) {
+    if (ImGui::Checkbox("Disable Multiplayer##client-disabled", &IsMultiplayerDisabled)) 
+    {
+        if (IsMultiplayerDisabled) 
+        {
             Disconnect();
         }
 
-        Settings::SetSetting("client", "disabled", disabled);
+        Settings::SetSetting({ "Client", "Disabled" }, IsMultiplayerDisabled);
     }
 
     ImGui::Separator(5.0f);
     ImGui::Text("Chat");
 
-    chat.Mutex.lock();
-    ImGui::InputTextMultiline(
-        "##client-chat", const_cast<char *>(chat.Raw.c_str()), chat.Raw.size(),
-        {0, 0}, ImGuiInputTextFlags_ReadOnly);
-    chat.Mutex.unlock();
+    Chat.Mutex.lock();
+    ImGui::InputTextMultiline("##client-chat", const_cast<char *>(Chat.Raw.c_str()), Chat.Raw.size(), {0, 0}, ImGuiInputTextFlags_ReadOnly);
+    Chat.Mutex.unlock();
 
-    if (ImGui::InputText("##client-chat-input", chatInput, sizeof(chatInput),
-                         ImGuiInputTextFlags_EnterReturnsTrue)) {
-
+    if (ImGui::InputText("##client-chat-input", ChatInput, sizeof(ChatInput), ImGuiInputTextFlags_EnterReturnsTrue)) 
+    {
         SendChatInput();
     }
 
     ImGui::SameLine();
-    if (ImGui::Button("Send##client-chat-send")) {
+    if (ImGui::Button("Send##client-chat-send")) 
+    {
         SendChatInput();
     }
 
-    if (ImGui::Hotkey("Chat Keybind##client-chat-keybind", &chat.Keybind)) {
-        Settings::SetSetting("client", "chatKeybind", chat.Keybind);
+    if (ImGui::Hotkey("Chat Keybind##client-chat-keybind", &Chat.Keybind)) 
+    {
+        Settings::SetSetting({ "Client", "ChatKeybind" }, Chat.Keybind);
     }
 
     ImGui::SameLine();
 
-    if (ImGui::Button("Reset##chatKeybind")) {
-        Settings::SetSetting("client", "chatKeybind", chat.Keybind = VK_T);
+    if (ImGui::Button("Reset##chatKeybind")) 
+    {
+        Settings::SetSetting({ "Client", "ChatKeybind" }, Chat.Keybind = VK_T);
     }
 
     ImGui::Separator(5.0f);
 
-    players.Mutex.lock_shared();
-    if (ImGui::TreeNode("##client-players", "Players (%d)",
-                        players.List.size())) {
-        for (auto p : players.List) {
+    Players.Mutex.lock_shared();
+    if (ImGui::TreeNode("##client-players", "Players (%d)", Players.List.size())) 
+    {
+        for (auto p : Players.List) 
+        {
             ImGui::Text("%s - %s", p->Name.c_str(), p->Level.c_str());
             ImGui::SameLine();
 
-            if (ImGui::Button(
-                    ("Goto##client-goto-" + std::to_string(p->Id)).c_str()) &&
-                p->Level == client.Level && p->Actor) {
+            if (p->Level == UserClient.Level && p->Actor) 
+            {
+                if (ImGui::Button(("Goto##client-goto-" + std::to_string(p->Id)).c_str()))
+                {
+                    auto pawn = Engine::GetPlayerPawn();
+                    if (pawn)
+                    {
+                        pawn->Location = p->Actor->Location;
+                    }
+                }
+            }
+            else
+            {
+                ImGui::BeginDisabled();
+                ImGui::Button(("Goto##client-goto-" + std::to_string(p->Id)).c_str());
+                ImGui::EndDisabled();
+            }
+        }
 
-                auto pawn = Engine::GetPlayerPawn();
-                if (pawn) {
-                    pawn->Location = p->Actor->Location;
+        ImGui::TreePop();
+    }
+    Players.Mutex.unlock_shared();
+}
+
+static void GamesTab() 
+{
+    if (ImGui::TreeNode("Tag##Games-Tag"))
+    {
+        if (ImGui::Checkbox("Distance Overlay##tag-distance-overlay", &ShowTagDistanceOverlay))
+        {
+            Settings::SetSetting({ "Games", "Tag", "ShowDistanceOverlay" }, ShowTagDistanceOverlay);
+        }
+        ImGui::HelpMarker("Shows the distance to other players in meters. Tag doesn't need to be enabled for this");
+
+        if (UserClient.GameMode == GameMode_Tag)
+        {
+            ImGui::Checkbox("Cooldown Overlay##tag-cooldown-overlay", &ShowTagCooldownOverlay);
+            ImGui::HelpMarker("When someone gets tagged, it will show (if true) at the top middle of the screen of the cooldown\nin seconds until they can move again");
+        }
+
+        ImGui::Separator(5.0f);
+
+        if (UserClient.Level == Map_MainMenu)
+        {
+            ImGui::Text("You can't start tag when you're in the main menu");
+        }
+        else if (Players.List.size() == 0)
+        {
+            ImGui::Text("You can't start tag when you're alone");
+        }
+        else
+        {
+            if (UserClient.GameMode == GameMode_None)
+            {
+                if (ImGui::InputInt("Cooldown##tag-change-cooldown", &TagCooldown, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue))
+                {
+                    TagCooldown = UserClient.CoolDownTag = max(1, min(60, TagCooldown));
+
+                    SendJsonMessage({
+                        {"type", "cooldown"},
+                        {"cooldown", UserClient.CoolDownTag},
+                        });
+
+                    char buffer[0xFF];
+                    sprintf_s(buffer, sizeof(buffer), "[Tag] %s changed the cooldown to be %d second%s", UserClient.Name.c_str(), TagCooldown, TagCooldown != 1 ? "s" : "");
+
+                    SendJsonMessage({
+                        {"type", "announce"},
+                        {"body", buffer},
+                        });
+                }
+
+                ImGui::HelpMarker("Change to cooldown to be anywhere from 1 to 60. Press enter to update");
+                ImGui::DummyVertical(5.0f);
+
+                if (ImGui::Button("Start Tag"))
+                {
+                    SendJsonMessage({
+                        {"type", "startTagGameMode"},
+                    });
+
+                    char buffer[0xFF];
+                    sprintf_s(buffer, sizeof(buffer), "[Tag] %s started tag", UserClient.Name.c_str());
+
+                    SendJsonMessage({
+                        {"type", "announce"},
+                        {"body", buffer},
+                    });
+                }
+            }
+
+            if (UserClient.GameMode == GameMode_Tag)
+            {
+                if (ImGui::Button("End Tag"))
+                {
+                    SendJsonMessage({
+                        {"type", "endGameMode"},
+                        });
+
+                    char buffer[0xFF];
+                    sprintf_s(buffer, sizeof(buffer), "[Tag] %s ended tag", UserClient.Name.c_str());
+
+                    SendJsonMessage({
+                        {"type", "announce"},
+                        {"body", buffer},
+                        });
                 }
             }
         }
 
         ImGui::TreePop();
     }
-    players.Mutex.unlock_shared();
 }
 
-static void TagTab() {
-    if (ImGui::Checkbox("Distance Overlay##tag-distance-overlay", &showTagDistanceOverlay)) {
-        Settings::SetSetting("tag", "showDistanceOverlay", showTagDistanceOverlay);
-    }
-
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-		ImGui::SetTooltip("Shows the distance to other players in meters");
-	}
-
-    if (client.GameMode == GameMode_Tag) {
-        ImGui::Checkbox("Cooldown Overlay##tag-cooldown-overlay", &showTagCooldownOverlay);
-
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("When someone gets tagged, it will show (if true) at the top middle of the screen of the cooldown\nin seconds until they can move again");
-        }
-    }
-
-    ImGui::Separator(5.0f);
-
-    if (client.Level == Map_MainMenu) {
-        ImGui::Text("You can't start tag when you're in the main menu");
-        return;
-    }
-
-    if (players.List.size() == 0) {
-        ImGui::Text("You can't start tag when you're alone");
-        return;
-    }
-
-    if (client.GameMode == GameMode_None) {
-        if (ImGui::InputInt("Cooldown##tag-change-cooldown", &tagCooldown, 0, 0,
-                            ImGuiInputTextFlags_EnterReturnsTrue)) {
-            tagCooldown = client.CoolDownTag = max(1, min(60, tagCooldown));
-
-            SendJsonMessage({
-                {"type", "cooldown"},
-                {"cooldown", client.CoolDownTag},
-            });
-
-            char buffer[0xFF];
-            sprintf_s(buffer, sizeof(buffer), "[Tag] %s changed the cooldown to be %d second%s",
-                      client.Name.c_str(), tagCooldown, tagCooldown != 1 ? "s" : "");
-
-            SendJsonMessage({
-                {"type", "announce"},
-                {"body", buffer},
-            });
-        }
-
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("Change to cooldown to be anywhere from 1 to 60. Press enter to update");
-        }
-
-        ImGui::Dummy(ImVec2(0.0f, 6.0f));
-
-        if (ImGui::Button("Start Tag")) {
-            SendJsonMessage({
-                {"type", "startTagGameMode"},
-            });
-
-            char buffer[0xFF];
-            sprintf_s(buffer, sizeof(buffer), "[Tag] %s started tag", client.Name.c_str());
-
-            SendJsonMessage({
-                {"type", "announce"},
-                {"body", buffer},
-            });
-        }
-    }
-
-    if (client.GameMode == GameMode_Tag) {
-        if (ImGui::Button("End Tag")) {
-            SendJsonMessage({
-                {"type", "endGameMode"},
-            });
-
-            char buffer[0xFF];
-            sprintf_s(buffer, sizeof(buffer), "[Tag] %s ended tag", client.Name.c_str());
-
-            SendJsonMessage({
-                {"type", "announce"},
-                {"body", buffer},
-            });
-        }
-    }
-}
-
-bool Client::Initialize() {
+bool Client::Initialize() 
+{
     // Settings
-    client.Name = Settings::GetSetting("client", "name", "anonymous").get<std::string>();
-    strncpy_s(nameInput, sizeof(nameInput) - 1, client.Name.c_str(), sizeof(nameInput) - 1);
+    UserClient.Name = Settings::GetSetting({ "Client", "Name" }, "anonymous").get<std::string>();
+    strncpy_s(NameInput, sizeof(NameInput) - 1, UserClient.Name.c_str(), sizeof(NameInput) - 1);
 
-    room = Settings::GetSetting("client", "room", "lobby").get<std::string>();
-    strncpy_s(roomInput, sizeof(roomInput) - 1, room.c_str(), sizeof(roomInput) - 1);
+    Room = Settings::GetSetting({ "Client", "Room" }, "lobby").get<std::string>();
+    strncpy_s(RoomInput, sizeof(RoomInput) - 1, Room.c_str(), sizeof(RoomInput) - 1);
 
-    client.Character = Settings::GetSetting("client", "character", Engine::Character::Faith).get<Engine::Character>();
-    chat.Keybind = Settings::GetSetting("client", "chatKeybind", VK_T);
-    players.ShowNameTags = Settings::GetSetting("client", "showNameTags", true);
-    chat.ShowOverlay = Settings::GetSetting("client", "showChatOverlay", true);
-    disabled = Settings::GetSetting("client", "disabled", false);
+    UserClient.Character = Settings::GetSetting({ "Client", "Character" }, Engine::Character::Faith).get<Engine::Character>();
+    Chat.Keybind = Settings::GetSetting({ "Client", "ChatKeybind" }, VK_T);
+    Players.ShowNameTags = Settings::GetSetting({ "Client", "ShowNameTags" }, true);
+    Chat.ShowOverlay = Settings::GetSetting({ "Client", "ShowChatOverlay" }, true);
+    IsMultiplayerDisabled = Settings::GetSetting({ "Client", "Disabled" }, false);
 
-    showTagDistanceOverlay = Settings::GetSetting("tag", "showDistanceOverlay", false);
+    ShowTagDistanceOverlay = Settings::GetSetting({ "Games", "Tag", "ShowDistanceOverlay" }, false);
 
     // Functions
     Menu::AddTab("Multiplayer", MultiplayerTab);
-    Menu::AddTab("Tag", TagTab);
+    Menu::AddTab("Games", GamesTab);
 
     Engine::OnTick(OnTick);
-    Engine::OnTick(OnTickTag);
+    Engine::OnTick(OnTickGames);
 
     Engine::OnRenderScene(OnRender);
-    Engine::OnRenderScene(OnRenderTag);
+    Engine::OnRenderScene(OnRenderGames);
 
-    Engine::OnInput([](unsigned int &msg, int keycode) {
-        if (!chat.Focused && msg == WM_KEYDOWN && keycode == chat.Keybind) {
-            chat.Focused = true;
+    Engine::OnInput([](unsigned int &msg, int keycode) 
+    {
+        if (!Chat.Focused && msg == WM_KEYDOWN && keycode == Chat.Keybind) 
+        {
+            Chat.Focused = true;
             Engine::BlockInput(true);
         }
     });
 
-    Engine::OnSuperInput([](unsigned int &msg, int keycode) {
-        if (chat.Focused) {
-            if (msg == WM_KEYUP && keycode == VK_RETURN) {
+    Engine::OnSuperInput([](unsigned int &msg, int keycode) 
+    {
+        if (Chat.Focused) 
+        {
+            if (msg == WM_KEYUP && keycode == VK_RETURN) 
+            {
                 SendChatInput();
-                chat.Focused = false;
+                Chat.Focused = false;
                 Engine::BlockInput(false);
-            } else if (msg == WM_KEYUP && keycode == VK_ESCAPE) {
-                chat.Focused = false;
+            } 
+            else if (msg == WM_KEYUP && keycode == VK_ESCAPE) 
+            {
+                Chat.Focused = false;
                 Engine::BlockInput(false);
             }
         }
     });
 
-    Engine::OnActorTick([](Classes::AActor *actor) {
+    Engine::OnActorTick([](Classes::AActor *actor) 
+    {
         if (!actor) {
             return;
         }
 
-        players.Mutex.lock_shared();
+        Players.Mutex.lock_shared();
 
-        for (const auto &p : players.List) {
-            if (p->Actor == actor && p->Actor->SkeletalMeshComponent &&
-                p->Id == p->LastPacket.Id) {
+        for (const auto &p : Players.List) 
+        {
+            if (p->Actor == actor && p->Actor->SkeletalMeshComponent && p->Id == p->LastPacket.Id) 
+            {
                 p->Actor->Location = p->LastPacket.Position;
                 p->Actor->Rotation = {0, p->LastPacket.Yaw, 0};
-                p->MaxZ =
-                    p->Actor->SkeletalMeshComponent->GetBoneLocation("Neck", 0)
-                        .Z;
+                p->MaxZ = p->Actor->SkeletalMeshComponent->GetBoneLocation("Neck", 0).Z;
             }
         }
 
-        players.Mutex.unlock_shared();
+        Players.Mutex.unlock_shared();
     });
 
-    Engine::OnBonesTick([](Classes::TArray<Classes::FBoneAtom> *bones) {
-        players.Mutex.lock_shared();
+    Engine::OnBonesTick([](Classes::TArray<Classes::FBoneAtom> *bones) 
+    {
+        Players.Mutex.lock_shared();
 
-        for (const auto &p : players.List) {
-            if (p->Actor && p->Actor->SkeletalMeshComponent &&
-                p->Actor->SkeletalMeshComponent->LocalAtoms.Buffer() ==
-                    bones->Buffer() &&
-                p->Id == p->LastPacket.Id) {
-
-                Engine::TransformBones(p->Character, bones,
-                                       p->LastPacket.Bones);
+        for (const auto &p : Players.List) 
+        {
+            if (p->Actor && p->Actor->SkeletalMeshComponent && p->Actor->SkeletalMeshComponent->LocalAtoms.Buffer() == bones->Buffer() && p->Id == p->LastPacket.Id) 
+            {
+                Engine::TransformBones(p->Character, bones, p->LastPacket.Bones);
             }
         }
 
-        players.Mutex.unlock_shared();
+        Players.Mutex.unlock_shared();
     });
 
-    Engine::OnPreLevelLoad([](const wchar_t *levelNameW) {
-        players.Mutex.lock_shared();
-        loading = true;
+    Engine::OnPreLevelLoad([](const wchar_t *levelNameW) 
+    {
+        Players.Mutex.lock_shared();
+        IsLoading = true;
 
-        client.Level =
-            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(
-                levelNameW);
+        UserClient.Level = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(levelNameW);
 
-        std::transform(client.Level.begin(), client.Level.end(),
-                       client.Level.begin(), [](char c) { return tolower(c); });
+        std::transform(UserClient.Level.begin(), UserClient.Level.end(), UserClient.Level.begin(), [](char c) 
+        { 
+            return tolower(c); 
+        });
 
-        for (const auto &p : players.List) {
+        for (const auto &p : Players.List) 
+        {
             p->Actor = nullptr;
         }
 
-        players.Mutex.unlock_shared();
+        Players.Mutex.unlock_shared();
     });
 
-    Engine::OnPostLevelLoad([](const wchar_t *) {
-        if (client.Level != Map_MainMenu) {
-            players.Mutex.lock_shared();
+    Engine::OnPostLevelLoad([](const wchar_t *) 
+    {
+        if (UserClient.Level != Map_MainMenu) 
+        {
+            Players.Mutex.lock_shared();
 
-            for (const auto &p : players.List) {
-                if (!p->Actor && p->Level == client.Level) {
+            for (const auto &p : Players.List) 
+            {
+                if (!p->Actor && p->Level == UserClient.Level) 
+                {
                     Engine::SpawnCharacter(p->Character, p->Actor);
                 }
             }
 
-            loading = false;
-            players.Mutex.unlock_shared();
+            IsLoading = false;
+            Players.Mutex.unlock_shared();
         }
 
-        if (connected) {
+        if (IsConnected) 
+        {
             SendJsonMessage({
                 {"type", "level"},
-                {"id", client.Id},
-                {"level", client.Level},
+                {"id", UserClient.Id},
+                {"level", UserClient.Level},
             });
         }
     });
 
-    Engine::OnPreDeath([]() {
-        players.Mutex.lock_shared();
-        loading = true;
-        players.Mutex.unlock_shared();
+    Engine::OnPreDeath([]() 
+    {
+        Players.Mutex.lock_shared();
+        IsLoading = true;
+        Players.Mutex.unlock_shared();
     });
 
-    Engine::OnPostDeath([]() {
-        players.Mutex.lock_shared();
-        loading = false;
+    Engine::OnPostDeath([]() 
+    {
+        Players.Mutex.lock_shared();
+        IsLoading = false;
 
-        for (const auto &p : players.List) {
-            if (!p->Actor && p->Level == client.Level) {
+        for (const auto &p : Players.List) 
+        {
+            if (!p->Actor && p->Level == UserClient.Level) 
+            {
                 Engine::SpawnCharacter(p->Character, p->Actor);
             }
         }
 
-        players.Mutex.unlock_shared();
+        Players.Mutex.unlock_shared();
     });
 
     std::thread(ClientListener).detach();
     return true;
 }
 
-std::string Client::GetName() { return "Multiplayer Client"; }
+std::string Client::GetName() 
+{ 
+    return "Multiplayer Client"; 
+}
