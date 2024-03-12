@@ -39,28 +39,32 @@ static int CompressedBoneOffsets[] = {
     0xCCC, 0xCE0, 0xCE4, 0xCE8, 0xCEC, 0xD00, 0xD04, 0xD08, 0xD0C, 0xD14, 0xD20,
     0xD24, 0xD28, 0xD2C, 0xD34, 0xD40, 0xD4C, 0xD60, 0xD64, 0xD68, 0xD6C};
 
-class Client : public Addon {
+class Client : public Addon 
+{
   public:
     static const int Port = 5222;
 
     bool Initialize();
     std::string GetName();
 
-    typedef struct {
+    typedef struct 
+    {
         unsigned int Id;
         Classes::FVector Position;
         unsigned short Yaw;
         Classes::FBoneAtom Bones[PLAYER_PAWN_BONE_COUNT];
     } PACKET;
 
-    typedef struct {
+    typedef struct 
+    {
         unsigned int Id;
         Classes::FVector Position;
         unsigned short Yaw;
         short CompressedBones[ARRAYSIZE(CompressedBoneOffsets)];
     } PACKET_COMPRESSED;
 
-    class Player {
+    class Player 
+    {
       public:
         unsigned int Id;
         Engine::Character Character;
