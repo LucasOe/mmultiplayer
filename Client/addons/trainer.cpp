@@ -1,4 +1,4 @@
-#include "trainer.h"
+﻿#include "trainer.h"
 #include "../engine.h"
 #include "../hook.h"
 #include "../imgui/imgui.h"
@@ -8,96 +8,126 @@
 #include "../util.h"
 #include "misc.h"
 
-static bool enabled = false;
-static bool tooltip = true;
-static bool god = false;
-static bool kg = false;
-static bool beamer = false;
-static bool strang = false; 
-static bool resetFlyingSpeed = true;
-static bool toggleResetKeybinds = false;
+static bool Enabled = false;
+static bool GodToolActivated = false;
+static bool KickglitchToolActivated = false;
+static bool BeamerToolActivated = false;
+static bool StrangToolActivated = false; 
+static bool ToggleResetKeybinds = false;
+static bool ShowToolActivatedOverlay = true;
 
 static Trainer::Save save;
 static bool hasSave = false;
 
-static bool sidestepBeamer = false;
-static bool sidestepBeamerForMe = false;
-static bool sidestepBeamerPressLeftKeybind = true;
-static bool sidestepBeamerPressRightKeybind = false;
+static bool SidestepBeamer = false;
+static bool SidestepBeamerAutomatic = false;
+static bool SidestepBeamerPressLeftKeybind = true;
+static bool SidestepBeamerPressRightKeybind = false;
 
-static int saveKeybind = VK_4;
-static int loadKeybind = VK_5;
-static int godKeybind = VK_1;
-static int checkpointKeybind = VK_3;
-static int kgKeybind = VK_NONE;
-static int beamerKeybind = VK_NONE;
-static int strangKeybind = VK_NONE;
-static int sidestepBeamerLeftKeybind = VK_A;
-static int sidestepBeamerRightKeybind = VK_D;
+// Default keybinds for these can be found inside Initialize() function
+static int SaveKeybind = 0;
+static int LoadKeybind = 0;
+static int GodKeybind = 0;
+static int CheckpointKeybind = 0;
+static int KickglitchKeybind = 0;
+static int BeamerKeybind = 0;
+static int StrangKeybind = 0;
+static int SidestepBeamerRightKeybind = 0;
+static int SidestepBeamerLeftKeybind = 0;
 
-static bool hasCheckpoint = false;
-static float checkpointTime = 0.0f;
-static bool checkpointUpdateTimer = false;
-static Classes::FVector checkpointLocation;
+static bool HasCheckpoint = false;
+static float CheckpointTime = 0.0f;
+static bool CheckpointUpdateTimer = false;
+static Classes::FVector CheckpointLocation;
 
-static bool ShowSpeedometer = false;
-static bool EditSpeedometer = false;
-static std::string SpeedometerLabel = "Speedometer##trainer-speedometer";
-static std::string SpeedometerEditLabel = "Speedometer Edit##trainer-speedometer-edit";
-
-template<typename T>
-struct Item
+static struct 
 {
-    bool IsVisible;
+    bool Show;
+    bool HideCloseButton;
 
-    bool ModifyValue;
+    bool ShowEditWindow;
+    bool ShowItemEditorWindow;
+    bool WasEditWindowShown;
+    bool WasEditItemShown;
+
+    ImGuiWindowFlags WindowFlags;
+    ImGuiStyle Style;
+} Speedometer;
+
+static struct
+{
+    bool Enabled = false;
+    int Keybind = VK_2;
+    int UpKeybind = VK_SPACE;
+    int DownKeybind = VK_SHIFT;
+    int FasterKeybind = VK_E;
+    int SlowerKeybind = VK_Q;
+    Classes::FVector Location;
+    Classes::FVector Velocity;
+    float Speed = 2.0f;
+    float DefaultSpeed = Speed;
+    float SpeedIncrement = 0.25f;
+    bool ResetSpeed = true;
+} Fly;
+
+static json ImVec4ToJson(const ImVec4& v)
+{
+    return json{{"R", v.x}, {"G", v.y}, {"B", v.z}, {"A", v.w}};
+}
+
+static ImVec4 JsonToImVec4(const json& j)
+{
+    ImVec4 v;
+    v.x = j.at("R").get<float>();
+    v.y = j.at("G").get<float>();
+    v.z = j.at("B").get<float>();
+    v.w = j.at("A").get<float>();
+    return v;
+}
+
+class Item
+{
+public:
+    int DrawIndex;
+    int PositionIndex;
+    bool IsVisible;
+    bool ModifyDisplayedValue;
     bool Multiply;
     float Factor;
-
     bool AddSpaceBelow;
     float Height;
     float ValueOffset;
 
-    char Label[64];
-    char Format[64];
-    float LabelColor[4];
-    float ValueColor[4];
+    std::string ItemName;
+    std::string Label;
+    std::string Format;
 
-    Item()
-    {
-        IsVisible = true;
-        ModifyValue = false;
-        Multiply = false;
-        Factor = 1.0f;
-        AddSpaceBelow = false;
-        Height = 5.0f;
-        ValueOffset = 128.0f;
+    ImVec4 LabelColor;
+    ImVec4 ValueColor;
 
-        for (size_t i = 0; i < 4; i++)
-        {
-            LabelColor[i] = 1.0f;
-            ValueColor[i] = 1.0f;
-        }
+private:
+    char LabelBuffer[32];
+    char FormatBuffer[32];
+    int DefaultPositionIndex;
+    int PreviuosPositionIndex;
+    std::string DefaultLabel;
+    std::string DefaultFormat;
 
-        strcpy_s(Label, "?");
-        strcpy_s(Format, "%.2f");
-    }
-
-    inline void Draw(T value)
+public:
+    template<typename T> 
+    void Draw(T value)
     {
         if (!IsVisible)
         {
             return;
         }
 
-        const auto colorLabel = ImVec4(LabelColor[0], LabelColor[1], LabelColor[2], LabelColor[3]);
-        const auto colorValue = ImVec4(ValueColor[0], ValueColor[1], ValueColor[2], ValueColor[3]);
+        ImGui::Begin("Speedometer##trainer-speedometer");
 
-        ImGui::Begin(SpeedometerLabel.c_str());
-        ImGui::TextColored(colorLabel, Label);
+        ImGui::TextColored(LabelColor, Label.c_str());
         ImGui::SameLine(ValueOffset);
 
-        if (ModifyValue)
+        if (ModifyDisplayedValue)
         {
             if (Multiply)
             {
@@ -105,64 +135,232 @@ struct Item
             }
             else
             {
-                if (Factor == 0.0f)
-                {
-                    Factor = 1.0f;
-                }
-
-                value /= Factor;
+                value /= Factor == 0.0f ? 1.0f : Factor;
             }
         }
         
-        ImGui::TextColored(colorValue, Format, value);
+        ImGui::TextColored(ValueColor, Format.c_str(), value);
 
         if (AddSpaceBelow)
         {
-            ImGui::Dummy(ImVec2(0.0f, Height));
+            ImGui::DummyVertical(Height);
         }
 
         ImGui::End();
     }
 
-    inline void Edit()
+    void Edit(bool &needsToReorderItems)
     {
-        ImGui::Begin(SpeedometerEditLabel.c_str(), &EditSpeedometer, ImGuiWindowFlags_NoCollapse);
+        ImGui::Text("Editing \"%s\"", ItemName.c_str());
+        ImGui::Separator(5.0f);
+
+        /*
+        ImGui::Text("DrawIndex: %d", DrawIndex);
+        ImGui::Text("PositionIndex: %d", PositionIndex);
+        ImGui::Text("DefaultPositionIndex: %d", DefaultPositionIndex);
+        ImGui::Text("PreviuosPositionIndex: %d", PreviuosPositionIndex);
+        ImGui::Separator(5.0f);
+        */
+
         ImGui::Checkbox("IsVisible", &IsVisible);
-        ImGui::InputText("Label", Label, sizeof(Label), ImGuiInputTextFlags_EnterReturnsTrue);
-        ImGui::InputText("Format", Format, sizeof(Format), ImGuiInputTextFlags_EnterReturnsTrue);
-        ImGui::Checkbox("AddSpaceBelow", &AddSpaceBelow);
-        ImGui::DragFloat("Height", &Height);
-        ImGui::DragFloat("Offset", &ValueOffset);
-        ImGui::Checkbox("ModifyValue", &ModifyValue);
-        ImGui::Checkbox("Multiply", &Multiply);
-        ImGui::InputFloat("Factor", &Factor);
-        ImGui::ColorEdit4("LabelColor", LabelColor);
-        ImGui::ColorEdit4("ValueColor", ValueColor);
-        ImGui::End();
+        ImGui::HelpMarker("If set to true, it will be hidden, otherwise it will be visible");
+
+        // Text
+        {
+            ImGui::Separator(5.0f);
+            if (ImGui::InputText("Label", LabelBuffer, sizeof(Label), ImGuiInputTextFlags_EnterReturnsTrue))
+            {
+                if (Label != LabelBuffer)
+                {
+                    bool empty = true;
+                    for (auto c : std::string(LabelBuffer)) 
+                    {
+                        if (!isblank(c)) 
+                        {
+                            empty = false;
+                            break;
+                        }
+                    }
+
+                    if (!empty) 
+                    {
+                        Label = LabelBuffer;
+                    }
+                }
+            }
+            ImGui::HelpMarker(("Change the label text to be whatever you want. Default Label: " + DefaultLabel).c_str());
+
+            if (ImGui::InputText("Value Format", FormatBuffer, sizeof(Format), ImGuiInputTextFlags_EnterReturnsTrue))
+            {
+                if (Format != FormatBuffer)
+                {
+                    bool empty = true;
+                    for (auto c : std::string(FormatBuffer))
+                    {
+                        if (!isblank(c))
+                        {
+                            empty = false;
+                            break;
+                        }
+                    }
+
+                    if (!empty)
+                    {
+                        Format = FormatBuffer;
+                    }
+                }
+            }
+            ImGui::HelpMarker(("All format values requires one \"%\". If you're not sure how to change this. Look up \"Format Specifiers\". You can add whatever you want before and after the specifier.\n\nDefault Format: " + DefaultFormat).c_str());
+        }
+
+        // Spacing
+        {
+            ImGui::Separator(5.0f);
+            ImGui::Checkbox("Add Space Below", &AddSpaceBelow);
+
+            if (!AddSpaceBelow)
+                ImGui::BeginDisabled();
+
+            ImGui::DragFloat("Height", &Height);
+
+            if (!AddSpaceBelow)
+                ImGui::EndDisabled();
+
+            ImGui::DragFloat("Value Offset", &ValueOffset);
+            ImGui::HelpMarker("Offset from the left side of the speedometer window");
+        }
+
+        // Value
+        {
+            ImGui::Separator(5.0f);
+            ImGui::Checkbox("Modify Displayed Value", &ModifyDisplayedValue);
+
+            if (!ModifyDisplayedValue) 
+                ImGui::BeginDisabled();
+
+            ImGui::Checkbox("Multiply Value", &Multiply);
+            ImGui::HelpMarker("If set to true, it will multiply the value with the factor. If set to false, it will divide instead");
+
+            ImGui::InputFloat("Factor", &Factor);
+
+            if (!ModifyDisplayedValue) 
+                ImGui::EndDisabled();
+        }
+
+        // Color
+        {
+            ImGui::Separator(5.0f);
+            ImGui::ColorEdit4("Label Color", &LabelColor.x, ImGuiColorEditFlags_AlphaPreviewHalf);
+            ImGui::ColorEdit4("Value Color", &ValueColor.x, ImGuiColorEditFlags_AlphaPreviewHalf);
+        }
+
+        // Buttons
+        {
+            ImGui::Separator(5.0f);
+            if (ImGui::Button("Save##speedometer-edititem-save-button"))
+            {
+                SaveSettings();
+            }
+            ImGui::SameLine();
+
+            if (ImGui::Button("Undo##speedometer-edititem-undo-button"))
+            {
+                LoadSettings(DrawIndex, false, true);
+                needsToReorderItems = true;
+            }
+            ImGui::SameLine();
+
+            if (ImGui::Button("Reset##speedometer-edititem-reset-button"))
+            {
+                Settings::SetSetting({ "Speedometer", "Item", ItemName }, json::object());
+
+                LoadSettings(DrawIndex, true); 
+                SaveSettings();
+            }
+        }
+    }
+
+    void LoadSettings(size_t index, bool resetToDefaultPositionIndex = false, bool resetToPreviousPositionIndex = false)
+    {
+        DrawIndex = Settings::GetSetting({ "Speedometer", "Item", ItemName, "DrawIndex" }, index);
+
+        int positionIndex = index;
+        if (resetToDefaultPositionIndex)
+        {
+            positionIndex = DefaultPositionIndex;
+        }
+        else if (resetToPreviousPositionIndex)
+        {
+            positionIndex = PreviuosPositionIndex;
+        }
+
+        PositionIndex = Settings::GetSetting({ "Speedometer", "Item", ItemName, "PositionIndex" }, positionIndex);
+        IsVisible = Settings::GetSetting({ "Speedometer", "Item", ItemName, "IsVisible" }, true);
+        ModifyDisplayedValue = Settings::GetSetting({ "Speedometer", "Item", ItemName, "ModifyDisplayedValue" }, false);
+        Multiply = Settings::GetSetting({ "Speedometer", "Item", ItemName, "Multiply" }, false);
+        Factor = Settings::GetSetting({ "Speedometer", "Item", ItemName, "Factor" }, 1.0f);
+        AddSpaceBelow = Settings::GetSetting({ "Speedometer", "Item", ItemName, "AddSpaceBelow" }, false);
+        Height = Settings::GetSetting({ "Speedometer", "Item", ItemName, "Height" }, 5.0f);
+        ValueOffset = Settings::GetSetting({ "Speedometer", "Item", ItemName, "ValueOffset" }, 128.0f);
+
+        Label = Settings::GetSetting({ "Speedometer", "Item", ItemName, "Label" }, DefaultLabel).get<std::string>();
+        strncpy_s(LabelBuffer, sizeof(LabelBuffer) - 1, Label.c_str(), sizeof(LabelBuffer) - 1);
+
+        Format = Settings::GetSetting({ "Speedometer", "Item", ItemName, "Format" }, DefaultFormat).get<std::string>();
+        strncpy_s(FormatBuffer, sizeof(FormatBuffer) - 1, Format.c_str(), sizeof(FormatBuffer) - 1);
+
+        LabelColor = JsonToImVec4(Settings::GetSetting({ "Speedometer", "Item", ItemName, "LabelColor" }, ImVec4ToJson(ImVec4(1.0f, 1.0f, 1.0f, 1.0f))));
+        ValueColor = JsonToImVec4(Settings::GetSetting({ "Speedometer", "Item", ItemName, "ValueColor" }, ImVec4ToJson(ImVec4(1.0f, 1.0f, 1.0f, 1.0f))));
+    }
+
+    void SaveSettings()
+    {
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "DrawIndex" }, DrawIndex);
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "PositionIndex" }, PreviuosPositionIndex = PositionIndex);
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "IsVisible" }, IsVisible);
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "ModifyDisplayedValue" }, ModifyDisplayedValue);
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "Multiply" }, Multiply);
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "Factor" }, Factor);
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "AddSpaceBelow" }, AddSpaceBelow);
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "Height" }, Height);
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "ValueOffset" }, ValueOffset);
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "Label" }, Label);
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "Format" }, Format);
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "LabelColor" }, ImVec4ToJson(LabelColor));
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "ValueColor" }, ImVec4ToJson(ValueColor));
+    }
+
+    void SetNameAndDefaults(const std::string name, const std::string label, int &positionIndex, const std::string format = "%.2f") 
+    {
+        ItemName = name;
+        DefaultLabel = Label = label;
+        DefaultFormat = Format = format;
+        DefaultPositionIndex = PreviuosPositionIndex = PositionIndex = positionIndex;
+
+        positionIndex++;
     }
 };
 
-static Item<float> LocationX;
-static Item<float> LocationY;
-static Item<float> LocationZ;
-static Item<float> TopHeight;
-static Item<float> Speed;
-static Item<float> TopSpeed;
-static Item<float> Pitch;
-static Item<float> Yaw;
-static Item<float> Checkpoint;
-static Item<int> MovementState;
-static Item<int> Health;
-static Item<float> ReactionTime;
-static Item<float> LastJumpLocation;
-static Item<float> LastJumpLocationDelta;
+static Item LocationX;
+static Item LocationY;
+static Item LocationZ;
+static Item TopHeight;
+static Item Speed;
+static Item TopSpeed;
+static Item Pitch;
+static Item Yaw;
+static Item Checkpoint;
+static Item MovementState;
+static Item Health;
+static Item ReactionTime;
+static Item LastJumpLocation;
+static Item LastJumpLocationDelta;
+static std::vector<Item*> Items;
 
 struct Tracker
 {
     float Value;
     float TimeHit;
-
-    // TODO: Allow user to edit these
     bool UseRealTime;
     float ResetAfterSeconds;
 
@@ -176,13 +374,13 @@ struct Tracker
         ResetAfterSeconds = 2.75f;
     }
 
-    inline void Reset()
+    void Reset()
     {
         Value = 0.0f;
         TimeHit = 0.0f;
     }
 
-    inline void Update(const float current)
+    void Update(const float current)
     {
         const auto pawn = Engine::GetPlayerPawn();
         if (pawn)
@@ -203,27 +401,13 @@ struct Tracker
     }
 };
 
-static Tracker TopSpeedTracker;
 static Tracker TopHeightTracker;
-
-static struct {
-    bool Enabled = false;
-    int Keybind = VK_2;
-    int UpKeybind = VK_SPACE;
-    int DownKeybind = VK_SHIFT;
-    int FasterKeybind = VK_E;
-    int SlowerKeybind = VK_Q;
-    Classes::FVector Location;
-    Classes::FVector Velocity;
-    float Speed = 2.0f;
-    float DefaultSpeed = Speed;
-} fly;
+static Tracker TopSpeedTracker;
 
 static void(__thiscall *StateHandlerOriginal)(void *, float, int) = nullptr;
 
-static void Save(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
-                 Classes::ATdPlayerController *controller) {
-
+static void Save(Trainer::Save &save, Classes::ATdPlayerPawn *pawn, Classes::ATdPlayerController *controller) 
+{
     // clang-format off
     save.WorldInfo.TimeDilation = pawn->WorldInfo->TimeDilation;
     save.Pawn.bExludeHandMoves = pawn->bExludeHandMoves; save.Pawn.bExludeFootMoves = pawn->bExludeFootMoves; save.Pawn.bPhysXMutatable = pawn->bPhysXMutatable; save.Pawn.bStatic = pawn->bStatic; save.Pawn.bHidden = pawn->bHidden; save.Pawn.bNoDelete = pawn->bNoDelete; save.Pawn.bDeleteMe = pawn->bDeleteMe; save.Pawn.bTicked = pawn->bTicked; save.Pawn.bOnlyOwnerSee = pawn->bOnlyOwnerSee; save.Pawn.bStasis = pawn->bStasis; save.Pawn.bWorldGeometry = pawn->bWorldGeometry; save.Pawn.bIgnoreRigidBodyPawns = pawn->bIgnoreRigidBodyPawns; save.Pawn.bOrientOnSlope = pawn->bOrientOnSlope; save.Pawn.bIgnoreEncroachers = pawn->bIgnoreEncroachers; save.Pawn.bPushedByEncroachers = pawn->bPushedByEncroachers; save.Pawn.bDestroyedByInterpActor = pawn->bDestroyedByInterpActor; save.Pawn.bRouteBeginPlayEvenIfStatic = pawn->bRouteBeginPlayEvenIfStatic; save.Pawn.bIsMoving = pawn->bIsMoving; save.Pawn.bAlwaysEncroachCheck = pawn->bAlwaysEncroachCheck; save.Pawn.bHasAlternateTargetLocation = pawn->bHasAlternateTargetLocation; save.Pawn.bNetTemporary = pawn->bNetTemporary; save.Pawn.bOnlyRelevantToOwner = pawn->bOnlyRelevantToOwner; save.Pawn.bNetDirty = pawn->bNetDirty; save.Pawn.bAlwaysRelevant = pawn->bAlwaysRelevant; save.Pawn.bReplicateInstigator = pawn->bReplicateInstigator; save.Pawn.bReplicateMovement = pawn->bReplicateMovement; save.Pawn.bSkipActorPropertyReplication = pawn->bSkipActorPropertyReplication; save.Pawn.bUpdateSimulatedPosition = pawn->bUpdateSimulatedPosition; save.Pawn.bTearOff = pawn->bTearOff; save.Pawn.bOnlyDirtyReplication = pawn->bOnlyDirtyReplication; save.Pawn.bDemoRecording = pawn->bDemoRecording; save.Pawn.bDemoOwner = pawn->bDemoOwner; save.Pawn.bForceDemoRelevant = pawn->bForceDemoRelevant; save.Pawn.bNetInitialRotation = pawn->bNetInitialRotation; save.Pawn.bReplicateRigidBodyLocation = pawn->bReplicateRigidBodyLocation; save.Pawn.bKillDuringLevelTransition = pawn->bKillDuringLevelTransition; save.Pawn.bExchangedRoles = pawn->bExchangedRoles; save.Pawn.bConsiderAllStaticMeshComponentsForStreaming = pawn->bConsiderAllStaticMeshComponentsForStreaming; save.Pawn.bIgnoreForAITraces = pawn->bIgnoreForAITraces; save.Pawn.bInteractable = pawn->bInteractable; save.Pawn.bLOIObject = pawn->bLOIObject; save.Pawn.bDebug = pawn->bDebug; save.Pawn.bPostRenderIfNotVisible = pawn->bPostRenderIfNotVisible; save.Pawn.bForceNetUpdate = pawn->bForceNetUpdate; save.Pawn.bPendingNetUpdate = pawn->bPendingNetUpdate; save.Pawn.bHardAttach = pawn->bHardAttach; save.Pawn.bIgnoreBaseRotation = pawn->bIgnoreBaseRotation; save.Pawn.bShadowParented = pawn->bShadowParented; save.Pawn.bCanBeAdheredTo = pawn->bCanBeAdheredTo; save.Pawn.bCanBeFrictionedTo = pawn->bCanBeFrictionedTo; save.Pawn.bHurtEntry = pawn->bHurtEntry; save.Pawn.bGameRelevant = pawn->bGameRelevant; save.Pawn.bMovable = pawn->bMovable; save.Pawn.bDestroyInPainVolume = pawn->bDestroyInPainVolume; save.Pawn.bCanBeDamaged = pawn->bCanBeDamaged; save.Pawn.bShouldBaseAtStartup = pawn->bShouldBaseAtStartup; save.Pawn.bPendingDelete = pawn->bPendingDelete; save.Pawn.bCanTeleport = pawn->bCanTeleport; save.Pawn.bAlwaysTick = pawn->bAlwaysTick; save.Pawn.bBlocksNavigation = pawn->bBlocksNavigation; save.Pawn.BlockRigidBody = pawn->BlockRigidBody; save.Pawn.bCollideWhenPlacing = pawn->bCollideWhenPlacing; save.Pawn.bCollideActors = pawn->bCollideActors; save.Pawn.bCollideWorld = pawn->bCollideWorld; save.Pawn.bCollideComplex = pawn->bCollideComplex; save.Pawn.bBlockActors = pawn->bBlockActors; save.Pawn.bProjTarget = pawn->bProjTarget; save.Pawn.bBlocksTeleport = pawn->bBlocksTeleport; save.Pawn.bNoEncroachCheck = pawn->bNoEncroachCheck; save.Pawn.bPhysRigidBodyOutOfWorldCheck = pawn->bPhysRigidBodyOutOfWorldCheck; save.Pawn.bComponentOutsideWorld = pawn->bComponentOutsideWorld; save.Pawn.bBounce = pawn->bBounce; save.Pawn.bJustTeleported = pawn->bJustTeleported; save.Pawn.bNetInitial = pawn->bNetInitial; save.Pawn.bNetOwner = pawn->bNetOwner; save.Pawn.bHiddenEd = pawn->bHiddenEd; save.Pawn.bHiddenEdGroup = pawn->bHiddenEdGroup; save.Pawn.bHiddenEdCustom = pawn->bHiddenEdCustom; save.Pawn.bEdShouldSnap = pawn->bEdShouldSnap; save.Pawn.bTempEditor = pawn->bTempEditor; save.Pawn.bPathColliding = pawn->bPathColliding; save.Pawn.bPathTemp = pawn->bPathTemp; save.Pawn.bScriptInitialized = pawn->bScriptInitialized; save.Pawn.bLockLocation = pawn->bLockLocation; save.Pawn.CustomTimeDilation = pawn->CustomTimeDilation; save.Pawn.Physics = pawn->Physics; save.Pawn.RemoteRole = pawn->RemoteRole; save.Pawn.Role = pawn->Role; save.Pawn.CollisionType = pawn->CollisionType; save.Pawn.TickGroup = pawn->TickGroup; save.Pawn.NetTag = pawn->NetTag; save.Pawn.NetUpdateTime = pawn->NetUpdateTime; save.Pawn.NetUpdateFrequency = pawn->NetUpdateFrequency; save.Pawn.NetPriority = pawn->NetPriority; save.Pawn.LastNetUpdateTime = pawn->LastNetUpdateTime; save.Pawn.LifeSpan = pawn->LifeSpan; save.Pawn.CreationTime = pawn->CreationTime; save.Pawn.LastRenderTime = pawn->LastRenderTime; save.Pawn.LatentFloat = pawn->LatentFloat; save.Pawn.Location = pawn->Location; save.Pawn.Rotation = pawn->Rotation; save.Pawn.Velocity = pawn->Velocity; save.Pawn.Acceleration = pawn->Acceleration; save.Pawn.AngularVelocity = pawn->AngularVelocity; save.Pawn.RelativeLocation = pawn->RelativeLocation; save.Pawn.RelativeRotation = pawn->RelativeRotation; save.Pawn.DrawScale = pawn->DrawScale; save.Pawn.DrawScale3D = pawn->DrawScale3D; save.Pawn.PrePivot = pawn->PrePivot; save.Pawn.OverlapTag = pawn->OverlapTag; save.Pawn.RotationRate = pawn->RotationRate; save.Pawn.DesiredRotation = pawn->DesiredRotation; save.Pawn.MinDistForNetRBCorrection = pawn->MinDistForNetRBCorrection; save.Pawn.MaxStepHeight = pawn->MaxStepHeight; save.Pawn.MaxJumpHeight = pawn->MaxJumpHeight; save.Pawn.WalkableFloorZ = pawn->WalkableFloorZ; save.Pawn.NetRelevancyTime = pawn->NetRelevancyTime; save.Pawn.bUpAndOut = pawn->bUpAndOut; save.Pawn.bIsWalking = pawn->bIsWalking; save.Pawn.bWantsToCrouch = pawn->bWantsToCrouch; save.Pawn.bIsCrouched = pawn->bIsCrouched; save.Pawn.bTryToUncrouch = pawn->bTryToUncrouch; save.Pawn.bCanCrouch = pawn->bCanCrouch; save.Pawn.bCrawler = pawn->bCrawler; save.Pawn.bReducedSpeed = pawn->bReducedSpeed; save.Pawn.bJumpCapable = pawn->bJumpCapable; save.Pawn.bCanJump = pawn->bCanJump; save.Pawn.bCanWalk = pawn->bCanWalk; save.Pawn.bCanSwim = pawn->bCanSwim; save.Pawn.bCanFly = pawn->bCanFly; save.Pawn.bCanClimbLadders = pawn->bCanClimbLadders; save.Pawn.bCanStrafe = pawn->bCanStrafe; save.Pawn.bAvoidLedges = pawn->bAvoidLedges; save.Pawn.bStopAtLedges = pawn->bStopAtLedges; save.Pawn.bSimulateGravity = pawn->bSimulateGravity; save.Pawn.bIgnoreForces = pawn->bIgnoreForces; save.Pawn.bCanWalkOffLedges = pawn->bCanWalkOffLedges; save.Pawn.bCanBeBaseForPawns = pawn->bCanBeBaseForPawns; save.Pawn.bSimGravityDisabled = pawn->bSimGravityDisabled; save.Pawn.bDirectHitWall = pawn->bDirectHitWall; save.Pawn.bPushesRigidBodies = pawn->bPushesRigidBodies; save.Pawn.bForceFloorCheck = pawn->bForceFloorCheck; save.Pawn.bForceKeepAnchor = pawn->bForceKeepAnchor; save.Pawn.bCanMantle = pawn->bCanMantle; save.Pawn.bCanClimbCeilings = pawn->bCanClimbCeilings; save.Pawn.bCanSwatTurn = pawn->bCanSwatTurn; save.Pawn.bCanLeap = pawn->bCanLeap; save.Pawn.bCanCoverSlip = pawn->bCanCoverSlip; save.Pawn.bDisplayPathErrors = pawn->bDisplayPathErrors; save.Pawn.bIsFemale = pawn->bIsFemale; save.Pawn.bCanPickupInventory = pawn->bCanPickupInventory; save.Pawn.bAmbientCreature = pawn->bAmbientCreature; save.Pawn.bLOSHearing = pawn->bLOSHearing; save.Pawn.bMuffledHearing = pawn->bMuffledHearing; save.Pawn.bDontPossess = pawn->bDontPossess; save.Pawn.bAutoFire = pawn->bAutoFire; save.Pawn.bRollToDesired = pawn->bRollToDesired; save.Pawn.bStationary = pawn->bStationary; save.Pawn.bCachedRelevant = pawn->bCachedRelevant; save.Pawn.bSpecialHUD = pawn->bSpecialHUD; save.Pawn.bNoWeaponFiring = pawn->bNoWeaponFiring; save.Pawn.bCanUse = pawn->bCanUse; save.Pawn.bModifyReachSpecCost = pawn->bModifyReachSpecCost; save.Pawn.bPathfindsAsVehicle = pawn->bPathfindsAsVehicle; save.Pawn.bRunPhysicsWithNoController = pawn->bRunPhysicsWithNoController; save.Pawn.bForceMaxAccel = pawn->bForceMaxAccel; save.Pawn.bForceRMVelocity = pawn->bForceRMVelocity; save.Pawn.bForceRegularVelocity = pawn->bForceRegularVelocity; save.Pawn.bPlayedDeath = pawn->bPlayedDeath; save.Pawn.UncrouchTime = pawn->UncrouchTime; save.Pawn.CrouchHeight = pawn->CrouchHeight; save.Pawn.CrouchRadius = pawn->CrouchRadius; save.Pawn.FullHeight = pawn->FullHeight; save.Pawn.NonPreferredVehiclePathMultiplier = pawn->NonPreferredVehiclePathMultiplier; save.Pawn.PathSearchType = pawn->PathSearchType; save.Pawn.RemoteViewPitch = pawn->RemoteViewPitch; save.Pawn.FlashCount = pawn->FlashCount; save.Pawn.FiringMode = pawn->FiringMode; save.Pawn.DesiredSpeed = pawn->DesiredSpeed; save.Pawn.MaxDesiredSpeed = pawn->MaxDesiredSpeed; save.Pawn.HearingThreshold = pawn->HearingThreshold; save.Pawn.Alertness = pawn->Alertness; save.Pawn.SightRadius = pawn->SightRadius; save.Pawn.PeripheralVision = pawn->PeripheralVision; save.Pawn.AvgPhysicsTime = pawn->AvgPhysicsTime; save.Pawn.Mass = pawn->Mass; save.Pawn.Buoyancy = pawn->Buoyancy; save.Pawn.MeleeRange = pawn->MeleeRange; save.Pawn.FindAnchorFailedTime = pawn->FindAnchorFailedTime; save.Pawn.LastValidAnchorTime = pawn->LastValidAnchorTime; save.Pawn.DestinationOffset = pawn->DestinationOffset; save.Pawn.NextPathRadius = pawn->NextPathRadius; save.Pawn.SerpentineDir = pawn->SerpentineDir; save.Pawn.SerpentineDist = pawn->SerpentineDist; save.Pawn.SerpentineTime = pawn->SerpentineTime; save.Pawn.SpawnTime = pawn->SpawnTime; save.Pawn.MaxPitchLimit = pawn->MaxPitchLimit; save.Pawn.GroundSpeed = pawn->GroundSpeed; save.Pawn.WaterSpeed = pawn->WaterSpeed; save.Pawn.AirSpeed = pawn->AirSpeed; save.Pawn.LadderSpeed = pawn->LadderSpeed; save.Pawn.AccelRate = pawn->AccelRate; save.Pawn.JumpZ = pawn->JumpZ; save.Pawn.OutofWaterZ = pawn->OutofWaterZ; save.Pawn.MaxOutOfWaterStepHeight = pawn->MaxOutOfWaterStepHeight; save.Pawn.AirControl = pawn->AirControl; save.Pawn.WalkingPct = pawn->WalkingPct; save.Pawn.CrouchedPct = pawn->CrouchedPct; save.Pawn.MaxFallSpeed = pawn->MaxFallSpeed; save.Pawn.AIMaxFallSpeedFactor = pawn->AIMaxFallSpeedFactor; save.Pawn.BaseEyeHeight = pawn->BaseEyeHeight; save.Pawn.EyeHeight = pawn->EyeHeight; save.Pawn.Floor = pawn->Floor; save.Pawn.SplashTime = pawn->SplashTime; save.Pawn.OldZ = pawn->OldZ; save.Pawn.Health = pawn->Health; save.Pawn.HealthMax = pawn->HealthMax; save.Pawn.BreathTime = pawn->BreathTime; save.Pawn.UnderWaterTime = pawn->UnderWaterTime; save.Pawn.LastPainTime = pawn->LastPainTime; save.Pawn.RMVelocity = pawn->RMVelocity; save.Pawn.noise1spot = pawn->noise1spot; save.Pawn.noise1time = pawn->noise1time; save.Pawn.noise1loudness = pawn->noise1loudness; save.Pawn.noise2spot = pawn->noise2spot; save.Pawn.noise2time = pawn->noise2time; save.Pawn.noise2loudness = pawn->noise2loudness; save.Pawn.SoundDampening = pawn->SoundDampening; save.Pawn.DamageScaling = pawn->DamageScaling; save.Pawn.LastStartTime = pawn->LastStartTime; save.Pawn.TakeHitLocation = pawn->TakeHitLocation; save.Pawn.TearOffMomentum = pawn->TearOffMomentum; save.Pawn.RBPushRadius = pawn->RBPushRadius; save.Pawn.RBPushStrength = pawn->RBPushStrength; save.Pawn.AlwaysRelevantDistanceSquared = pawn->AlwaysRelevantDistanceSquared; save.Pawn.VehicleCheckRadius = pawn->VehicleCheckRadius; save.Pawn.ViewPitchMin = pawn->ViewPitchMin; save.Pawn.ViewPitchMax = pawn->ViewPitchMax; save.Pawn.AllowedYawError = pawn->AllowedYawError; save.Pawn.FlashLocation = pawn->FlashLocation; save.Pawn.LastFiringFlashLocation = pawn->LastFiringFlashLocation; save.Pawn.ShotCount = pawn->ShotCount; save.Pawn.FailedLandingCount = pawn->FailedLandingCount; save.Pawn.bDisableSkelControlSpring = pawn->bDisableSkelControlSpring; save.Pawn.bCanUnCrouch = pawn->bCanUnCrouch; save.Pawn.bConstrainLook = pawn->bConstrainLook; save.Pawn.bGoingForward = pawn->bGoingForward; save.Pawn.bClimbLeftHand = pawn->bClimbLeftHand; save.Pawn.bClimbDownFast = pawn->bClimbDownFast; save.Pawn.bEnableFootPlacement = pawn->bEnableFootPlacement; save.Pawn.bMoveActionMax = pawn->bMoveActionMax; save.Pawn.bFoundLedgeExcludesHandMoves = pawn->bFoundLedgeExcludesHandMoves; save.Pawn.bFoundLedgeExcludesFootMoves = pawn->bFoundLedgeExcludesFootMoves; save.Pawn.bIsWallWalking = pawn->bIsWallWalking; save.Pawn.bFoundLedge = pawn->bFoundLedge; save.Pawn.bAllowMoveChange = pawn->bAllowMoveChange; save.Pawn.bSRPauseTimer = pawn->bSRPauseTimer; save.Pawn.bForceMaxAccelOneFrame = pawn->bForceMaxAccelOneFrame; save.Pawn.RollTriggerPressed = pawn->RollTriggerPressed; save.Pawn.bUncontrolledSlide = pawn->bUncontrolledSlide; save.Pawn.bIsPlayingSlideEffect = pawn->bIsPlayingSlideEffect; save.Pawn.bAlternateSound = pawn->bAlternateSound; save.Pawn.bCharacterInhaling = pawn->bCharacterInhaling; save.Pawn.bDisableCharacterSounds = pawn->bDisableCharacterSounds; save.Pawn.bTakeFallDamage = pawn->bTakeFallDamage; save.Pawn.bIsUsingRootMotion = pawn->bIsUsingRootMotion; save.Pawn.bIsUsingRootRotation = pawn->bIsUsingRootRotation; save.Pawn.bDebugDamage = pawn->bDebugDamage; save.Pawn.bDebugNetAnim = pawn->bDebugNetAnim; save.Pawn.bNoMoveAnims = pawn->bNoMoveAnims; save.Pawn.bDebugAcceleration = pawn->bDebugAcceleration; save.Pawn.bDebugJumping = pawn->bDebugJumping; save.Pawn.bDebugMovement = pawn->bDebugMovement; save.Pawn.bDebugPlotPath = pawn->bDebugPlotPath; save.Pawn.bDebugFootsteps = pawn->bDebugFootsteps; save.Pawn.bDebugSlapBack = pawn->bDebugSlapBack; save.Pawn.bDebugCharacterSounds = pawn->bDebugCharacterSounds; save.Pawn.bDebugBreathingSounds = pawn->bDebugBreathingSounds; save.Pawn.bDebugWeapons = pawn->bDebugWeapons; save.Pawn.bDebugMaterials = pawn->bDebugMaterials; save.Pawn.VelocityMagnitude2D = pawn->VelocityMagnitude2D; save.Pawn.VelocityMagnitude = pawn->VelocityMagnitude; save.Pawn.VelocityDir2D = pawn->VelocityDir2D; save.Pawn.VelocityDir = pawn->VelocityDir; save.Pawn.FaceRotationTimeLeft = pawn->FaceRotationTimeLeft; save.Pawn.BecameReadyTime = pawn->BecameReadyTime; save.Pawn.AmountTilUnarmed = pawn->AmountTilUnarmed; save.Pawn.GravityModifier = pawn->GravityModifier; save.Pawn.GravityModifierTimer = pawn->GravityModifierTimer; save.Pawn.AgainstWallState = pawn->AgainstWallState; save.Pawn.WeaponAnimState = pawn->WeaponAnimState; save.Pawn.AnimLockRefCount = pawn->AnimLockRefCount; save.Pawn.RootMotionRefCount = pawn->RootMotionRefCount; save.Pawn.CurrentGrabTurnType = pawn->CurrentGrabTurnType; save.Pawn.LadderType = pawn->LadderType; save.Pawn.AnimationMovementState = pawn->AnimationMovementState; save.Pawn.PendingAnimationMovementState = pawn->PendingAnimationMovementState; save.Pawn.OldMovementState = pawn->OldMovementState; save.Pawn.PendingMovementState = pawn->PendingMovementState; save.Pawn.MovementState = pawn->MovementState; save.Pawn.ReplicatedMovementState = pawn->ReplicatedMovementState; save.Pawn.AIAimOldMovementState = pawn->AIAimOldMovementState; save.Pawn.OverrideWalkingState = pawn->OverrideWalkingState; save.Pawn.PendingOverrideWalkingState = pawn->PendingOverrideWalkingState; save.Pawn.CurrentWalkingState = pawn->CurrentWalkingState; save.Pawn.ReplicateCustomAnimCount = pawn->ReplicateCustomAnimCount; save.Pawn.MoveActionHint = pawn->MoveActionHint; save.Pawn.ReloadCount = pawn->ReloadCount; save.Pawn.NoOfBreathingSounds = pawn->NoOfBreathingSounds; save.Pawn.AgainstWallLeftHand = pawn->AgainstWallLeftHand; save.Pawn.AgainstWallRightHand = pawn->AgainstWallRightHand; save.Pawn.AgainstWallNormal = pawn->AgainstWallNormal; save.Pawn.MinLookConstraint = pawn->MinLookConstraint; save.Pawn.MaxLookConstraint = pawn->MaxLookConstraint; save.Pawn.LegRotationSlowTimer = pawn->LegRotationSlowTimer; save.Pawn.LegRotation = pawn->LegRotation; save.Pawn.LegRotationSpeed = pawn->LegRotationSpeed; save.Pawn.GoBackLegAngleLimitMin = pawn->GoBackLegAngleLimitMin; save.Pawn.GoBackLegAngleLimitMax = pawn->GoBackLegAngleLimitMax; save.Pawn.LegAngleLimitFudge = pawn->LegAngleLimitFudge; save.Pawn.SneakVelocity = pawn->SneakVelocity; save.Pawn.WalkVelocity = pawn->WalkVelocity; save.Pawn.JogVelocity = pawn->JogVelocity; save.Pawn.RunVelocity = pawn->RunVelocity; save.Pawn.SprintVelocity = pawn->SprintVelocity; save.Pawn.AverageSpeed = pawn->AverageSpeed; save.Pawn.ASFilterTime = pawn->ASFilterTime; save.Pawn.ASPollInterval = pawn->ASPollInterval; save.Pawn.ASPollTimer = pawn->ASPollTimer; save.Pawn.ASPollSlots = pawn->ASPollSlots; save.Pawn.ASSlotPointer = pawn->ASSlotPointer; save.Pawn.ASDistanceAccum = pawn->ASDistanceAccum; save.Pawn.NewFloorSmooth = pawn->NewFloorSmooth; save.Pawn.SmoothOffset = pawn->SmoothOffset; save.Pawn.FootPlacementStoredRotation = pawn->FootPlacementStoredRotation; save.Pawn.TargetMeshTranslationZ = pawn->TargetMeshTranslationZ; save.Pawn.SlideStoppedTimeStamp = pawn->SlideStoppedTimeStamp; save.Pawn.MoveLocation = pawn->MoveLocation; save.Pawn.MoveNormal = pawn->MoveNormal; save.Pawn.MaxWallStepHeight = pawn->MaxWallStepHeight; save.Pawn.MoveLedgeLocation = pawn->MoveLedgeLocation; save.Pawn.MoveLedgeNormal = pawn->MoveLedgeNormal; save.Pawn.MoveLedgeResult = pawn->MoveLedgeResult; save.Pawn.LedgeFindExtent = pawn->LedgeFindExtent; save.Pawn.LedgeFindDistance = pawn->LedgeFindDistance; save.Pawn.LedgeFindDepth = pawn->LedgeFindDepth; save.Pawn.IllegalLedgeNormal = pawn->IllegalLedgeNormal; save.Pawn.bIllegalLedgeTimer = pawn->bIllegalLedgeTimer; save.Pawn.ActiveMoveTimer = pawn->ActiveMoveTimer; save.Pawn.RemoteViewYaw = pawn->RemoteViewYaw; save.Pawn.EvadeTimer = pawn->EvadeTimer; save.Pawn.SpeedMaxBaseVelocity = pawn->SpeedMaxBaseVelocity; save.Pawn.SpeedMinBaseVelocity = pawn->SpeedMinBaseVelocity; save.Pawn.SpeedStrafeVelocityAccelerationFactor = pawn->SpeedStrafeVelocityAccelerationFactor; save.Pawn.SpeedWalkVelocityAccelerationFactor = pawn->SpeedWalkVelocityAccelerationFactor; save.Pawn.SpeedSprintVelocityAccelerationFactor = pawn->SpeedSprintVelocityAccelerationFactor; save.Pawn.SpeedEnergyDecelerationTime = pawn->SpeedEnergyDecelerationTime; save.Pawn.SpeedEnergyDecelerationExponent = pawn->SpeedEnergyDecelerationExponent; save.Pawn.SpeedTurnDecelerationFactor = pawn->SpeedTurnDecelerationFactor; save.Pawn.SpeedSprintEnergy = pawn->SpeedSprintEnergy; save.Pawn.UpwardWalkFrictionScale = pawn->UpwardWalkFrictionScale; save.Pawn.DownwardWalkFrictionScale = pawn->DownwardWalkFrictionScale; save.Pawn.MinWalkFrictionModify = pawn->MinWalkFrictionModify; save.Pawn.MaxWalkFrictionModify = pawn->MaxWalkFrictionModify; save.Pawn.UpwardSlideFrictionScale = pawn->UpwardSlideFrictionScale; save.Pawn.DownwardSlideFrictionScale = pawn->DownwardSlideFrictionScale; save.Pawn.BrakingFrictionStrength = pawn->BrakingFrictionStrength; save.Pawn.SoftLockStrength = pawn->SoftLockStrength; save.Pawn.UncontrolledSlideNormal = pawn->UncontrolledSlideNormal; save.Pawn.FallingUncontrolledHeight = pawn->FallingUncontrolledHeight; save.Pawn.EnterFallingHeight = pawn->EnterFallingHeight; save.Pawn.SlideEffectUpdateTimer = pawn->SlideEffectUpdateTimer; save.Pawn.CustomSoundInput = pawn->CustomSoundInput; save.Pawn.OverrideSynchPosOffset = pawn->OverrideSynchPosOffset; save.Pawn.StreakEffectOverride = pawn->StreakEffectOverride; save.Pawn.StreakEffectDirection = pawn->StreakEffectDirection; save.Pawn.PatchOne = pawn->PatchOne; save.Pawn.PatchTwo = pawn->PatchTwo; save.Pawn.PatchThree = pawn->PatchThree; save.Pawn.PhysicsHitReactionBlendTimer = pawn->PhysicsHitReactionBlendTimer; save.Pawn.PhysicsHitReactionBlendOut = pawn->PhysicsHitReactionBlendOut; save.Pawn.PhysicsHitReactionBlendInTime = pawn->PhysicsHitReactionBlendInTime; save.Pawn.PhysicsHitReactionBlendOutTime = pawn->PhysicsHitReactionBlendOutTime; save.Pawn.PhysicsHitReactionScale = pawn->PhysicsHitReactionScale; save.Pawn.LastDamageTaken = pawn->LastDamageTaken; save.Pawn.ArmorBulletsHead = pawn->ArmorBulletsHead; save.Pawn.ArmorBulletsBody = pawn->ArmorBulletsBody; save.Pawn.ArmorBulletsLegs = pawn->ArmorBulletsLegs; save.Pawn.ArmorMeleeHead = pawn->ArmorMeleeHead; save.Pawn.ArmorMeleeBody = pawn->ArmorMeleeBody; save.Pawn.ArmorMeleeLegs = pawn->ArmorMeleeLegs; save.Pawn.FootstepTraceLength = pawn->FootstepTraceLength; save.Pawn.FootstepTraceWidth = pawn->FootstepTraceWidth; save.Pawn.LastFlybyStamp = pawn->LastFlybyStamp; save.Pawn.MaxHealth = pawn->MaxHealth; save.Pawn.RegenerateDelay = pawn->RegenerateDelay; save.Pawn.RegenerateHealthPerSecond = pawn->RegenerateHealthPerSecond; save.Pawn.UnrealEngineFallDamageScale = pawn->UnrealEngineFallDamageScale; save.Pawn.TimeSinceLastDamage = pawn->TimeSinceLastDamage; save.Pawn.HealthFrac = pawn->HealthFrac; save.Pawn.TaserDamageLevel = pawn->TaserDamageLevel; save.Pawn.RegenerateFromTaserPerSecond = pawn->RegenerateFromTaserPerSecond; save.Pawn.TaserRegenerateDelay = pawn->TaserRegenerateDelay; save.Pawn.TimeSinceLastTaserDamage = pawn->TimeSinceLastTaserDamage; save.Pawn.StunDamageLevel = pawn->StunDamageLevel; save.Pawn.RegenerateFromStunPerSecond = pawn->RegenerateFromStunPerSecond; save.Pawn.MinTimeBeforeRemovingDeadBody = pawn->MinTimeBeforeRemovingDeadBody; save.Pawn.MaxTimeBeforeRemovingDeadBody = pawn->MaxTimeBeforeRemovingDeadBody; save.Pawn.MyPassengerSeatIndex = pawn->MyPassengerSeatIndex; save.Pawn.SlideFactor = pawn->SlideFactor; save.Pawn.LastDamage = pawn->LastDamage; save.Pawn.LastDamageTime = pawn->LastDamageTime; save.Pawn.NextDebugPlotTime = pawn->NextDebugPlotTime; save.Pawn.LastPlotLocation = pawn->LastPlotLocation; save.Pawn.LastJumpLocation = pawn->LastJumpLocation; save.Pawn.bHasMorphNodes = pawn->bHasMorphNodes; save.Pawn.bStuckOnGround = pawn->bStuckOnGround; save.Pawn.bPlayerDiedHoldingTheBag = pawn->bPlayerDiedHoldingTheBag; save.Pawn.bIsInShadowAlteringMoveState = pawn->bIsInShadowAlteringMoveState; save.Pawn.bEnableHairPhysics = pawn->bEnableHairPhysics; save.Pawn.bLockBase = pawn->bLockBase; save.Pawn.bCutsceneIsSkippable = pawn->bCutsceneIsSkippable; save.Pawn.FirstPersonDPG = pawn->FirstPersonDPG; save.Pawn.FirstPersonLowerBodyDPG = pawn->FirstPersonLowerBodyDPG; save.Pawn.VertigoEdgeProbingHeight = pawn->VertigoEdgeProbingHeight; save.Pawn.VertigoEdgeProbingDistance = pawn->VertigoEdgeProbingDistance; save.Pawn.VertigoEffectThreshold = pawn->VertigoEffectThreshold; save.Pawn.EdgeCheckMaxSpeed = pawn->EdgeCheckMaxSpeed; save.Pawn.EdgeCheckDistance = pawn->EdgeCheckDistance; save.Pawn.EdgeStopMinHeight = pawn->EdgeStopMinHeight; save.Pawn.LastEnemyHitTimeOut = pawn->LastEnemyHitTimeOut; save.Pawn.ReverbVolumeTimer = pawn->ReverbVolumeTimer; save.Pawn.ReverbVolumePollTime = pawn->ReverbVolumePollTime; save.Pawn.OcclusionDuckLevel = pawn->OcclusionDuckLevel; save.Pawn.OcclusionDuckFadeTime = pawn->OcclusionDuckFadeTime; save.Pawn.IndoorSoundGroupIndex = pawn->IndoorSoundGroupIndex; save.Pawn.IndoorMixGroupIndex = pawn->IndoorMixGroupIndex; save.Pawn.OutdoorMixGroupIndex = pawn->OutdoorMixGroupIndex; save.Pawn.MovementStringAllowedGap = pawn->MovementStringAllowedGap; save.Pawn.MovementStringGapTimer = pawn->MovementStringGapTimer; save.Pawn.PlayerBulletDamageMultiplier = pawn->PlayerBulletDamageMultiplier; save.Pawn.FocusLocation = pawn->FocusLocation; save.Pawn.PlayerCameraLocation = pawn->PlayerCameraLocation; save.Pawn.PlayerCameraRotation = pawn->PlayerCameraRotation; save.Pawn.DebugPlayerGraph = pawn->DebugPlayerGraph; save.Pawn.LastDebugGraphValue = pawn->LastDebugGraphValue; save.Pawn.SimulatedBadFPS = pawn->SimulatedBadFPS; save.Pawn.FocusLocationInterpolationSpeed = pawn->FocusLocationInterpolationSpeed; save.Pawn.LastResetTimeStamp = pawn->LastResetTimeStamp;
@@ -370,16 +554,17 @@ static void Save(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
     }
 }
 
-static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
-                 Classes::ATdPlayerController *controller) {
-    
-    if (pawn->bCutsceneIsSkippable) {
+static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn, Classes::ATdPlayerController *controller) 
+{
+    if (pawn->bCutsceneIsSkippable) 
+    {
         return;
     }
 
-    if (fly.Enabled) {
-        fly.Location = save.Pawn.Location;
-        fly.Velocity = {0};
+    if (Fly.Enabled) 
+    {
+        Fly.Location = save.Pawn.Location;
+        Fly.Velocity = {0};
         controller->Rotation = save.Controller.Rotation;
         return;
     }
@@ -391,7 +576,8 @@ static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
 
     const auto tdhud = static_cast<Classes::ATdHUD *>(controller->myHUD);
 
-    if (tdhud->EffectManager->ReactionTimeEffect->bIsActive) {
+    if (tdhud->EffectManager->ReactionTimeEffect->bIsActive) 
+    {
         tdhud->EffectManager->ReactionTimeEffect->ResetPP();
     }
 
@@ -525,339 +711,590 @@ static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
     // clang-format on
 }
 
-static void TrainerTab() {
-    #pragma region Player
-    if (ImGui::Checkbox("Show Speedometer", &ShowSpeedometer)) {
-        Settings::SetSetting("player", "showInfo", ShowSpeedometer);
-    }
-
-    auto pawn = Engine::GetPlayerPawn();
-    auto controller = Engine::GetPlayerController();
-
-    if (!pawn || !controller) {
-        return;
-    }
-
-    if (!(Engine::GetTimeTrialGame() || controller->ReactionTimeEnergy >= 100.0f ||
-        controller->bReactionTime || pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled)) {
-
-        ImGui::Dummy(ImVec2(0.0f, 6.0f));
-
-        if (ImGui::Button("Refill ReactionTimeEnergy##controller-reactiontime")) {
-            auto tdhud = static_cast<Classes::ATdHUD*>(controller->myHUD);
-
-            controller->ReactionTimeEnergy = 100.0f;
-            tdhud->EffectManager->ActivateReactionTimeTeaser();
-        }
-    }
-
-    ImGui::Separator(5.0f);
-    #pragma endregion
-
-    if (ImGui::Checkbox("Trainer Enabled##trainer-enabled", &enabled)) {
-        Settings::SetSetting("trainer", "enabled", enabled);
-
-        checkpointTime = 0.0f;
-        checkpointUpdateTimer = false;
-        hasCheckpoint = false;
-        hasSave = false;
-    }
-
-    if (!enabled) {
-        return;
-    }
-
-    if (ImGui::Checkbox("Tooltip##trainer-tooltip", &tooltip)) {
-        Settings::SetSetting("trainer", "tooltip", tooltip);
-    }
-
-    ImGui::Separator(5.0f);
-
-    #pragma region Reset
-    if (hasSave) {
-        if (ImGui::Button("Reset Save##trainer-reset-save")) {
-            hasSave = false;
-        }
-    }
-
-    if (hasCheckpoint) {
-        if (hasSave) {
-            ImGui::SameLine();
-        }
-
-        if (ImGui::Button("Reset Checkpoint##trainer-reset-checkpoint")) {
-            checkpointTime = 0.0f;
-            checkpointUpdateTimer = false;
-            hasCheckpoint = false;
-        }
-    }
-
-    if (hasSave || hasCheckpoint) {
-        ImGui::Dummy(ImVec2(0.0f, 6.0f));
-    }
-
-    if (ImGui::Checkbox("Reset Flying Speed##trainer-reset-flyspeed", &resetFlyingSpeed)) {
-        Settings::SetSetting("trainer", "resetFlyingSpeed", resetFlyingSpeed);
-    }
-
-    if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("Resets the flying speed back to normal once flying has been activated.\nIf set to false, the speed will not be reset");
-    }
-    #pragma endregion
-
-    #pragma region SidestepBeamer
-    if (ImGui::Checkbox("Sidestep Beamer##trainer-beamer-sidestep", &sidestepBeamer)) {
-        Settings::SetSetting("trainer", "sidestepBeamer", sidestepBeamer);
-    }
-
-    if (sidestepBeamer) {
-        if (ImGui::Checkbox("Auto Sidestep Beamer##trainer-beamer-sidestepForMe", &sidestepBeamerForMe)) {
-            Settings::SetSetting("trainer", "sidestepBeamerForMe", sidestepBeamerForMe);
-        }
-
-        if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("If set to false, you need to manually hold your left keybind or right keybind when beamer is active");
-        }
-
-        if (sidestepBeamerForMe) {
-            ImGui::Dummy(ImVec2(0.0f, 6.0f));
-
-            if (ImGui::RadioButton("Press Left Keybind##trainer-sidestepBeamerLeft", sidestepBeamerPressLeftKeybind)) {
-                Settings::SetSetting("trainer", "sidestepBeamerPressRightKeybind", sidestepBeamerPressRightKeybind = false);
-                Settings::SetSetting("trainer", "sidestepBeamerPressLeftKeybind", sidestepBeamerPressLeftKeybind = true);
-            }
-
-            if (ImGui::RadioButton("Press Right Keybind##trainer-sidestepBeamerRight", sidestepBeamerPressRightKeybind)) {
-                Settings::SetSetting("trainer", "sidestepBeamerPressRightKeybind", sidestepBeamerPressRightKeybind = true);
-                Settings::SetSetting("trainer", "sidestepBeamerPressLeftKeybind", sidestepBeamerPressLeftKeybind = false);
-            }
-
-            ImGui::Dummy(ImVec2(0.0f, 6.0f));
-
-            if (ImGui::Hotkey("Left Keybind##trainer-sidestepBeamerLeftKeybind", &sidestepBeamerLeftKeybind)) {
-                Settings::SetSetting("trainer", "sidestepBeamerLeftKeybind", sidestepBeamerLeftKeybind);
-            }
-
-            if (toggleResetKeybinds) {
-                ImGui::SameLine();
-
-                if (ImGui::Button("Reset##trainer-reset-sidestepBeamerLeftKeybind")) {
-                    Settings::SetSetting("trainer", "sidestepBeamerLeftKeybind", sidestepBeamerLeftKeybind = VK_A);
-                }
-            }
-
-            if (ImGui::Hotkey("Right Keybind##trainer-sidestepBeamerRightKeybind", &sidestepBeamerRightKeybind)) {
-                Settings::SetSetting("trainer", "sidestepBeamerRightKeybind", sidestepBeamerRightKeybind);
-            }
-
-            if (toggleResetKeybinds) {
-                ImGui::SameLine();
-
-                if (ImGui::Button("Reset##trainer-reset-sidestepBeamerRightKeybind")) {
-                    Settings::SetSetting("trainer", "sidestepBeamerRightKeybind", sidestepBeamerRightKeybind = VK_D);
-                }
-            }
-        }
-    }
-    #pragma endregion
-
-    ImGui::Separator(5.0f);
-
-    #pragma region Keybinds
-    if (ImGui::Hotkey("God##trainer-god", &godKeybind)) {
-        Settings::SetSetting("trainer", "godKeybind", godKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##godKeybind")) {
-            Settings::SetSetting("trainer", "godKeybind", godKeybind = VK_1);
-        }
-    }
-
-    if (ImGui::Hotkey("Checkpoint##trainer-checkpoint", &checkpointKeybind)) {
-        Settings::SetSetting("trainer", "checkpointKeybind", checkpointKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##checkpointKeybind")) {
-            Settings::SetSetting("trainer", "checkpointKeybind", checkpointKeybind = VK_3);
-        }
-    }
-
-    if (ImGui::Hotkey("Save##trainer-save", &saveKeybind)) {
-        Settings::SetSetting("trainer", "saveKeybind", saveKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##saveKeybind")) {
-            Settings::SetSetting("trainer", "saveKeybind", saveKeybind = VK_4);
-        }
-    }
-
-    if (ImGui::Hotkey("Load##trainer-load", &loadKeybind)) {
-        Settings::SetSetting("trainer", "loadKeybind", loadKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##loadKeybind")) {
-            Settings::SetSetting("trainer", "loadKeybind", loadKeybind = VK_5);
-        }
-    }
-
-    ImGui::Dummy(ImVec2(0.0f, 6.0f));
-
-    if (ImGui::Hotkey("Fly##trainer-fly", &fly.Keybind)) {
-        Settings::SetSetting("trainer", "flyKeybind", fly.Keybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##flyKeybind")) {
-            Settings::SetSetting("trainer", "flyKeybind", fly.Keybind = VK_2);
-        }
-    }
-
-    if (ImGui::Hotkey("Fly Up##trainer-fly-up", &fly.UpKeybind)) {
-        Settings::SetSetting("trainer", "flyUpKeybind", fly.UpKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##flyUpKeybind")) {
-            Settings::SetSetting("trainer", "flyUpKeybind", fly.UpKeybind = VK_SPACE);
-        }
-    }
-
-    if (ImGui::Hotkey("Fly Down##trainer-fly-down", &fly.DownKeybind)) {
-        Settings::SetSetting("trainer", "flyDownKeybind", fly.DownKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##flyDownKeybind")) {
-            Settings::SetSetting("trainer", "flyDownKeybind", fly.DownKeybind = VK_SHIFT);
-        }
-    }
-
-    if (ImGui::Hotkey("Fly Faster##trainer-fly-faster", &fly.FasterKeybind)) {
-        Settings::SetSetting("trainer", "flyFasterKeybind", fly.FasterKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##flyFasterKeybind")) {
-            Settings::SetSetting("trainer", "flyFasterKeybind", fly.FasterKeybind = VK_E);
-        }
-    }
-
-    if (ImGui::Hotkey("Fly Slower##trainer-fly-slower", &fly.SlowerKeybind)) {
-        Settings::SetSetting("trainer", "flySlowerKeybind", fly.SlowerKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##flySlowerKeybind")) {
-            Settings::SetSetting("trainer", "flySlowerKeybind", fly.SlowerKeybind = VK_Q);
-        }
-    }
-
-    ImGui::Dummy(ImVec2(0.0f, 6.0f));
-
-    if (ImGui::Hotkey("Kickglitch##trainer-kickglitch", &kgKeybind)) {
-        Settings::SetSetting("trainer", "kgKeybind", kgKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##kgKeybind")) {
-            Settings::SetSetting("trainer", "kgKeybind", kgKeybind = VK_NONE);
-        }
-    }
-
-    if (ImGui::Hotkey("Beamer##trainer-beamer", &beamerKeybind)) {
-        Settings::SetSetting("trainer", "beamerKeybind", beamerKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##beamerKeybind")) {
-            Settings::SetSetting("trainer", "beamerKeybind", beamerKeybind = VK_NONE);
-        }
-    }
-
-    if (ImGui::Hotkey("Strang##trainer-strang", &strangKeybind)) {
-        Settings::SetSetting("trainer", "strangKeybind", strangKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##strangKeybind")) {
-            Settings::SetSetting("trainer", "strangKeybind", strangKeybind = VK_NONE);
-        }
-    }
-    #pragma endregion
-
-    ImGui::Separator(5.0f);
-
-    if (ImGui::Checkbox("Toggle Reset Keybinds##toggleResetKeybinds", &toggleResetKeybinds)) {
-        Settings::SetSetting("trainer", "toggleResetKeybinds", toggleResetKeybinds);
+static void SortItemsOrder()
+{
+    std::sort(Items.begin(), Items.end(), [](Item* a, Item* b)
+    {
+        return a->PositionIndex < b->PositionIndex;
+    });
+}
+
+static void SaveSpeedometerWindowSettings(bool saveItemColors)
+{
+    Settings::SetSetting({ "Speedometer", "Settings", "Show" }, Speedometer.Show);
+    Settings::SetSetting({ "Speedometer", "Settings", "HideCloseButton" }, Speedometer.HideCloseButton);
+    Settings::SetSetting({ "Speedometer", "Settings", "WindowFlags" }, Speedometer.WindowFlags);
+    Settings::SetSetting({ "Speedometer", "Style", "WindowRounding" }, Speedometer.Style.WindowRounding);
+    Settings::SetSetting({ "Speedometer", "Style", "WindowBorderSize" }, Speedometer.Style.WindowBorderSize);
+    Settings::SetSetting({ "Speedometer", "Style", "BorderColor" }, ImVec4ToJson(Speedometer.Style.Colors[ImGuiCol_Border]));
+    Settings::SetSetting({ "Speedometer", "Style", "TitleBackgroundColor" }, ImVec4ToJson(Speedometer.Style.Colors[ImGuiCol_TitleBg]));
+    Settings::SetSetting({ "Speedometer", "Style", "WindowBackgroundColor" }, ImVec4ToJson(Speedometer.Style.Colors[ImGuiCol_WindowBg]));
+
+    for (size_t i = 0; i < Items.size() && saveItemColors; i++)
+    {
+        Settings::SetSetting({ "Speedometer", "Item", Items[i]->ItemName, "LabelColor" }, ImVec4ToJson(Items[i]->LabelColor));
+        Settings::SetSetting({ "Speedometer", "Item", Items[i]->ItemName, "ValueColor" }, ImVec4ToJson(Items[i]->ValueColor));
     }
 }
 
-static void OnRender(IDirect3DDevice9*)
+static void LoadSpeedometerWindowSettings(bool loadItemColors)
 {
-    if (ShowSpeedometer)
+    Speedometer.Show = Settings::GetSetting({ "Speedometer", "Settings", "Show" }, false);
+    Speedometer.HideCloseButton = Settings::GetSetting({ "Speedometer", "Settings", "HideCloseButton" }, false);
+    Speedometer.WindowFlags = Settings::GetSetting({ "Speedometer", "Settings", "WindowFlags" }, static_cast<ImGuiWindowFlags>(ImGuiWindowFlags_NoCollapse));
+    Speedometer.Style.WindowRounding = Settings::GetSetting({ "Speedometer", "Style", "WindowRounding" }, 5.0f);
+    Speedometer.Style.WindowBorderSize = Settings::GetSetting({ "Speedometer", "Style", "WindowBorderSize" }, 0.0f);
+
+    // Default colors from the ImGui's Dark Theme
+    Speedometer.Style.Colors[ImGuiCol_Border] = JsonToImVec4(Settings::GetSetting({ "Speedometer", "Style", "BorderColor" }, ImVec4ToJson(ImVec4(0.43f, 0.43f, 0.50f, 0.50f))));
+    Speedometer.Style.Colors[ImGuiCol_TitleBg] = JsonToImVec4(Settings::GetSetting({ "Speedometer", "Style", "TitleBackgroundColor" }, ImVec4ToJson(ImVec4(0.16f, 0.29f, 0.48f, 0.7f))));
+    Speedometer.Style.Colors[ImGuiCol_TitleBgActive] = Speedometer.Style.Colors[ImGuiCol_TitleBg];
+    Speedometer.Style.Colors[ImGuiCol_WindowBg] = JsonToImVec4(Settings::GetSetting({ "Speedometer", "Style", "WindowBackgroundColor" }, ImVec4ToJson(ImVec4(0.0f, 0.0f, 0.0f, 0.5f))));
+
+    for (size_t i = 0; i < Items.size() && loadItemColors; i++)
     {
+        Items[i]->LabelColor = JsonToImVec4(Settings::GetSetting({ "Speedometer", "Item", Items[i]->ItemName, "LabelColor" }, ImVec4ToJson(ImVec4(1.0f, 1.0f, 1.0f, 1.0f))));
+        Items[i]->ValueColor = JsonToImVec4(Settings::GetSetting({ "Speedometer", "Item", Items[i]->ItemName, "ValueColor" }, ImVec4ToJson(ImVec4(1.0f, 1.0f, 1.0f, 1.0f))));
+    }
+}
+
+static void InitializeSpeedometer()
+{
+    Items.clear();
+    Items.push_back(&LocationX);
+    Items.push_back(&LocationY);
+    Items.push_back(&LocationZ);
+    Items.push_back(&TopHeight);
+    Items.push_back(&Speed);
+    Items.push_back(&TopSpeed);
+    Items.push_back(&Pitch);
+    Items.push_back(&Yaw);
+    Items.push_back(&Checkpoint);
+    Items.push_back(&MovementState);
+    Items.push_back(&Health);
+    Items.push_back(&ReactionTime);
+    Items.push_back(&LastJumpLocation);
+    Items.push_back(&LastJumpLocationDelta);
+
+    int index = 0;
+    LocationX.SetNameAndDefaults("Location X", "X", index);
+    LocationY.SetNameAndDefaults("Location Y", "Y", index);
+    LocationZ.SetNameAndDefaults("Location Z", "Z", index);
+    TopHeight.SetNameAndDefaults("Top Height", "ZT", index);
+    Speed.SetNameAndDefaults("Speed", "V", index);
+    TopSpeed.SetNameAndDefaults("Top Speed", "VT", index);
+    Pitch.SetNameAndDefaults("Pitch", "RX", index);
+    Yaw.SetNameAndDefaults("Yaw", "RZ", index);
+    Checkpoint.SetNameAndDefaults("Checkpoint", "T", index);
+    MovementState.SetNameAndDefaults("Movement State", "S", index, "%d");
+    Health.SetNameAndDefaults("Health", "H", index, "%d");
+    ReactionTime.SetNameAndDefaults("Reaction Time", "RT", index);
+    LastJumpLocation.SetNameAndDefaults("Last Jump Location", "SZ", index);
+    LastJumpLocationDelta.SetNameAndDefaults("Last Jump Location Delta", "SZD", index);
+
+    // Check if there are any speedometer settings before loading from settings
+    bool foundSettings = Settings::GetSetting({ "Speedometer", "Item" }, json::object()).is_null();
+
+    for (size_t i = 0; i < Items.size(); i++)
+    {
+        // Pass the "i" for the DrawIndex default value
+        Items[i]->LoadSettings(i, foundSettings);
+    }
+
+    // If no settings were found, apply default settings
+    if (!foundSettings)
+    {
+        LocationX.ModifyDisplayedValue = true;
+        LocationX.Factor = 100;
+        LocationY.ModifyDisplayedValue = true;
+        LocationY.Factor = 100;
+        LocationZ.ModifyDisplayedValue = true;
+        LocationZ.Factor = 100;
+        TopHeight.AddSpaceBelow = true;
+        TopHeight.ModifyDisplayedValue = true;
+        TopHeight.Factor = 100;
+        Speed.ModifyDisplayedValue = true;
+        Speed.Multiply = true;
+        Speed.Factor = 0.036f;
+        TopSpeed.AddSpaceBelow = true;
+        TopSpeed.ModifyDisplayedValue = true;
+        TopSpeed.Multiply = true;
+        TopSpeed.Factor = 0.036f;
+        Yaw.AddSpaceBelow = true;
+        LastJumpLocation.ModifyDisplayedValue = true;
+        LastJumpLocation.Factor = 100;
+        LastJumpLocationDelta.ModifyDisplayedValue = true;
+        LastJumpLocationDelta.Factor = 100;
+
+        for (size_t i = 0; i < Items.size(); i++)
+        {
+            Items[i]->SaveSettings();
+        }
+    }
+
+    SortItemsOrder();
+}
+
+static void ProcessHotkey(const char* label, int* key, std::vector<std::string> settings, int defaultValue) 
+{
+    if (settings.empty())
+    {
+        return;
+    }
+
+    if (ImGui::Hotkey(label, key)) 
+    {
+        Settings::SetSetting(settings, *key);
+    }
+
+    if (ToggleResetKeybinds) 
+    {
+        ImGui::SameLine();
+
+        if (ImGui::Button(("Reset##" + settings.back()).c_str())) 
+        {
+            Settings::SetSetting(settings, *key = defaultValue);
+        }
+    }
+}
+
+static void TrainerTab() 
+{
+    ImGui::SeparatorText("Speedometer##Speedometer-Separator");
+    {
+        if (ImGui::Checkbox("Enabled##Speedometer-Enabled", &Speedometer.Show)) 
+        {
+            Settings::SetSetting({ "Speedometer", "Settings", "Show" }, Speedometer.Show);
+        }
+
+        if (Speedometer.Show)
+        {
+            ImGui::Checkbox("Edit Window##Speedometer-EditWindow", &Speedometer.ShowEditWindow);
+            ImGui::HelpMarker("Change the apperance of the speedometer");
+
+            ImGui::Checkbox("Edit Items##Speedometer-EditItems", &Speedometer.ShowItemEditorWindow);
+            ImGui::HelpMarker("Change an item's order, text, colors, formatting, and etc");
+        }
+    }
+
+    ImGui::SeparatorText("Trainer##Trainer-Separator");
+    {
+        if (ImGui::Checkbox("Enabled##Trainer-Enabled", &Enabled)) 
+        {
+            Settings::SetSetting({ "Trainer", "Enabled" }, Enabled);
+
+            CheckpointTime = 0.0f;
+            CheckpointUpdateTimer = false;
+        }
+
+        if (Enabled)
+        {
+            if (ImGui::Checkbox("Reset Flying Speed##Trainer-ResetFlyingSpeed", &Fly.ResetSpeed))
+            {
+                Settings::SetSetting({ "Trainer", "Fly", "ResetSpeed" }, Fly.ResetSpeed);
+            }
+            ImGui::HelpMarker("If you have changed the speed during flying, it will remember the speed if this is set to false. Otherwise, the speed will be reset once flying has been reactivated");
+
+            if (ImGui::Checkbox("Show Tool Overlay##Trainer-ShowToolActivatedOverlay", &ShowToolActivatedOverlay))
+            {
+                Settings::SetSetting({ "Trainer", "Tools", "ShowToolActivatedOverlay" }, ShowToolActivatedOverlay);
+            }
+            ImGui::HelpMarker("If true, it will show at the top right which tool you activated is. If set to false, it will not show");
+
+            auto pawn = Engine::GetPlayerPawn();
+            auto controller = Engine::GetPlayerController();
+            bool sepatatorAdded = false;
+
+            if (pawn && controller)
+            {
+                if (!(Engine::GetTimeTrialGame() || controller->ReactionTimeEnergy >= 100.0f || controller->bReactionTime || pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled))
+                {
+                    ImGui::Separator(5.0f);
+                    sepatatorAdded = true;
+
+                    if (ImGui::Button("Refill ReactionTime##Trainer-RefillReactionTime"))
+                    {
+                        const auto tdhud = static_cast<Classes::ATdHUD*>(controller->myHUD);
+
+                        controller->ReactionTimeEnergy = 100.0f;
+                        tdhud->EffectManager->ActivateReactionTimeTeaser();
+                    }
+                }
+            }
+
+            if (hasSave) 
+            {
+                if (sepatatorAdded)
+                {
+                    ImGui::SameLine();
+                }
+                else
+                {
+                    ImGui::Separator(5.0f);
+                }
+
+                if (ImGui::Button("Reset Save##Trainer-ResetSave")) 
+                {
+                    hasSave = false;
+                }
+            }
+
+            if (HasCheckpoint) 
+            {
+                if (hasSave || sepatatorAdded)
+                {
+                    ImGui::SameLine();
+                }
+                else
+                {
+                    ImGui::Separator(5.0f);
+                }
+
+                if (ImGui::Button("Reset Checkpoint##Trainer-ResetCheckpoint")) 
+                {
+                    CheckpointTime = 0.0f;
+                    CheckpointUpdateTimer = false;
+                    HasCheckpoint = false;
+                }
+            }
+        }
+    }
+
+    if (!Enabled) 
+    {
+        return;
+    }
+
+    ImGui::SeparatorText("Sidestep Beamer##SidestepBeamer-Separator");
+    {
+        if (ImGui::Checkbox("Enabled##SidestepBeamer-Enabled", &SidestepBeamer))
+        {
+            Settings::SetSetting({ "Trainer", "SidestepBeamer", "Enabled" }, SidestepBeamer);
+        }
+
+        ImGui::HelpMarker("If set to true, does a sidestep beamer instead of a normal beamer");
+
+        if (SidestepBeamer) 
+        {
+            if (ImGui::Checkbox("Auto Sidestep Beamer##SidestepBeamer-SidestepForMe", &SidestepBeamerAutomatic)) 
+            {
+                Settings::SetSetting({ "Trainer", "SidestepBeamer", "Automatic" }, SidestepBeamerAutomatic);
+            }
+
+            ImGui::HelpMarker("If set to false, you need to manually hold your left keybind or right keybind when beamer is active");
+
+            if (SidestepBeamerAutomatic) 
+            {
+                ImGui::DummyVertical(5.0f);
+
+                if (ImGui::RadioButton("Press Left Keybind##SidestepBeamer-PressSidestepBeamerLeft", SidestepBeamerPressLeftKeybind)) 
+                {
+                    Settings::SetSetting({ "Trainer", "SidestepBeamer", "PressRightKeybind" }, SidestepBeamerPressRightKeybind = false);
+                    Settings::SetSetting({ "Trainer", "SidestepBeamer", "PressLeftKeybind" }, SidestepBeamerPressLeftKeybind = true);
+                }
+
+                if (ImGui::RadioButton("Press Right Keybind##SidestepBeamer-PressSidestepBeamerRight", SidestepBeamerPressRightKeybind)) 
+                {
+                    Settings::SetSetting({ "Trainer", "SidestepBeamer", "PressRightKeybind" }, SidestepBeamerPressRightKeybind = true);
+                    Settings::SetSetting({ "Trainer", "SidestepBeamer", "PressLeftKeybind" }, SidestepBeamerPressLeftKeybind = false);
+                }
+            }
+        }
+    }
+
+    ImGui::SeparatorText("Keybinds##Keybinds-Separator");
+    {
+        ImGui::Checkbox("Toggle Reset Keybinds##Keybinds-ToggleResetKeybinds", &ToggleResetKeybinds);
+        ImGui::Separator(5.0f);
+
+        // The last 2 parameters in ProcessHotkey needs to match the one in Initialize() function!
+        ProcessHotkey("God##Trainer-God", &GodKeybind, { "Trainer", "Tools", "GodKeybind" }, VK_1);
+        ProcessHotkey("Checkpoint##Trainer-Checkpoint", &CheckpointKeybind, { "Trainer", "Tools", "CheckpointKeybind" }, VK_3);
+        ProcessHotkey("Save##Trainer-Save", &SaveKeybind, { "Trainer", "Tools", "SaveKeybind" }, VK_4);
+        ProcessHotkey("Load##Trainer-Load", &LoadKeybind, { "Trainer", "Tools", "LoadKeybind" }, VK_5);
+
+        ImGui::DummyVertical(5.0f);
+
+        ProcessHotkey("Fly##Trainer-Fly", &Fly.Keybind, { "Trainer", "Fly", "Keybind" }, VK_2);
+        ProcessHotkey("Fly Up##Trainer-FlyUp", &Fly.UpKeybind, { "Trainer", "Fly", "UpKeybind" }, VK_SPACE);
+        ProcessHotkey("Fly Down##Trainer-FlyDown", &Fly.DownKeybind, { "Trainer", "Fly", "DownKeybind" }, VK_SHIFT);
+        ProcessHotkey("Fly Faster##Trainer-FlyFaster", &Fly.FasterKeybind, { "Trainer", "Fly", "FasterKeybind" }, VK_E);
+        ProcessHotkey("Fly Slower##Trainer-FlySlower", &Fly.SlowerKeybind, { "Trainer", "Fly", "SlowerKeybind" }, VK_Q);
+
+        ImGui::DummyVertical(5.0f);
+
+        ProcessHotkey("Kickglitch##Trainer-Kickglitch", &KickglitchKeybind, { "Trainer", "Tools", "KickglitchKeybind" }, VK_NONE);
+        ProcessHotkey("Beamer##Trainer-Beamer", &BeamerKeybind, { "Trainer", "Tools", "BeamerKeybind" }, VK_NONE);
+        ProcessHotkey("Strang##Trainer-Strang", &StrangKeybind, { "Trainer", "Tools", "StrangKeybind" }, VK_NONE);
+        ProcessHotkey("Sidestep Beamer Left Keybind##Trainer-SidestepBeamerLeftKeybind", &SidestepBeamerLeftKeybind, { "Trainer", "SidestepBeamer", "PressLeftKeybind" }, VK_A);
+        ProcessHotkey("Sidestep Beamer Right Keybind##Trainer-SidestepBeamerRightKeybind", &SidestepBeamerRightKeybind, { "Trainer", "SidestepBeamer", "PressRightKeybind" }, VK_D);
+    } 
+}
+
+static void OnRender(IDirect3DDevice9* device)
+{
+    if (Speedometer.Show)
+    {
+        if (Speedometer.ShowEditWindow)
+        {
+            static float valueOffset = 128.0f;
+            static ImVec4 valueColor(1.0f, 1.0f, 1.0f, 1.0f);
+            static ImVec4 labelColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+            ImGui::Begin("Edit Speedometer Window##speedometer-edit-window", &Speedometer.ShowEditWindow, ImGuiWindowFlags_NoCollapse);
+            ImGui::SeparatorText("Flags");
+            {
+                ImGui::CheckboxFlags("No Title Bar", &Speedometer.WindowFlags, ImGuiWindowFlags_NoTitleBar);
+                ImGui::CheckboxFlags("No Resize", &Speedometer.WindowFlags, ImGuiWindowFlags_NoResize);
+                ImGui::Checkbox("No Close", &Speedometer.HideCloseButton);
+            }
+
+            ImGui::SeparatorText("Variables");
+            {
+                ImGui::SliderFloat("Rounding", &Speedometer.Style.WindowRounding, 0.0f, 16.0f, "%.2f");
+                ImGui::SliderFloat("Border Size", &Speedometer.Style.WindowBorderSize, 0.0f, 8.0f, "%.2f");
+            }
+
+            ImGui::SeparatorText("Colors");
+            {
+                if (ImGui::ColorEdit4("Title Background", &Speedometer.Style.Colors[ImGuiCol_TitleBg].x, ImGuiColorEditFlags_AlphaPreviewHalf))
+                {
+                    Speedometer.Style.Colors[ImGuiCol_TitleBgActive] = Speedometer.Style.Colors[ImGuiCol_TitleBg];
+                }
+                ImGui::ColorEdit4("Window Background", &Speedometer.Style.Colors[ImGuiCol_WindowBg].x, ImGuiColorEditFlags_AlphaPreviewHalf);
+                ImGui::ColorEdit4("Window Border", &Speedometer.Style.Colors[ImGuiCol_Border].x, ImGuiColorEditFlags_AlphaPreviewHalf);
+            }
+
+            ImGui::SeparatorText("Overrides");
+            {
+                if (ImGui::ColorEdit4("Label Color", &labelColor.x, ImGuiColorEditFlags_AlphaPreviewHalf))
+                {
+                    for (size_t i = 0; i < Items.size(); i++)
+                    {
+                        Items[i]->LabelColor = labelColor;
+                    }
+                }
+
+                if (ImGui::ColorEdit4("Value Color", &valueColor.x, ImGuiColorEditFlags_AlphaPreviewHalf))
+                {
+                    for (size_t i = 0; i < Items.size(); i++)
+                    {
+                        Items[i]->ValueColor = valueColor;
+                    }
+                }
+
+                if (ImGui::DragFloat("Value Offset", &valueOffset))
+                {
+                    for (size_t i = 0; i < Items.size(); i++)
+                    {
+                        Items[i]->ValueOffset = valueOffset;
+                    }
+                }
+            }
+
+            ImGui::SeparatorText("Buttons##Speedometer-Edit-Button-Separator");
+            {
+                if (ImGui::Button("Save##Speedometer-Edit-Save"))
+                {
+                    SaveSpeedometerWindowSettings(true);
+                }
+                ImGui::SameLine();
+
+                if (ImGui::Button("Undo##Speedometer-Edit-Undo"))
+                {
+                    LoadSpeedometerWindowSettings(true);
+
+                    valueOffset = 128.0f;
+                    valueColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+                    labelColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+                }
+                ImGui::SameLine();
+
+                if (ImGui::Button("Reset##Speedometer-Edit-Reset"))
+                {
+                    Settings::SetSetting({ "Speedometer", "Style" }, json::object());
+
+                    LoadSpeedometerWindowSettings(false);
+                    SaveSpeedometerWindowSettings(false);
+
+                    valueOffset = 128.0f;
+                    valueColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+                    labelColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+                }
+            }
+
+            ImGui::End();
+        }
+
+        if (Speedometer.ShowItemEditorWindow)
+        {
+            static size_t selectedIndex = -1;
+
+            ImGui::Begin("Edit Speedometer Items##speedometer-edit-items", &Speedometer.ShowItemEditorWindow, ImGuiWindowFlags_NoCollapse);
+            ImGui::SeparatorText("Items");
+            {
+                int itemIndexSelected = -1;
+                int itemIndexToSwapWith = -1;
+
+                // FIXME: The button size doesn't match perfectly and size 17.5 is close enough but would like it to be perfectly sized
+                const auto selectableSize = ImVec2(256, 0);
+                const auto buttonSize = ImVec2(17.5f, 17.5f);
+
+                for (size_t i = 0; i < Items.size(); i++)
+                {
+                    if (ImGui::Selectable((Items[i]->ItemName + "##speedometer-edit-item-" + std::to_string(i)).c_str(), i == selectedIndex, 0, selectableSize))
+                    {
+                        if (i == selectedIndex)
+                        {
+                            selectedIndex = -1;
+                        }
+                        else
+                        {
+                            selectedIndex = i;
+                        }
+                    }
+
+                    ImGui::SameLine();
+                    if (i == 0)
+                    {
+                        ImGui::BeginDisabled();
+                        ImGui::SmallArrowButton("", ImGuiDir_Up, buttonSize);
+                        ImGui::EndDisabled();
+                    }
+                    else if (ImGui::SmallArrowButton(("##speedometer-edit-item-arrow-up-" + std::to_string(i)).c_str(), ImGuiDir_Up, buttonSize))
+                    {
+                        itemIndexSelected = i;
+                        itemIndexToSwapWith = i - 1;
+                    }
+
+                    ImGui::SameLine();
+                    if (i == Items.size() - 1)
+                    {
+                        ImGui::BeginDisabled();
+                        ImGui::SmallArrowButton("", ImGuiDir_Down, buttonSize);
+                        ImGui::EndDisabled();
+                    }
+                    else if (ImGui::SmallArrowButton(("##speedometer-edit-item-arrow-down-" + std::to_string(i)).c_str(), ImGuiDir_Down, buttonSize))
+                    {
+                        itemIndexSelected = i;
+                        itemIndexToSwapWith = i + 1;
+                    }
+                }
+
+                if (itemIndexSelected != -1)
+                {
+                    std::swap(Items[itemIndexSelected], Items[itemIndexToSwapWith]);
+
+                    // We swapped everything but we don't want to swap the position index
+                    int temp = Items[itemIndexToSwapWith]->PositionIndex;
+                    Items[itemIndexToSwapWith]->PositionIndex = Items[itemIndexSelected]->PositionIndex;
+                    Items[itemIndexSelected]->PositionIndex = temp;
+
+                    if (itemIndexSelected == selectedIndex || itemIndexToSwapWith == selectedIndex)
+                    {
+                        selectedIndex = itemIndexToSwapWith;
+                    }
+                }
+
+                if (selectedIndex != -1)
+                {
+                    ImGui::Begin("Edit Item##Speedometer-Edit-Item", NULL, ImGuiWindowFlags_NoCollapse);
+                    {
+                        bool needsToReorderItems = false;
+                        Items[selectedIndex]->Edit(needsToReorderItems);
+
+                        if (needsToReorderItems)
+                        {
+                            SortItemsOrder();
+                        }
+                    }
+
+                    ImGui::End();
+                }
+            }
+
+            ImGui::SeparatorText("Buttons##Speedometer-Edit-Items-Separator");
+            {
+                if (ImGui::Button("Save All##Speedometer-Edit-SaveItems"))
+                {
+                    for (size_t i = 0; i < Items.size(); i++)
+                    {
+                        Items[i]->SaveSettings();
+                    }
+                }
+                ImGui::SameLine();
+
+                if (ImGui::Button("Undo All##Speedometer-Edit-UndoItems"))
+                {
+                    for (size_t i = 0; i < Items.size(); i++)
+                    {
+                        Items[i]->LoadSettings(Items[i]->DrawIndex, false, true);
+                    }
+
+                    SortItemsOrder();
+                }
+                ImGui::SameLine();
+
+                if (ImGui::Button("Reset All##Speedometer-Edit-ResetItems"))
+                {
+                    Settings::SetSetting({ "Speedometer", "Item" }, json::object());
+
+                    selectedIndex = -1;
+                    InitializeSpeedometer();
+                }
+            }
+
+            ImGui::End();
+        }
+
         const auto pawn = Engine::GetPlayerPawn();
         const auto controller = Engine::GetPlayerController();
 
         if (pawn && controller)
         {
-            if (ImGui::Begin(SpeedometerLabel.c_str(), &ShowSpeedometer, ImGuiWindowFlags_NoCollapse))
+            ImGui::PushStyleColor(ImGuiCol_TitleBg, Speedometer.Style.Colors[ImGuiCol_TitleBg]);
+            ImGui::PushStyleColor(ImGuiCol_TitleBgActive, Speedometer.Style.Colors[ImGuiCol_TitleBg]);
+            ImGui::PushStyleColor(ImGuiCol_WindowBg, Speedometer.Style.Colors[ImGuiCol_WindowBg]);
+            ImGui::PushStyleColor(ImGuiCol_Border, Speedometer.Style.Colors[ImGuiCol_Border]);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, Speedometer.Style.WindowBorderSize);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, Speedometer.Style.WindowRounding);
+
+            ImGui::Begin("Speedometer##trainer-speedometer", Speedometer.HideCloseButton ? NULL : &Speedometer.Show, Speedometer.WindowFlags);
+
+            const float speed = sqrtf(powf(pawn->Velocity.X, 2) + powf(pawn->Velocity.Y, 2));
+            const float pitch = static_cast<float>(controller->Rotation.Pitch % 0x10000) / static_cast<float>(0x10000) * 360.0f;
+            const float yaw = static_cast<float>(controller->Rotation.Yaw % 0x10000) / static_cast<float>(0x10000) * 360.0f;
+
+            TopSpeedTracker.Update(speed);
+            TopHeightTracker.Update(pawn->Location.Z);
+
+            for (size_t i = 0; i < Items.size(); i++)
             {
-                const float speed = sqrtf(powf(pawn->Velocity.X, 2) + powf(pawn->Velocity.Y, 2));
-                const float pitch = static_cast<float>(controller->Rotation.Pitch % 0x10000) / static_cast<float>(0x10000) * 360.0f;
-                const float yaw = static_cast<float>(controller->Rotation.Yaw % 0x10000) / static_cast<float>(0x10000) * 360.0f;
-
-                TopSpeedTracker.Update(speed);
-                TopHeightTracker.Update(pawn->Location.Z);
-
-                LocationX.Draw(pawn->Location.X);
-                LocationY.Draw(pawn->Location.Y);
-                LocationZ.Draw(pawn->Location.Z);
-                TopHeight.Draw(TopHeightTracker.Value);
-
-                Speed.Draw(speed);
-                TopSpeed.Draw(TopSpeedTracker.Value);
-
-                Pitch.Draw(pitch);
-                Yaw.Draw(yaw);
-
-                Checkpoint.Draw(checkpointTime);
-                MovementState.Draw(static_cast<int>(pawn->MovementState.GetValue()));
-                Health.Draw(pawn->Health);
-                ReactionTime.Draw(min(100.0f, controller->ReactionTimeEnergy));
-                LastJumpLocation.Draw(pawn->LastJumpLocation.Z);
-                LastJumpLocationDelta.Draw(pawn->Location.Z - pawn->LastJumpLocation.Z);
-
-                ImGui::End();
+                switch (Items[i]->DrawIndex)
+                {
+                    case 0: Items[i]->Draw(pawn->Location.X); break;
+                    case 1: Items[i]->Draw(pawn->Location.Y); break;
+                    case 2: Items[i]->Draw(pawn->Location.Z); break;
+                    case 3: Items[i]->Draw(TopHeightTracker.Value); break;
+                    case 4: Items[i]->Draw(speed); break;
+                    case 5: Items[i]->Draw(TopSpeedTracker.Value); break;
+                    case 6: Items[i]->Draw(pitch); break;
+                    case 7: Items[i]->Draw(yaw); break;
+                    case 8: Items[i]->Draw(CheckpointTime); break;
+                    case 9: Items[i]->Draw(static_cast<int>(pawn->MovementState.GetValue())); break;
+                    case 10: Items[i]->Draw(pawn->Health); break;
+                    case 11: Items[i]->Draw(min(100.0f, controller->ReactionTimeEnergy)); break;
+                    case 12: Items[i]->Draw(pawn->LastJumpLocation.Z); break;
+                    case 13: Items[i]->Draw(pawn->Location.Z - pawn->LastJumpLocation.Z); break;
+                    default: 
+                        printf("Unknown Draw Index \"%d\" (Min = 0, Max = %d)\n", Items[i]->DrawIndex, Items.size()); 
+                        break;
+                }
             }
+
+            ImGui::End();
+            ImGui::PopStyleColor(4);
+            ImGui::PopStyleVar(2);
         }
         else
         {
@@ -866,383 +1303,363 @@ static void OnRender(IDirect3DDevice9*)
         }
     }
 
-    if (!enabled) {
-        return;
-    }
+    if (Enabled && ShowToolActivatedOverlay)
+    {
+        std::string text = "";
+        text += StrangToolActivated ? "Strang " : "";
+        text += BeamerToolActivated ? SidestepBeamer ? "Sidestep Beamer " : "Beamer " : "";
+        text += KickglitchToolActivated ? "KG " : "";
+        text += Fly.Enabled ? "Fly " : "";
+        text += GodToolActivated ? "God " : "";
 
-    std::string text = "";
-    text += strang ? "Strang " : "";
-    text += beamer ? sidestepBeamer ? "Sidestep Beamer " : "Beamer " : "";
-    text += kg ? "KG " : "";
-    text += fly.Enabled ? "Fly " : "";
-    text += god ? "God " : "";
+        if (text != "") 
+        {
+            const auto window = ImGui::BeginRawScene("##trainer-state");
+            const float displaySizeX = ImGui::GetIO().DisplaySize.x;
+            const float width = ImGui::CalcTextSize(text.c_str(), nullptr, false).x;
 
-    if (text != "") {
-        const auto window = ImGui::BeginRawScene("##trainer-state");
-        const auto& io = ImGui::GetIO();
-        const auto width = ImGui::CalcTextSize(text.c_str(), nullptr, false).x;
+            window->DrawList->AddRectFilled(ImVec2(displaySizeX - width - 5.0f, 0), ImVec2(displaySizeX, ImGui::GetTextLineHeight()), ImColor(ImVec4(0, 0, 0, 0.4f)));
+            window->DrawList->AddText(ImVec2(displaySizeX - width, 0), IM_COL32_WHITE, text.c_str());
 
-        window->DrawList->AddRectFilled(
-            ImVec2(io.DisplaySize.x - width - 5.0f, 0),
-            ImVec2(io.DisplaySize.x, ImGui::GetTextLineHeight()),
-            ImColor(ImVec4(0, 0, 0, 0.4f)));
-        window->DrawList->AddText(ImVec2(io.DisplaySize.x - width, 0),
-            ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)),
-            text.c_str());
-
-        ImGui::EndRawScene();
+            ImGui::EndRawScene();
+        }
     }
 }
 
-static void OnTick(float deltaTime) {
-    if (!enabled && !ShowSpeedometer) {
+static void OnTick(const float deltaTime) 
+{
+    if (!Enabled && !Speedometer.Show) 
+    {
         return;
     }
 
     const auto pawn = Engine::GetPlayerPawn();
-    if (!pawn) {
+    if (!pawn) 
+    {
         return;
     }
 
-    if (ShowSpeedometer) {
-        if (Engine::IsKeyDown(checkpointKeybind)) {
-            hasCheckpoint = true;
-            checkpointTime = 0.0f;
-            checkpointLocation = pawn->Location;
+    if (Speedometer.Show) 
+    {
+        if (Engine::IsKeyDown(CheckpointKeybind)) 
+        {
+            HasCheckpoint = true;
+            CheckpointTime = 0.0f;
+            CheckpointLocation = pawn->Location;
         } 
 
-        if (hasCheckpoint) {
-            if (Distance(pawn->Location, checkpointLocation) > 1.0f && checkpointUpdateTimer) {
-                checkpointTime += pawn->WorldInfo->TimeDilation * deltaTime;
-            } else {
-                checkpointUpdateTimer = false;
+        if (HasCheckpoint) 
+        {
+            if (Distance(pawn->Location, CheckpointLocation) > 1.0f && CheckpointUpdateTimer) 
+            {
+                CheckpointTime += pawn->WorldInfo->TimeDilation * deltaTime;
+            } 
+            else 
+            {
+                CheckpointUpdateTimer = false;
             }
         }
     }
 
-    if (!enabled) {
+    if (!Enabled) 
+    {
         return;
     }
 
     const auto controller = Engine::GetPlayerController();
-    if (!controller) {
+    if (!controller) 
+    {
         return;
     }
 
-    if (pawn->Health <= 0) {
-        fly.Enabled = false;
-        god = false;
+    if (pawn->Health <= 0) 
+    {
+        Fly.Enabled = false;
+        GodToolActivated = false;
 
         return;
     }
 
-    if (Engine::IsKeyDown(saveKeybind)) {
+    if (Engine::IsKeyDown(SaveKeybind)) 
+    {
         Save(save, pawn, controller);
         hasSave = true;
     }
 
-    if (hasSave && Engine::IsKeyDown(loadKeybind)) {
-        if (sidestepBeamer && sidestepBeamerForMe) {
+    if (hasSave && Engine::IsKeyDown(LoadKeybind)) 
+    {
+        if (SidestepBeamer && SidestepBeamerAutomatic) 
+        {
             ReleaseKey();
         }
 
-        if (strang) {
-            strang = false;
+        if (StrangToolActivated) 
+        {
+            StrangToolActivated = false;
         }
 
-        if (hasCheckpoint) {
-            checkpointTime = 0.0f;
-            checkpointUpdateTimer = true;
+        if (HasCheckpoint) 
+        {
+            CheckpointTime = 0.0f;
+            CheckpointUpdateTimer = true;
         }
 
         Load(save, pawn, controller);
     }
 
-    if (god || fly.Enabled) {
+    if (GodToolActivated || Fly.Enabled) 
+    {
         pawn->Health = pawn->MaxHealth;
         pawn->EnterFallingHeight = -1e30f;
     }
 
-    if (fly.Enabled) {
+    if (Fly.Enabled) 
+    {
         Classes::FVector input = {
             controller->PlayerInput->RawJoyUp,
             controller->PlayerInput->RawJoyRight,
-            static_cast<float>(Engine::IsKeyDown(fly.UpKeybind)) -
-                static_cast<float>(Engine::IsKeyDown(fly.DownKeybind)),
+            static_cast<float>(Engine::IsKeyDown(Fly.UpKeybind)) - static_cast<float>(Engine::IsKeyDown(Fly.DownKeybind)),
         };
 
-        const auto mag =
-            sqrt(input.X * input.X + input.Y * input.Y + input.Z * input.Z);
+        const float mag = sqrt(input.X * input.X + input.Y * input.Y + input.Z * input.Z);
 
-        if (mag != 0.0f) {
+        if (mag != 0.0f) 
+        {
             input.X /= mag;
             input.Y /= mag;
             input.Z /= mag;
         }
 
-        static const auto flySpeedIncrement = 0.25f;
-        if (Engine::IsKeyDown(fly.FasterKeybind)) {
-            fly.Speed += flySpeedIncrement;
+        if (Engine::IsKeyDown(Fly.FasterKeybind)) 
+        {
+            Fly.Speed += Fly.SpeedIncrement;
         }
 
-        if (Engine::IsKeyDown(fly.SlowerKeybind)) {
-            fly.Speed = max(0.1f, fly.Speed - flySpeedIncrement);
+        if (Engine::IsKeyDown(Fly.SlowerKeybind)) 
+        {
+            Fly.Speed = max(0.1f, Fly.Speed - Fly.SpeedIncrement);
         }
 
-        const auto angle =
-            (static_cast<float>(controller->Rotation.Yaw % 0x10000) /
-             static_cast<float>(0x10000)) *
-            (2 * CONST_Pi);
+        const float angle = (static_cast<float>(controller->Rotation.Yaw % 0x10000) / static_cast<float>(0x10000)) * (2 * CONST_Pi);
 
-        fly.Velocity.X +=
-            ((cosf(angle) * input.X) - (sinf(angle) * input.Y)) * fly.Speed;
-        fly.Velocity.Y +=
-            ((sinf(angle) * input.X) + (cosf(angle) * input.Y)) * fly.Speed;
-        fly.Velocity.Z += input.Z * fly.Speed;
+        Fly.Velocity.X += ((cosf(angle) * input.X) - (sinf(angle) * input.Y)) * Fly.Speed;
+        Fly.Velocity.Y += ((sinf(angle) * input.X) + (cosf(angle) * input.Y)) * Fly.Speed;
+        Fly.Velocity.Z += input.Z * Fly.Speed;
 
-        fly.Location.X += fly.Velocity.X;
-        fly.Location.Y += fly.Velocity.Y;
-        fly.Location.Z += fly.Velocity.Z;
+        Fly.Location.X += Fly.Velocity.X;
+        Fly.Location.Y += Fly.Velocity.Y;
+        Fly.Location.Z += Fly.Velocity.Z;
 
-        pawn->Location = fly.Location;
+        pawn->Location = Fly.Location;
         pawn->Velocity = {0};
         pawn->bCollideWorld = false;
         pawn->Physics = Classes::EPhysics::PHYS_None;
 
-        fly.Velocity.X *= 0.85f;
-        fly.Velocity.Y *= 0.85f;
-        fly.Velocity.Z *= 0.85f;
+        Fly.Velocity.X *= 0.85f;
+        Fly.Velocity.Y *= 0.85f;
+        Fly.Velocity.Z *= 0.85f;
 
         pawn->LeftHandWorldIKController->StrengthTarget = 0.0f;
         pawn->RightHandWorldIKController->StrengthTarget = 0.0f;
     }
 
-    if (kg) {
-        if (pawn->Physics == Classes::EPhysics::PHYS_Walking) {
+    if (KickglitchToolActivated) 
+    {
+        if (pawn->Physics == Classes::EPhysics::PHYS_Walking) 
+        {
             controller->PlayerInput->Jump();
-            kg = false;
-        } else if (pawn->Physics == Classes::EPhysics::PHYS_WallRunning) {
+            KickglitchToolActivated = false;
+        } 
+        else if (pawn->Physics == Classes::EPhysics::PHYS_WallRunning) 
+        {
             controller->AttackPress();
             controller->AttackRelease();
         }
     }
 
-    if (beamer) {
-        if (pawn->MovementState != Classes::EMovement::MOVE_WallClimbing) {
-            if (sidestepBeamer && sidestepBeamerForMe) {
+    if (BeamerToolActivated) 
+    {
+        if (pawn->MovementState != Classes::EMovement::MOVE_WallClimbing) 
+        {
+            if (SidestepBeamer && SidestepBeamerAutomatic) 
+            {
                 ReleaseKey();
             }
-            beamer = false;
-
-        } else if (sqrt(powf(pawn->Velocity.X, 2) + powf(pawn->Velocity.Y, 2)) >
-                   1000.0f) {
-
-            if (sidestepBeamer) {
+            BeamerToolActivated = false;
+        } 
+        else if (sqrt(powf(pawn->Velocity.X, 2) + powf(pawn->Velocity.Y, 2)) > 1000.0f) 
+        {
+            if (SidestepBeamer) 
+            {
                 controller->PlayerInput->Jump();
-                if (sidestepBeamerForMe) {
+                if (SidestepBeamerAutomatic) 
+                {
                     ReleaseKey();
                 }
-            } else {
+            } 
+            else 
+            {
                 controller->LookBehind();
             }
 
-            beamer = false;
+            BeamerToolActivated = false;
         }
     }
 }
 
-void __fastcall StateHandlerHook(void *pawn, void *idle, float delta,
-                                 int changedState) {
-
-    if (pawn && pawn == Engine::GetPlayerPawn() && strang && changedState) {
+void __fastcall StateHandlerHook(void *pawn, void *idle, float delta, int changedState) 
+{
+    if (pawn && pawn == Engine::GetPlayerPawn() && StrangToolActivated && changedState) 
+    {
         const auto controller = Engine::GetPlayerController();
-        if (controller) {
+        if (controller) 
+        {
             controller->PlayerInput->Jump();
         }
 
-        strang = false;
+        StrangToolActivated = false;
         return;
     }
 
     StateHandlerOriginal(pawn, delta, changedState);
 }
 
-bool Trainer::Initialize() {
-
-    strcpy_s(LocationX.Label, "X");
-    strcpy_s(LocationY.Label, "Y");
-    strcpy_s(LocationZ.Label, "Z");
-    strcpy_s(TopHeight.Label, "ZT");
-    strcpy_s(Speed.Label, "V");
-    strcpy_s(TopSpeed.Label, "VT");
-    strcpy_s(Pitch.Label, "RX");
-    strcpy_s(Yaw.Label, "RY");
-    strcpy_s(Checkpoint.Label, "T");
-    strcpy_s(MovementState.Label, "S");
-    strcpy_s(Health.Label, "H");
-    strcpy_s(ReactionTime.Label, "RT");
-    strcpy_s(LastJumpLocation.Label, "SZ");
-    strcpy_s(LastJumpLocationDelta.Label, "SZD");
-
-    strcpy_s(Health.Format, "%d");
-    strcpy_s(MovementState.Format, "%d");
-
-    TopHeight.AddSpaceBelow = true;
-    TopSpeed.AddSpaceBelow = true;
-    Yaw.AddSpaceBelow = true;
-
-    LocationX.ModifyValue = true;
-    LocationX.Factor = 100;
-    LocationY.ModifyValue = true;
-    LocationY.Factor = 100;
-    LocationZ.ModifyValue = true;
-    LocationZ.Factor = 100;
-    TopHeight.ModifyValue = true;
-    TopHeight.Factor = 100;
-    Speed.ModifyValue = true;
-    Speed.Multiply = true;
-    Speed.Factor = 0.036f;
-    TopSpeed.ModifyValue = true;
-    TopSpeed.Multiply = true;
-    TopSpeed.Factor = 0.036f;
-    LastJumpLocation.ModifyValue = true;
-    LastJumpLocation.Factor = 100;
-    LastJumpLocationDelta.ModifyValue = true;
-    LastJumpLocationDelta.Factor = 100;
-
+bool Trainer::Initialize() 
+{
     // Settings
-    enabled = Settings::GetSetting("trainer", "enabled", false);
-    tooltip = Settings::GetSetting("trainer", "tooltip", true);
-    checkpointKeybind = Settings::GetSetting("trainer", "checkpointKeybind", VK_3);
-    saveKeybind = Settings::GetSetting("trainer", "saveKeybind", VK_4);
-    loadKeybind = Settings::GetSetting("trainer", "loadKeybind", VK_5);
-    godKeybind = Settings::GetSetting("trainer", "godKeybind", VK_1);
-    toggleResetKeybinds = Settings::GetSetting("trainer", "toggleResetKeybinds", false);
+    Enabled = Settings::GetSetting({ "Trainer", "Enabled" }, false);
 
-    // Player Info
-    ShowSpeedometer = Settings::GetSetting("player", "showInfo", false);
+    GodKeybind = Settings::GetSetting({ "Trainer", "Tools", "GodKeybind" }, VK_1);
+    CheckpointKeybind = Settings::GetSetting({ "Trainer", "Tools", "CheckpointKeybind" }, VK_3);
+    SaveKeybind = Settings::GetSetting({ "Trainer", "Tools", "SaveKeybind" }, VK_4);
+    LoadKeybind = Settings::GetSetting({ "Trainer", "Tools", "LoadKeybind" }, VK_5);
+    KickglitchKeybind = Settings::GetSetting({ "Trainer", "Tools", "KickglitchKeybind" }, VK_NONE);
+    BeamerKeybind = Settings::GetSetting({ "Trainer", "Tools", "BeamerKeybind" }, VK_NONE);
+    StrangKeybind = Settings::GetSetting({ "Trainer", "Tools", "StrangKeybind" }, VK_NONE);
+    ShowToolActivatedOverlay = Settings::GetSetting({ "Trainer", "Tools", "ShowToolActivatedOverlay" }, true);
 
-    // Flying Settings
-    fly.Keybind = Settings::GetSetting("trainer", "flyKeybind", VK_2);
-    fly.UpKeybind = Settings::GetSetting("trainer", "flyUpKeybind", VK_SPACE);
-    fly.DownKeybind = Settings::GetSetting("trainer", "flyDownKeybind", VK_SHIFT);
-    fly.FasterKeybind = Settings::GetSetting("trainer", "flyFasterKeybind", VK_E);
-    fly.SlowerKeybind = Settings::GetSetting("trainer", "flySlowerKeybind", VK_Q);
-    resetFlyingSpeed = Settings::GetSetting("trainer", "resetFlyingSpeed", true);
+    Fly.Keybind = Settings::GetSetting({ "Trainer", "Fly", "Keybind" }, VK_2);
+    Fly.UpKeybind = Settings::GetSetting({ "Trainer", "Fly", "UpKeybind" }, VK_SPACE);
+    Fly.DownKeybind = Settings::GetSetting({ "Trainer", "Fly", "DownKeybind" }, VK_SHIFT);
+    Fly.FasterKeybind = Settings::GetSetting({ "Trainer", "Fly", "FasterKeybind" }, VK_E);
+    Fly.SlowerKeybind = Settings::GetSetting({ "Trainer", "Fly", "SlowerKeybind" }, VK_Q);
+    Fly.ResetSpeed = Settings::GetSetting({ "Trainer", "Fly", "ResetSpeed" }, true);
 
-    // Cheating Tools
-    kgKeybind = Settings::GetSetting("trainer", "kgKeybind", VK_NONE);
-    beamerKeybind = Settings::GetSetting("trainer", "beamerKeybind", VK_NONE);
-    strangKeybind = Settings::GetSetting("trainer", "strangKeybind", VK_NONE);
+    SidestepBeamer = Settings::GetSetting({ "Trainer", "SidestepBeamer", "Enabled" }, false);
+    SidestepBeamerAutomatic = Settings::GetSetting({ "Trainer", "SidestepBeamer", "Automatic" }, false);
+    SidestepBeamerLeftKeybind = Settings::GetSetting({ "Trainer", "SidestepBeamer", "LeftKeybind" }, VK_A);
+    SidestepBeamerRightKeybind = Settings::GetSetting({ "Trainer", "SidestepBeamer", "RightKeybind" }, VK_D);
+    SidestepBeamerPressLeftKeybind = Settings::GetSetting({ "Trainer", "SidestepBeamer", "PressLeftKeybind" }, true);
+    SidestepBeamerPressRightKeybind = Settings::GetSetting({ "Trainer", "SidestepBeamer", "PressRightKeybind" }, false);
 
-    // Sidestep Beamer Settings
-    sidestepBeamer = Settings::GetSetting("trainer", "sidestepBeamer", false);
-    sidestepBeamerForMe = Settings::GetSetting("trainer", "sidestepBeamerForMe", false);
-    sidestepBeamerLeftKeybind = Settings::GetSetting("trainer", "sidestepBeamerLeftKeybind", VK_A);
-    sidestepBeamerRightKeybind = Settings::GetSetting("trainer", "sidestepBeamerRightKeybind", VK_D);
-    sidestepBeamerPressLeftKeybind = Settings::GetSetting("trainer", "sidestepBeamerPressLeftKeybind", true);
-    sidestepBeamerPressRightKeybind = Settings::GetSetting("trainer", "sidestepBeamerPressRightKeybind", false);
+    InitializeSpeedometer();
+    LoadSpeedometerWindowSettings(false);
 
     // Functions
     Menu::AddTab("Trainer", TrainerTab);
     Engine::OnTick(OnTick);
     Engine::OnRenderScene(OnRender);
 
-    Engine::OnPreDeath([]() { kg = beamer = false; });
+    Engine::OnPreDeath([]() { KickglitchToolActivated = BeamerToolActivated = false; });
 
-    Engine::OnPreLevelLoad([](const wchar_t *) { kg = beamer = false; });
+    Engine::OnPreLevelLoad([](const wchar_t *) { KickglitchToolActivated = BeamerToolActivated = false; });
 
-    Engine::OnInput([](unsigned int &msg, int keycode) {
-        if (!enabled) {
+    Engine::OnInput([](unsigned int &msg, int keycode) 
+    {
+        if (!Enabled) 
+        {
             return;
         }
 
-        if (fly.Enabled && (msg == WM_KEYDOWN || msg == WM_KEYUP) &&
-            (keycode == fly.FasterKeybind || keycode == fly.SlowerKeybind)) {
-
+        if (Fly.Enabled && (msg == WM_KEYDOWN || msg == WM_KEYUP) && (keycode == Fly.FasterKeybind || keycode == Fly.SlowerKeybind)) 
+        {
             msg = WM_NULL;
             return;
         }
 
-        if (msg == WM_KEYDOWN) {
-            if (keycode == godKeybind) {
-                god = !god;
+        if (msg == WM_KEYDOWN) 
+        {
+            if (keycode == GodKeybind) 
+            {
+                GodToolActivated = !GodToolActivated;
 
-                if (god) {
+                if (GodToolActivated) 
+                {
                     const auto pawn = Engine::GetPlayerPawn();
                     const auto controller = Engine::GetPlayerController();
 
-                    if (pawn && controller &&
-                        pawn->MovementState ==
-                            Classes::EMovement::MOVE_FallingUncontrolled) {
+                    if (pawn && pawn->Health > 0 && controller && pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled)
+                    {
+                        pawn->InitialState = "Walking";
+                        pawn->SetInitialState();
+                        controller->InitialState = "PlayerWalking";
+                        controller->SetInitialState();
 
-                        if (pawn->Health > 0) {
-                            pawn->InitialState = "Walking";
-                            pawn->SetInitialState();
-                            controller->InitialState = "PlayerWalking";
-                            controller->SetInitialState();
+                        pawn->StopAllCustomAnimations(0.0f);
+                        pawn->SetMove(Classes::EMovement::MOVE_Walking, false, false);
 
-                            pawn->StopAllCustomAnimations(0.0f);
-                            pawn->SetMove(Classes::EMovement::MOVE_Walking, false,
-                                          false);
-
-                            pawn->SetIgnoreLookInput(false);
-                            pawn->SetIgnoreMoveInput(false);
-                            controller->IgnoreButtonInput(false);
-                            controller->IgnoreLookInput(false);
-                            controller->IgnoreMoveInput(false); 
-                        } else {
-                            god = false;
-                        }
+                        pawn->SetIgnoreLookInput(false);
+                        pawn->SetIgnoreMoveInput(false);
+                        controller->IgnoreButtonInput(false);
+                        controller->IgnoreLookInput(false);
+                        controller->IgnoreMoveInput(false); 
+                    }
+                    else 
+                    {
+                        GodToolActivated = false;
                     }
                 }
             }
 
-            if (keycode == fly.Keybind) {
-                fly.Enabled = !fly.Enabled;
+            if (keycode == Fly.Keybind) 
+            {
+                Fly.Enabled = !Fly.Enabled;
 
-                if (fly.Enabled) {
+                if (Fly.Enabled) 
+                {
                     const auto pawn = Engine::GetPlayerPawn();
                     const auto controller = Engine::GetPlayerController();
 
-                    if (pawn && controller) {
-                        if (pawn->Health > 0) {
-                            pawn->InitialState = "Walking";
-                            pawn->SetInitialState();
-                            controller->InitialState = "PlayerWalking";
-                            controller->SetInitialState();
+                    if (pawn && pawn->Health > 0 && controller)
+                    {
+                        pawn->InitialState = "Walking";
+                        pawn->SetInitialState();
+                        controller->InitialState = "PlayerWalking";
+                        controller->SetInitialState();
 
-                            pawn->StopAllCustomAnimations(0.0f);
-                            pawn->SetMove(Classes::EMovement::MOVE_Walking, false,
-                                          false);
+                        pawn->StopAllCustomAnimations(0.0f);
+                        pawn->SetMove(Classes::EMovement::MOVE_Walking, false, false);
 
-                            pawn->SetIgnoreLookInput(false);
-                            pawn->SetIgnoreMoveInput(false);
-                            controller->IgnoreButtonInput(false);
-                            controller->IgnoreLookInput(false);
-                            controller->IgnoreMoveInput(false);
+                        pawn->SetIgnoreLookInput(false);
+                        pawn->SetIgnoreMoveInput(false);
+                        controller->IgnoreButtonInput(false);
+                        controller->IgnoreLookInput(false);
+                        controller->IgnoreMoveInput(false);
 
-                            fly.Velocity = {0};
-                            fly.Location = pawn->Location;
+                        Fly.Velocity = {0};
+                        Fly.Location = pawn->Location;
                         
-                            if (resetFlyingSpeed) {
-                                fly.Speed = fly.DefaultSpeed;
-                            }
-                        } else {
-                            fly.Enabled = false;
+                        if (Fly.ResetSpeed) 
+                        {
+                            Fly.Speed = Fly.DefaultSpeed;
                         }
-                    } else {
-                        fly.Enabled = false;
+                    } 
+                    else 
+                    {
+                        Fly.Enabled = false;
                     }
-                } else {
+                } 
+                else 
+                {
                     const auto pawn = Engine::GetPlayerPawn();
-                    if (pawn) {
+                    if (pawn) 
+                    {
                         static const auto fps = 62.0f;
-                        fly.Velocity.X *= fps;
-                        fly.Velocity.Y *= fps;
-                        fly.Velocity.Z *= fps;
+                        Fly.Velocity.X *= fps;
+                        Fly.Velocity.Y *= fps;
+                        Fly.Velocity.Z *= fps;
 
-                        pawn->Velocity = fly.Velocity;
+                        pawn->Velocity = Fly.Velocity;
                         pawn->bCollideWorld = true;
                         pawn->EnterFallingHeight = -1e30f;
                         pawn->Physics = Classes::EPhysics::PHYS_Falling;
@@ -1250,30 +1667,52 @@ bool Trainer::Initialize() {
                 }
             }
 
-            if (!fly.Enabled) {
-                if (keycode == kgKeybind) {
+            if (!Fly.Enabled) 
+            {
+                if (keycode == KickglitchKeybind) 
+                {
                     const auto pawn = Engine::GetPlayerPawn();
-                    if (pawn) {
-                        kg = true;
+                    if (pawn) 
+                    {
+                        KickglitchToolActivated = true;
                     }
                 }
 
-                if (keycode == beamerKeybind) {
+                if (keycode == BeamerKeybind) 
+                {
                     const auto pawn = Engine::GetPlayerPawn();
 
-                    if (pawn && pawn->MovementState ==
-                                    Classes::EMovement::MOVE_WallClimbing) {
-                        if (sidestepBeamer && sidestepBeamerForMe) {
-                            PressKey(sidestepBeamerPressLeftKeybind ? sidestepBeamerLeftKeybind : sidestepBeamerRightKeybind);
+                    if (pawn && pawn->MovementState == Classes::EMovement::MOVE_WallClimbing) 
+                    {
+                        if (SidestepBeamer && SidestepBeamerAutomatic) 
+                        {
+                            PressKey(SidestepBeamerPressLeftKeybind ? SidestepBeamerLeftKeybind : SidestepBeamerRightKeybind);
                         }
-                        beamer = true;
+                        BeamerToolActivated = true;
                     }
                 }
 
-                if (keycode == strangKeybind) {
-                    strang = true;
+                if (keycode == StrangKeybind) 
+                {
+                    StrangToolActivated = true;
                 }
             }
+        }
+    });
+
+    Menu::OnVisibilityChange([](bool show)
+    {
+        if (show == false) 
+        {
+            Speedometer.WasEditWindowShown = Speedometer.ShowEditWindow;
+            Speedometer.WasEditItemShown = Speedometer.ShowItemEditorWindow;
+            Speedometer.ShowEditWindow = false;
+            Speedometer.ShowItemEditorWindow = false;
+        }
+        else
+        {
+            Speedometer.ShowEditWindow = Speedometer.WasEditWindowShown;
+            Speedometer.ShowItemEditorWindow = Speedometer.WasEditItemShown;
         }
     });
 
@@ -1283,15 +1722,14 @@ bool Trainer::Initialize() {
         "\x00\x00\x0F\xB6\x51\x68\x81\xA1\x00\x00\x00\x00\x00\x00\x00\x00",
         "xxxx????xxxxxxx?xxx????xxxxxxxxx????xxxxxx????????");
 
-    if (!stateHandler) {
+    if (!stateHandler) 
+    {
         MessageBoxA(0, "Failed to find StateHandler", "Failure", 0);
         return false;
     }
 
-    if (!Hook::TrampolineHook(
-            StateHandlerHook, stateHandler,
-            reinterpret_cast<void **>(&StateHandlerOriginal))) {
-
+    if (!Hook::TrampolineHook(StateHandlerHook, stateHandler, reinterpret_cast<void **>(&StateHandlerOriginal))) 
+    {
         MessageBoxA(0, "Failed to hook StateHandler", "Failure", 0);
         return false;
     }
@@ -1299,4 +1737,7 @@ bool Trainer::Initialize() {
     return true;
 }
 
-std::string Trainer::GetName() { return "Trainer"; }
+std::string Trainer::GetName() 
+{ 
+    return "Trainer"; 
+}
