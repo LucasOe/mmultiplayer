@@ -3,26 +3,28 @@
 #include "imgui_mmultiplayer.h"
 #include <windows.h>
 
-namespace ImGui {
-    ImGuiWindow *BeginRawScene(const char *name)  { 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
-        ImGui::Begin(name, nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus);
+namespace ImGui 
+{
+    ImGuiWindow *BeginRawScene(const char *name)  
+    { 
+        PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
+        PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
+        Begin(name, nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus);
 
-        auto &io = ImGui::GetIO();
-        ImGui::SetWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-        ImGui::SetWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.y), ImGuiCond_Always);
-        ImGui::GetCurrentWindow()->DrawList->PushClipRectFullScreen();
+        SetWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+        SetWindowSize(ImVec2(GetIO().DisplaySize), ImGuiCond_Always);
+        GetCurrentWindow()->DrawList->PushClipRectFullScreen();
 
-        return ImGui::GetCurrentWindow();
+        return GetCurrentWindow();
     }
 
-    void EndRawScene() { 
-        ImGui::PopClipRect();
-        ImGui::End();
-        ImGui::PopStyleColor();
-        ImGui::PopStyleVar(2);
+    void EndRawScene() 
+    { 
+        PopClipRect();
+        End();
+        PopStyleColor();
+        PopStyleVar(2);
     }
 
     static const char *VK_TO_KEY[] = {
@@ -283,12 +285,14 @@ namespace ImGui {
         "",                  // fe
     };
 
-    bool Hotkey(const char *label, int *k, const ImVec2 &size_arg) {
-        if (*k < 0 || *k >= sizeof(VK_TO_KEY) / sizeof(VK_TO_KEY[0])) {
+    bool Hotkey(const char* label, int* k, const ImVec2& size_arg) 
+    {
+        if (*k < 0 || *k >= sizeof(VK_TO_KEY) / sizeof(VK_TO_KEY[0])) 
+        {
             *k = 0;
         }
 
-        ImGuiWindow *window = ImGui::GetCurrentWindow();
+        ImGuiWindow *window = GetCurrentWindow();
         if (window->SkipItems)
             return false;
 
@@ -297,47 +301,55 @@ namespace ImGui {
         const ImGuiStyle &style = g.Style;
 
         const ImGuiID id = window->GetID(label);
-        const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
-        ImVec2 size = ImGui::CalcItemSize(size_arg, ImGui::CalcItemWidth(), label_size.y + style.FramePadding.y * 2.0f);
+        const ImVec2 label_size = CalcTextSize(label, NULL, true);
+        ImVec2 size = CalcItemSize(size_arg, CalcItemWidth(), label_size.y + style.FramePadding.y * 2.0f);
 
         const ImRect frame_bb(window->DC.CursorPos + ImVec2(label_size.x + style.ItemInnerSpacing.x, 0.0f), window->DC.CursorPos + size);
         const ImRect total_bb(window->DC.CursorPos, frame_bb.Max);
 
-        ImGui::ItemSize(total_bb, style.FramePadding.y);
-        if (!ImGui::ItemAdd(total_bb, id))
+        ItemSize(total_bb, style.FramePadding.y);
+        if (!ItemAdd(total_bb, id))
             return false;
 
         const bool focus_requested = g.ActiveId == id;
-        const bool hovered = ImGui::ItemHoverable(frame_bb, id, ImGuiActivateFlags_None);
+        const bool hovered = ItemHoverable(frame_bb, id, ImGuiActivateFlags_None);
 
-        if (hovered) {
-            ImGui::SetHoveredID(id);
+        if (hovered) 
+        {
+            SetHoveredID(id);
             g.MouseCursor = ImGuiMouseCursor_TextInput;
         }
 
         const bool user_clicked = hovered && io.MouseClicked[0];
 
-        if (focus_requested || user_clicked) {
-            if (g.ActiveId != id) {
+        if (focus_requested || user_clicked) 
+        {
+            if (g.ActiveId != id) 
+            {
                 // Start edition
                 memset(io.MouseDown, 0, sizeof(io.MouseDown));
                 memset(io.KeysDown, 0, sizeof(io.KeysDown));
                 *k = 0;
             }
-            ImGui::SetActiveID(id, window);
-            ImGui::FocusWindow(window);
-        } else if (io.MouseClicked[0]) {
+            SetActiveID(id, window);
+            FocusWindow(window);
+        } 
+        else if (io.MouseClicked[0]) 
+        {
             // Release focus when we click outside
             if (g.ActiveId == id)
-                ImGui::ClearActiveID();
+                ClearActiveID();
         }
 
         bool value_changed = false;
         int key = *k;
 
-        if (g.ActiveId == id) {
-            for (auto i = 0; i < 5; i++) {
-                if (io.MouseDown[i]) {
+        if (g.ActiveId == id) 
+        {
+            for (auto i = 0; i < 5; i++) 
+            {
+                if (io.MouseDown[i]) 
+                {
                     switch (i) {
                     case 0:
                         key = VK_LBUTTON;
@@ -356,63 +368,82 @@ namespace ImGui {
                         break;
                     }
                     value_changed = true;
-                    ImGui::ClearActiveID();
+                    ClearActiveID();
                 }
             }
-            if (!value_changed) {
-                for (auto i = VK_BACK; i <= VK_RMENU; i++) {
-                    if (io.KeysDown[i]) {
+            if (!value_changed) 
+            {
+                for (auto i = VK_BACK; i <= VK_RMENU; i++) 
+                {
+                    if (io.KeysDown[i]) 
+                    {
                         key = i;
                         value_changed = true;
-                        ImGui::ClearActiveID();
+                        ClearActiveID();
                     }
                 }
             }
 
-            if (IsKeyPressedMap(ImGuiKey_Escape)) {
+            if (IsKeyPressedMap(ImGuiKey_Escape)) 
+            {
                 *k = 0;
-                ImGui::ClearActiveID();
-            } else {
+                ClearActiveID();
+            } 
+            else 
+            {
                 *k = key;
             }
         }
 
         char buf_display[64] = "None";
-        ImGui::RenderFrame(frame_bb.Min, frame_bb.Max, ImGui::GetColorU32(ImVec4(0.20f, 0.25f, 0.30f, 1.0f)), true, style.FrameRounding);
+        RenderFrame(frame_bb.Min, frame_bb.Max, GetColorU32(ImVec4(0.20f, 0.25f, 0.30f, 1.0f)), true, style.FrameRounding);
 
-        if (*k != 0 && g.ActiveId != id) {
+        if (*k != 0 && g.ActiveId != id) 
+        {
             strcpy_s(buf_display, VK_TO_KEY[*k]);
-        } else if (g.ActiveId == id) {
+        } 
+        else if (g.ActiveId == id) 
+        {
             strcpy_s(buf_display, "<Press a key>");
         }
 
         const ImRect clip_rect(frame_bb.Min.x, frame_bb.Min.y, frame_bb.Min.x + size.x,frame_bb.Min.y + size.y);
         ImVec2 render_pos = frame_bb.Min + style.FramePadding;
-        ImGui::RenderTextClipped(frame_bb.Min + style.FramePadding, frame_bb.Max - style.FramePadding, buf_display, NULL, NULL, style.ButtonTextAlign, &clip_rect);
+        RenderTextClipped(frame_bb.Min + style.FramePadding, frame_bb.Max - style.FramePadding, buf_display, NULL, NULL, style.ButtonTextAlign, &clip_rect);
 
         if (label_size.x > 0)
-            ImGui::RenderText(ImVec2(total_bb.Min.x, frame_bb.Min.y + style.FramePadding.y), label);
+            RenderText(ImVec2(total_bb.Min.x, frame_bb.Min.y + style.FramePadding.y), label);
 
         return value_changed;
     }
 
-    void Separator(const float height) 
+    void Separator(const float& height) 
     { 
-        ImGui::Dummy(ImVec2(0.0f, height / 2.0f));
-        ImGui::Separator();
-        ImGui::Dummy(ImVec2(0.0f, height / 2.0f));
+        Dummy(ImVec2(0, height / 2));
+        Separator();
+        Dummy(ImVec2(0, height / 2));
     }
     
     void HelpMarker(const char* desc)
     {
-        ImGui::SameLine();
-        ImGui::TextDisabled("(?)");
-        if (ImGui::BeginItemTooltip())
+        SameLine();
+        TextDisabled("(?)");
+        if (BeginItemTooltip())
         {
-            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-            ImGui::TextUnformatted(desc);
-            ImGui::PopTextWrapPos();
-            ImGui::EndTooltip();
+            PushTextWrapPos(GetFontSize() * 35.0f);
+            TextUnformatted(desc);
+            PopTextWrapPos();
+            EndTooltip();
         }
+    }
+
+    void DummyVertical(const float& height)
+    {
+        Dummy(ImVec2(0, height));
+    }
+
+    bool SmallArrowButton(const char* str_id, ImGuiDir dir, ImVec2 size)
+    {
+        return ArrowButtonEx(str_id, dir, size);
     }
 }

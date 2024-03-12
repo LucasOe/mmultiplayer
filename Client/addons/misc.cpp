@@ -1,325 +1,353 @@
 #include <codecvt>
 
 #include "../engine.h"
-#include "../hook.h"
 #include "../imgui/imgui.h"
 #include "../menu.h"
-#include "../pattern.h"
 #include "../settings.h"
 #include "../util.h"
 #include "misc.h"
 
-static bool enabled = false;
-static std::string levelName;
+static bool Enabled = false;
+static std::string LevelName;
 
-static bool noConsequtiveWallrunsLimit = false;
-static bool autorollEnabled = false;
-static bool noHealthRegenerationEnabled = false;
-static bool permanentReactionTimeEnabled = false;
-static bool permanentGameSpeedEnabled = false;
-static float permanentGameSpeed = 0.25f;
-static bool noWallrunChallenge = false;
-static bool noWallclimbChallenge = false;
+static bool ConsequtiveWallrunsLimitRemoved = false;
+static bool AutorollEnabled = false;
+static bool PermanentReactionTimeEnabled = false;
+static bool PermanentGameSpeedEnabled = false;
+static float PermanentGameSpeed = 0.25f;
+static bool NoWallrunChallenge = false;
+static bool NoWallclimbChallenge = false;
+static bool NoHealthRegenerationEnabled = false;
 
-static bool ohkoEnabled = false;
-static EOhko ohkoType = EOhko::Normal;
-static int ohkoHealth = 100;
+enum class EOhko : uint8_t 
+{
+    Normal,
+    Extreme,
+};
 
-static void MiscTab() { 
-    if (ImGui::Checkbox("Enabled", &enabled)) {
-        Settings::SetSetting("misc", "enabled", enabled);
+static struct
+{
+    bool Enabled = false;
+    EOhko Type = EOhko::Normal;
+    int Health = 100;
+} OneHitKnockOut;
+
+static void MiscTab() 
+{ 
+    if (ImGui::Checkbox("Enabled", &Enabled)) 
+    {
+        Settings::SetSetting({ "Misc", "Enabled" }, Enabled);
     }
 
-    if (!enabled) {
+    if (!Enabled) 
+    {
         return;
     }
 
     auto pawn = Engine::GetPlayerPawn();
-    if (!pawn) {
-        return;
-    }
-
     auto controller = Engine::GetPlayerController();
-    if (!controller) {
+
+    if (!pawn || !controller) 
+    {
         return;
     }
 
     ImGui::Separator(5.0f);
 
     // Auto Roll
-    if (ImGui::Checkbox("Auto Roll", &autorollEnabled)) {
-        Settings::SetSetting("misc", "autorollEnabled", autorollEnabled);
+    if (ImGui::Checkbox("Auto Roll", &AutorollEnabled)) 
+    {
+        Settings::SetSetting({ "Misc", "AutorollEnabled" }, AutorollEnabled);
 
-        if (!autorollEnabled) {
+        if (!AutorollEnabled) 
+        {
             pawn->RollTriggerTime = 0.0f;
         }
     }
-
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        if (!ohkoEnabled && !noHealthRegenerationEnabled) {
-            ImGui::SetTooltip("Remember the auto roll bug? If enabled, it will auto roll for you");
-        } else {
-            ImGui::SetTooltip("What's the point of ohko or no health regeneration if auto rolling is on?");
-        }
-    }
+    ImGui::HelpMarker("If enabled, it will automatically roll every time for you");
 
     // Consequtive Wallruns
-    if (ImGui::Checkbox("No Consequtive Wallruns Limit", &noConsequtiveWallrunsLimit)) {
-        Settings::SetSetting("misc", "consequtiveWallrunsLimitRemoved", noConsequtiveWallrunsLimit);
+    if (ImGui::Checkbox("No Consequtive Wallruns Limit", &ConsequtiveWallrunsLimitRemoved)) 
+    {
+        Settings::SetSetting({ "Misc", "ConsequtiveWallrunsLimitRemoved" }, ConsequtiveWallrunsLimitRemoved);
     }
+    ImGui::HelpMarker("Removes the limit so you can wallrun, jump to another wall and wallrun ");
 
     // No Wallrun Challenge
-    if (ImGui::Checkbox("No Wallrun Challenge", &noWallrunChallenge)) {
-        Settings::SetSetting("misc", "noWallrunChallenge", noWallrunChallenge);
+    if (ImGui::Checkbox("No Wallrun Challenge", &NoWallrunChallenge)) 
+    {
+        Settings::SetSetting({ "Misc", "Challenges", "NoWallrun" }, NoWallrunChallenge);
     }
-
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("Wallrun and you start from new game");
-    }
+    ImGui::HelpMarker("If you wallrun you start from new game");
 
     // No Wallclimb Challenge
-    if (ImGui::Checkbox("No Wallclimb Challenge", &noWallclimbChallenge)) {
-        Settings::SetSetting("misc", "noWallclimbChallenge", noWallclimbChallenge);
+    if (ImGui::Checkbox("No Wallclimb Challenge", &NoWallclimbChallenge)) 
+    {
+        Settings::SetSetting({ "Misc", "Challenges", "NoWallclimb"}, NoWallclimbChallenge);
     }
-
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("Wallclimb and you start from new game");
-    }
+    ImGui::HelpMarker("If you wallclimb you start from new game");
 
     // No Health Regeneration
-    if (!ohkoEnabled) {
-        if (ImGui::Checkbox("No Health Regeneration", &noHealthRegenerationEnabled)) {
-            Settings::SetSetting("misc", "noHealthRegenerationEnabled", noHealthRegenerationEnabled);
+    if (!OneHitKnockOut.Enabled) 
+    {
+        if (ImGui::Checkbox("No Health Regeneration", &NoHealthRegenerationEnabled)) 
+        {
+            Settings::SetSetting({ "Misc", "Challenges", "NoHealthRegeneration" }, NoHealthRegenerationEnabled);
             
-            ohkoHealth = 100;
+            OneHitKnockOut.Health = 100;
             pawn->Health = pawn->MaxHealth;
         }
 
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("Health regeneration is turned off. If you have 100 health and take 15 damage, you'll have 85 health for the rest of the game.\nIf you reach 0 health, it will start a new game for you");
-        }
+        ImGui::HelpMarker("Health regeneration is turned off. If you have 100 health and take 15 damage, you'll have 85 health for the rest of the game.\nIf you reach 0 health, it will start a new game for you");
+    }
+    else
+    {
+        ImGui::BeginDisabled();
+        ImGui::Checkbox("No Health Regeneration", &NoHealthRegenerationEnabled);
+        ImGui::HelpMarker("One Hit KO is on and this can't be enabled. It is the same except in One Hit KO, there's no health regeneration");
+        ImGui::EndDisabled();
     }
 
     // Permanent Reaction Time
-    if (ImGui::Checkbox("Permanent Reaction Time", &permanentReactionTimeEnabled)) {
-        Settings::SetSetting("misc", "permanentReactionTimeEnabled", permanentReactionTimeEnabled);
-        Settings::SetSetting("misc", "permanentGameSpeedEnabled", permanentGameSpeedEnabled = false);
+    if (ImGui::Checkbox("Permanent Reaction Time", &PermanentReactionTimeEnabled)) 
+    {
+        Settings::SetSetting({ "Misc", "PermanentReactionTimeEnabled" }, PermanentReactionTimeEnabled);
+        Settings::SetSetting({ "Misc", "PermanentGameSpeedEnabled" }, PermanentGameSpeedEnabled = false);
 
         pawn->WorldInfo->TimeDilation = 1.0f;
     }
-
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("Once reactiontime is activated, it will be on forever until faith die, level changed, or deactivated.\nCan't be used in timetrials");
-    }
+    ImGui::HelpMarker("Once reactiontime is activated, it will be on forever until faith die, level changed, or deactivated.\nCan't be used in timetrials");
 
     // Permanent Game Speed
-    if (ImGui::Checkbox("Permanent Game Speed", &permanentGameSpeedEnabled)) {
-        Settings::SetSetting("misc", "permanentGameSpeedEnabled", permanentGameSpeedEnabled);
-        Settings::SetSetting("misc", "permanentReactionTimeEnabled", permanentReactionTimeEnabled = false);
+    if (ImGui::Checkbox("Permanent Game Speed", &PermanentGameSpeedEnabled)) 
+    {
+        Settings::SetSetting({ "Misc", "PermanentGameSpeedEnabled" }, PermanentGameSpeedEnabled);
+        Settings::SetSetting({ "Misc", "PermanentReactionTimeEnabled" }, PermanentReactionTimeEnabled = false);
 
-        if (!permanentGameSpeedEnabled) {
+        if (!PermanentGameSpeedEnabled) 
+        {
             pawn->WorldInfo->TimeDilation = 1.0f; 
         }
     }
+    ImGui::HelpMarker("Is always active, it will be forever on until deactivated. Can be used in timetrials");
 
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("Is always active, it will be forever on until deactivated. Can be used in timetrials");
-    }
-
-    if (permanentGameSpeedEnabled) {
-        if (ImGui::InputFloat("Game Speed", &permanentGameSpeed, 0.1f, 0.5f, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue)) {
-            Settings::SetSetting("misc", "permanentGameSpeed", permanentGameSpeed = max(0.1f, permanentGameSpeed));
+    if (PermanentGameSpeedEnabled) 
+    {
+        if (ImGui::InputFloat("Game Speed", &PermanentGameSpeed, 0.1f, 0.5f, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue)) 
+        {
+            Settings::SetSetting({ "Misc", "PermanentGameSpeed" }, PermanentGameSpeed = max(0.1f, PermanentGameSpeed));
         }
     }
 
     // One Hit Knock Down
-    if (!noHealthRegenerationEnabled) 
+    if (!NoHealthRegenerationEnabled) 
     {
-        if (ImGui::Checkbox("Ohko", &ohkoEnabled)) {
-            Settings::SetSetting("misc", "ohkoEnabled", ohkoEnabled);
+        if (ImGui::Checkbox("One Hit KO", &OneHitKnockOut.Enabled))
+        {
+            Settings::SetSetting({ "Misc", "OneHitKnockOut", "Enabled" }, OneHitKnockOut.Enabled);
 
-            ohkoHealth = 100;
+            OneHitKnockOut.Health = 100;
             pawn->Health = pawn->MaxHealth;
         }
 
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("One Hit Knock Out");
-        }
-
         // Ohko Type Settings
-        if (ohkoEnabled) {
-            ImGui::Dummy(ImVec2(0.0f, 6.0f));
-            ImGui::Text("Ohko Type");
+        if (OneHitKnockOut.Enabled)
+        {
+            ImGui::DummyVertical(5.0f);
+            ImGui::Text("Type");
 
-            if (ImGui::RadioButton("Normal", ohkoType == EOhko::Normal)) {
-                Settings::SetSetting("misc", "ohkoType", ohkoType = EOhko::Normal);
+            if (ImGui::RadioButton("Normal", OneHitKnockOut.Type == EOhko::Normal))
+            {
+                Settings::SetSetting({ "Misc", "OneHitKnockOut", "Type" }, OneHitKnockOut.Type = EOhko::Normal);
             }
+            ImGui::HelpMarker("If you take any damage at all, you'll respawn at the last checkpoint");
 
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-                ImGui::SetTooltip("If you take any damage at all, you'll respawn at the last checkpoint");
+            if (ImGui::RadioButton("Extreme", OneHitKnockOut.Type == EOhko::Extreme))
+            {
+                Settings::SetSetting({ "Misc", "OneHitKnockOut", "Type" }, OneHitKnockOut.Type = EOhko::Extreme);
             }
-
-            if (ImGui::RadioButton("Extreme", ohkoType == EOhko::Extreme)) {
-                Settings::SetSetting("misc", "ohkoType", ohkoType = EOhko::Extreme);
-            }
-
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-                ImGui::SetTooltip("If you take any damage at all, it will instantly start a new game");
-            }
+            ImGui::HelpMarker("If you take any damage at all, it will instantly start a new game");
         }
     }
-}
-
-static void OnRender(IDirect3DDevice9 *) {
-    if (!enabled) {
-        return;
+    else
+    {
+        ImGui::BeginDisabled();
+        ImGui::Checkbox("One Hit KO", &OneHitKnockOut.Enabled);
+        ImGui::EndDisabled();
     }
 }
 
-static void StartNewGame() {
-    auto const gameInfo = static_cast<Classes::ATdGameInfo *>(Engine::GetWorld()->Game);
+static void StartNewGame() 
+{
+    const auto gameInfo = static_cast<Classes::ATdGameInfo *>(Engine::GetWorld()->Game);
     gameInfo->TdGameData->StartNewGameWithTutorial(true);
 
-    ohkoHealth = 100;
+    OneHitKnockOut.Health = 100;
 }
 
-static void OnTick(float deltaTime) {
-    if (!enabled) {
+static void OnTick(float deltaTime) 
+{
+    if (!Enabled) 
+    {
         return;
     }
 
     auto world = Engine::GetWorld();
-    if (!world) {
+    if (!world) 
+    {
         return;
     }
 
-    if (!permanentReactionTimeEnabled && permanentGameSpeedEnabled) {
-        world->TimeDilation = permanentGameSpeed;
+    if (!PermanentReactionTimeEnabled && PermanentGameSpeedEnabled) 
+    {
+        world->TimeDilation = PermanentGameSpeed;
     }
 
     auto pawn = Engine::GetPlayerPawn();
-    if (!pawn) {
-        return;
-    }
-
     auto controller = Engine::GetPlayerController();
-    if (!controller) {
+    if (!pawn || !controller) 
+    {
         return;
     }
 
-    if (!permanentReactionTimeEnabled && permanentGameSpeedEnabled) {
+    if (!PermanentReactionTimeEnabled && PermanentGameSpeedEnabled) 
+    {
         controller->ReactionTimeEnergy = 0.0f;
     }
 
-    if (permanentReactionTimeEnabled && !permanentGameSpeedEnabled) {
-        if (controller->bReactionTime && controller->ReactionTimeEnergy <= 50.f) {
-            controller->ReactionTimeEnergy = 50.f;
+    if (PermanentReactionTimeEnabled && !PermanentGameSpeedEnabled) 
+    {
+        if (controller->bReactionTime && controller->ReactionTimeEnergy <= 50.0f) 
+        {
+            controller->ReactionTimeEnergy = 50.0f;
         }
     }
 
-    if (levelName.empty()) {
-        levelName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(
-            pawn->WorldInfo->GetMapName(false).c_str());
+    if (LevelName.empty()) 
+    {
+        LevelName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(pawn->WorldInfo->GetMapName(false).c_str());
 
-        std::transform(levelName.begin(), levelName.end(),
-                       levelName.begin(), [](char c) { return tolower(c); });
+        std::transform(LevelName.begin(), LevelName.end(),LevelName.begin(), [](char c) 
+        {
+            return tolower(c); 
+        });
     }
 
-    if (ohkoEnabled && levelName != Map_MainMenu &&
-        (pawn->EnterFallingHeight != -1e30f && pawn->Health != pawn->MaxHealth)) {
-        if (ohkoType == EOhko::Normal) {
+    if (OneHitKnockOut.Enabled && LevelName != Map_MainMenu && (pawn->EnterFallingHeight != -1e30f && pawn->Health != pawn->MaxHealth))
+    {
+        if (OneHitKnockOut.Type == EOhko::Normal)
+        {
             pawn->RegenerateDelay = 5;
             pawn->RegenerateHealthPerSecond = 25;
 
-            if (pawn->Health != pawn->MaxHealth) {
+            if (pawn->Health != pawn->MaxHealth) 
+            {
                 pawn->Suicide();
             }
-        } else if (ohkoType == EOhko::Extreme) {
-            if (pawn->Health != pawn->MaxHealth) {
+        } 
+        else if (OneHitKnockOut.Type == EOhko::Extreme)
+        {
+            if (pawn->Health != pawn->MaxHealth) 
+            {
                 StartNewGame();
             }
         }
     }
 
-    if (noHealthRegenerationEnabled && levelName != Map_MainMenu &&
-        (pawn->EnterFallingHeight != -1e30f && pawn->Health != pawn->MaxHealth)) {
-
+    if (NoHealthRegenerationEnabled && LevelName != Map_MainMenu && (pawn->EnterFallingHeight != -1e30f && pawn->Health != pawn->MaxHealth)) 
+    {
         pawn->RegenerateDelay = 0;
         pawn->RegenerateHealthPerSecond = 0;
 
-        if (ohkoHealth != pawn->Health) {
-            if (pawn->Health == pawn->MaxHealth) {
-                pawn->Health = ohkoHealth;
-            } else if (pawn->Health <= 0) {
+        if (OneHitKnockOut.Health != pawn->Health)
+        {
+            if (pawn->Health == pawn->MaxHealth) 
+            {
+                pawn->Health = OneHitKnockOut.Health;
+            } 
+            else if (pawn->Health <= 0) 
+            {
                 StartNewGame();
-            } else {
-                if (ohkoHealth > pawn->Health) {
-                    ohkoHealth = pawn->Health;
+            } 
+            else 
+            {
+                if (OneHitKnockOut.Health > pawn->Health)
+                {
+                    OneHitKnockOut.Health = pawn->Health;
                 }
 
-                if (ohkoHealth <= 0) {
+                if (OneHitKnockOut.Health <= 0)
+                {
                     StartNewGame();
                 }
             }
         }
     }
 
-    if (noConsequtiveWallrunsLimit) {
-        if (pawn->MovementState == Classes::EMovement::MOVE_WallRunningLeft ||
-            pawn->MovementState == Classes::EMovement::MOVE_WallRunningRight) {
-
+    if (ConsequtiveWallrunsLimitRemoved) 
+    {
+        if (pawn->MovementState == Classes::EMovement::MOVE_WallRunningLeft || pawn->MovementState == Classes::EMovement::MOVE_WallRunningRight) 
+        {
             const auto wallrun = static_cast<Classes::UTdMove_WallRun *>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_WallRunningRight)]);
 
-            if (wallrun) {
-                if (wallrun->ConsequtiveWallruns > 0) {
-                    wallrun->ConsequtiveWallruns = 0;
-                }
+            if (wallrun && wallrun->ConsequtiveWallruns > 0) 
+            {
+                wallrun->ConsequtiveWallruns = 0;
             }
         }
     }
 
-    if (autorollEnabled) {
+    if (AutorollEnabled) 
+    {
         pawn->RollTriggerTime = 1e30f;
     }
 
-    if (noWallrunChallenge) {
-        if (pawn->MovementState == Classes::EMovement::MOVE_WallRunningLeft ||
-            pawn->MovementState == Classes::EMovement::MOVE_WallRunningRight) {
+    if (NoWallrunChallenge) 
+    {
+        if (pawn->MovementState == Classes::EMovement::MOVE_WallRunningLeft || pawn->MovementState == Classes::EMovement::MOVE_WallRunningRight) 
+        {
             StartNewGame();
         }
     }
 
-    if (noWallclimbChallenge) {
-        if (pawn->MovementState == Classes::EMovement::MOVE_WallClimbing) {
+    if (NoWallclimbChallenge) 
+    {
+        if (pawn->MovementState == Classes::EMovement::MOVE_WallClimbing) 
+        {
             StartNewGame();
         }
     }
 }
 
-bool Misc::Initialize() {
-    enabled = Settings::GetSetting("misc", "enabled", false);
+bool Misc::Initialize() 
+{
+    Enabled = Settings::GetSetting({ "Misc", "Enabled" }, false);
 
-    noConsequtiveWallrunsLimit = Settings::GetSetting("misc", "consequtiveWallrunsLimitRemoved", false);
-    autorollEnabled = Settings::GetSetting("misc", "autorollEnabled", false);
-    permanentReactionTimeEnabled = Settings::GetSetting("misc", "permanentReactionTimeEnabled", false);
-    permanentGameSpeedEnabled = Settings::GetSetting("misc", "permanentGameSpeedEnabled", false);
-    permanentGameSpeed = Settings::GetSetting("misc", "permanentGameSpeed", 0.25f);
-    noWallrunChallenge = Settings::GetSetting("misc", "noWallrunChallenge", false);
-    noWallclimbChallenge = Settings::GetSetting("misc", "noWallclimbChallenge", false);
+    ConsequtiveWallrunsLimitRemoved = Settings::GetSetting({ "Misc", "ConsequtiveWallrunsLimitRemoved" }, false);
+    AutorollEnabled = Settings::GetSetting({ "Misc", "AutorollEnabled" }, false);
+    PermanentReactionTimeEnabled = Settings::GetSetting({ "Misc", "PermanentReactionTimeEnabled" }, false);
+    PermanentGameSpeedEnabled = Settings::GetSetting({ "Misc", "PermanentGameSpeedEnabled" }, false);
+    PermanentGameSpeed = Settings::GetSetting({ "Misc", "PermanentGameSpeed" }, 0.25f);
+    NoWallrunChallenge = Settings::GetSetting({ "Misc", "Challenges", "NoWallrun" }, false);
+    NoWallclimbChallenge = Settings::GetSetting({ "Misc", "Challenges", "NoWallclimb" }, false);
+    NoHealthRegenerationEnabled = Settings::GetSetting({ "Misc", "Challenges", "NoHealthRegeneration" }, false);
 
-    ohkoEnabled = Settings::GetSetting("misc", "ohkoEnabled", false);
-    ohkoType = Settings::GetSetting("misc", "ohkoType", EOhko::Normal).get<EOhko>();
+    OneHitKnockOut.Enabled = Settings::GetSetting({ "Misc", "OneHitKnockOut", "Enabled" }, false);
+    OneHitKnockOut.Type = Settings::GetSetting({ "Misc", "OneHitKnockOut", "Type" }, EOhko::Normal).get<EOhko>();
 
     Menu::AddTab("Misc", MiscTab);
     Engine::OnTick(OnTick);
-    Engine::OnRenderScene(OnRender);
 
-    Engine::OnPostLevelLoad([](const wchar_t *newLevelName) {
-        levelName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(newLevelName);
-        std::transform(levelName.begin(), levelName.end(), levelName.begin(), [](char c) { return tolower(c); });
+    Engine::OnPostLevelLoad([](const wchar_t *newLevelName) 
+    {
+        LevelName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(newLevelName);
+        std::transform(LevelName.begin(), LevelName.end(), LevelName.begin(), [](char c) { return tolower(c); });
     });
 
     return true;
 }
 
-std::string Misc::GetName() { return "Misc"; }
+std::string Misc::GetName() 
+{ 
+    return "Misc"; 
+}
