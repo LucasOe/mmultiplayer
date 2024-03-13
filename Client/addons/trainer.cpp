@@ -6,7 +6,6 @@
 #include "../pattern.h"
 #include "../settings.h"
 #include "../util.h"
-#include "misc.h"
 
 static bool Enabled = false;
 static bool GodToolActivated = false;
@@ -17,7 +16,7 @@ static bool ToggleResetKeybinds = false;
 static bool ShowToolActivatedOverlay = true;
 
 static Trainer::Save save;
-static bool hasSave = false;
+static bool HasSave = false;
 
 static bool SidestepBeamer = false;
 static bool SidestepBeamerAutomatic = false;
@@ -361,14 +360,12 @@ struct Tracker
 {
     float Value;
     float TimeHit;
-    bool UseRealTime;
     float ResetAfterSeconds;
 
     Tracker()
     {
         Value = 0.0f;
         TimeHit = 0.0f;
-        UseRealTime = true;
 
         // 2.75f Comes from checking how long it took for the original speedometer to reset
         ResetAfterSeconds = 2.75f;
@@ -385,9 +382,7 @@ struct Tracker
         const auto pawn = Engine::GetPlayerPawn();
         if (pawn)
         {
-            const float time = UseRealTime ? pawn->WorldInfo->RealTimeSeconds : pawn->WorldInfo->TimeSeconds;
-
-            if (time - TimeHit > ResetAfterSeconds)
+            if (pawn->WorldInfo->RealTimeSeconds - TimeHit > ResetAfterSeconds)
             {
                 Reset();
             }
@@ -395,7 +390,7 @@ struct Tracker
             if (current > Value)
             {
                 Value = current;
-                TimeHit = time;
+                TimeHit = pawn->WorldInfo->RealTimeSeconds;
             }
         }
     }
@@ -922,7 +917,7 @@ static void TrainerTab()
                 }
             }
 
-            if (hasSave) 
+            if (HasSave) 
             {
                 if (sepatatorAdded)
                 {
@@ -935,13 +930,13 @@ static void TrainerTab()
 
                 if (ImGui::Button("Reset Save##Trainer-ResetSave")) 
                 {
-                    hasSave = false;
+                    HasSave = false;
                 }
             }
 
             if (HasCheckpoint) 
             {
-                if (hasSave || sepatatorAdded)
+                if (HasSave || sepatatorAdded)
                 {
                     ImGui::SameLine();
                 }
@@ -1383,10 +1378,10 @@ static void OnTick(const float deltaTime)
     if (Engine::IsKeyDown(SaveKeybind)) 
     {
         Save(save, pawn, controller);
-        hasSave = true;
+        HasSave = true;
     }
 
-    if (hasSave && Engine::IsKeyDown(LoadKeybind)) 
+    if (HasSave && Engine::IsKeyDown(LoadKeybind)) 
     {
         if (SidestepBeamer && SidestepBeamerAutomatic) 
         {
