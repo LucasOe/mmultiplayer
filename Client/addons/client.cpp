@@ -1472,7 +1472,7 @@ static void MultiplayerTab()
 
 static void GamesTab() 
 {
-    if (ImGui::TreeNode("Tag##Games-Tag"))
+    ImGui::SeparatorText("Tag##Games-Tag");
     {
         if (ImGui::Checkbox("Distance Overlay##tag-distance-overlay", &ShowTagDistanceOverlay))
         {
@@ -1555,8 +1555,6 @@ static void GamesTab()
                 }
             }
         }
-
-        ImGui::TreePop();
     }
 }
 
