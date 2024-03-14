@@ -356,19 +356,18 @@ static Item LastJumpLocation;
 static Item LastJumpLocationDelta;
 static std::vector<Item*> Items;
 
+template<typename T> 
 struct Tracker
 {
-    float Value;
+    T Value;
     float TimeHit;
     float ResetAfterSeconds;
 
     Tracker()
     {
-        Value = 0.0f;
+        Value = T();
         TimeHit = 0.0f;
-
-        // 2.75f Comes from checking how long it took for the original speedometer to reset
-        ResetAfterSeconds = 2.75f;
+        ResetAfterSeconds = 2.75f; // 2.75f Comes from checking how long it took for the original speedometer to reset
     }
 
     void Reset()
@@ -377,7 +376,7 @@ struct Tracker
         TimeHit = 0.0f;
     }
 
-    void Update(const float current)
+    void Update(const T current)
     {
         const auto pawn = Engine::GetPlayerPawn();
         if (pawn)
@@ -396,8 +395,8 @@ struct Tracker
     }
 };
 
-static Tracker TopHeightTracker;
-static Tracker TopSpeedTracker;
+static Tracker<float> TopHeightTracker;
+static Tracker<float> TopSpeedTracker;
 
 static void(__thiscall *StateHandlerOriginal)(void *, float, int) = nullptr;
 
@@ -538,8 +537,7 @@ static void Save(Trainer::Save &save, Classes::ATdPlayerPawn *pawn, Classes::ATd
         save.Pawn.bCollideWorld = true;
         save.Pawn.bConstrainLook = false;
         save.Pawn.MovementState = Classes::EMovement::MOVE_Walking;
-        save.Pawn.CollisionType =
-            Classes::ECollisionType::COLLIDE_TouchAllButWeapons;
+        save.Pawn.CollisionType = Classes::ECollisionType::COLLIDE_BlockAllButWeapons;
         save.Pawn.Physics = Classes::EPhysics::PHYS_Walking;
         save.Controller.bIgnoreLookInput = false;
         save.Controller.bIgnoreMoveInput = false;
@@ -830,7 +828,7 @@ static void InitializeSpeedometer()
     SortItemsOrder();
 }
 
-static void ProcessHotkey(const char* label, int* key, std::vector<std::string> settings, int defaultValue) 
+static void ProcessHotkey(const char* label, int* key, const std::vector<std::string> settings, const int defaultValue)
 {
     if (settings.empty())
     {
@@ -1028,6 +1026,35 @@ static void TrainerTab()
 
 static void OnRender(IDirect3DDevice9* device)
 {
+    /*
+    auto pawn = Engine::GetPlayerPawn();
+    auto controller = Engine::GetPlayerController();
+
+    if (pawn && controller)
+    {
+        ImGui::Begin("Debug", NULL);
+
+        ImGui::SeparatorText("Pawn##Debug-Pawn");
+        {
+            ImGui::Text("bCollideWorld: %s", pawn->bCollideWorld ? "True" : "False");
+            ImGui::Text("bConstrainLook: %s", pawn->bConstrainLook ? "True" : "False");
+            ImGui::Text("MovementState: %d", static_cast<int>(pawn->MovementState.GetValue()));
+            ImGui::Text("CollisionType: %d", static_cast<int>(pawn->CollisionType.GetValue()));
+            ImGui::Text("Physics: %d", static_cast<int>(pawn->Physics.GetValue()));
+        }
+
+        ImGui::SeparatorText("Controller##Debug-Controller");
+        {
+            ImGui::Text("bIgnoreLookInput: %s", controller->bIgnoreLookInput ? "True" : "False");
+            ImGui::Text("bIgnoreMoveInput: %s", controller->bIgnoreMoveInput ? "True" : "False");
+            ImGui::Text("bIgnoreButtonInput: %s", controller->bIgnoreButtonInput ? "True" : "False");
+            ImGui::Text("bIgnoreMovementFocus: %s", controller->bIgnoreMovementFocus ? "True" : "False");
+        }
+
+        ImGui::End();
+    }
+    */
+
     if (Speedometer.Show)
     {
         if (Speedometer.ShowEditWindow)
