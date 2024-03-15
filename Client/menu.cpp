@@ -10,7 +10,7 @@
 #include "menu.h"
 
 static bool ShowMenu = false;
-static int ShowKeybind = VK_INSERT;
+static int ShowKeybind = 0;
 static std::vector<MenuTab> Tabs;
 static std::wstring LevelName;
 
@@ -108,10 +108,7 @@ static void EngineTab()
 		Debug::CreateConsole();
 	}
 	
-	if (ImGui::IsItemHovered(ImGuiHoveredFlags_None)) 
-	{
-		ImGui::SetTooltip("Creates a console window that will display debug info.\nIf you're trying to close the debug console, it will close Mirror's Edge too.");
-	}
+	ImGui::HelpMarker("Creates a console window that will display debug info from printf(). If you close the debug console, it will close Mirror's Edge too");
 }
 
 static void WorldTab() 

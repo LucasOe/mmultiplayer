@@ -56,11 +56,11 @@ static struct
 static struct
 {
     bool Enabled = false;
-    int Keybind = VK_2;
-    int UpKeybind = VK_SPACE;
-    int DownKeybind = VK_SHIFT;
-    int FasterKeybind = VK_E;
-    int SlowerKeybind = VK_Q;
+    int Keybind = 0;
+    int UpKeybind = 0;
+    int DownKeybind = 0;
+    int FasterKeybind = 0;
+    int SlowerKeybind = 0;
     Classes::FVector Location;
     Classes::FVector Velocity;
     float Speed = 2.0f;
@@ -1026,13 +1026,16 @@ static void TrainerTab()
 
 static void OnRender(IDirect3DDevice9* device)
 {
+    // An attempt to find a solution to #24. If you remove "case Classes::EMovement::MOVE_ZipLine:" in Save function
+    // it will then sort of fix it. But it's random if you can get back to the zipline or not
+
     /*
     auto pawn = Engine::GetPlayerPawn();
     auto controller = Engine::GetPlayerController();
 
     if (pawn && controller)
     {
-        ImGui::Begin("Debug", NULL);
+        ImGui::Begin("Debug##trainer-bugs", NULL);
 
         ImGui::SeparatorText("Pawn##Debug-Pawn");
         {
@@ -1074,7 +1077,7 @@ static void OnRender(IDirect3DDevice9* device)
             ImGui::SeparatorText("Variables");
             {
                 ImGui::SliderFloat("Rounding", &Speedometer.Style.WindowRounding, 0.0f, 16.0f, "%.2f");
-                ImGui::SliderFloat("Border Size", &Speedometer.Style.WindowBorderSize, 0.0f, 8.0f, "%.2f");
+                ImGui::SliderFloat("Border Size", &Speedometer.Style.WindowBorderSize, 0.0f, 1.0f, "%.2f");
             }
 
             ImGui::SeparatorText("Colors");
@@ -1309,7 +1312,7 @@ static void OnRender(IDirect3DDevice9* device)
                     case 12: Items[i]->Draw(pawn->LastJumpLocation.Z); break;
                     case 13: Items[i]->Draw(pawn->Location.Z - pawn->LastJumpLocation.Z); break;
                     default: 
-                        printf("Unknown Draw Index \"%d\" (Min = 0, Max = %d)\n", Items[i]->DrawIndex, Items.size()); 
+                        printf("Unknown DrawIndex \"%d\" (Min = 0, Max = %d)\n", Items[i]->DrawIndex, Items.size()); 
                         break;
                 }
             }
