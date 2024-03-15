@@ -701,46 +701,62 @@ Classes::ATdPlayerPawn *Engine::GetPlayerPawn(bool update) {
     return cache;
 }
 
-Classes::ATdSPTimeTrialGame *Engine::GetTimeTrialGame(bool update) {
-    static Classes::ATdSPTimeTrialGame *cache = nullptr;
+Classes::ATdSPTimeTrialGame* Engine::GetTimeTrialGame(bool update) 
+{
+    static Classes::ATdSPTimeTrialGame* cache = nullptr;
 
-    if (levelLoad.Loading) {
+    if (levelLoad.Loading) 
+    {
         return nullptr;
     }
 
-    if (!cache || update) {
+    if (!cache || update) 
+    {
         auto world = GetWorld(update);
 
-        if (world) {
-            auto timetrial = static_cast<Classes::ATdSPTimeTrialGame *>(world->Game);
+        if (world) 
+        {
+            std::string game = world->Game->GetName();
 
-            if (timetrial->IsA(Classes::ATdSPTimeTrialGame::StaticClass())) {
-                cache = timetrial;
+            if (game.find("TdSPTimeTrialGame") == -1) 
+            {
+                cache = nullptr;
                 return cache;
             }
+
+            cache = static_cast<Classes::ATdSPTimeTrialGame*>(world->Game);
+            return cache;
         }
     }
 
     return cache;
 }
 
-Classes::ATdSPLevelRace *Engine::GetLevelRace(bool update) {
-    static Classes::ATdSPLevelRace *cache = nullptr;
+Classes::ATdSPLevelRace* Engine::GetLevelRace(bool update) 
+{
+    static Classes::ATdSPLevelRace* cache = nullptr;
 
-    if (levelLoad.Loading) {
+    if (levelLoad.Loading) 
+    {
         return nullptr;
     }
 
-    if (!cache || update) {
+    if (!cache || update) 
+    {
         auto world = GetWorld(update);
 
-        if (world) {
-            auto levelrace = static_cast<Classes::ATdSPLevelRace *>(world->Game);
+        if (world) 
+        {
+            std::string game = world->Game->GetName();
 
-            if (levelrace->IsA(Classes::ATdSPLevelRace::StaticClass())) {
-                cache = levelrace;
+            if (game.find("TdSPLevelRace") == -1) 
+            {
+                cache = nullptr;
                 return cache;
             }
+
+            cache = static_cast<Classes::ATdSPLevelRace*>(world->Game);
+            return cache;
         }
     }
 
