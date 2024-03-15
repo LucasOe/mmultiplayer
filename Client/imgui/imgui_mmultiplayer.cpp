@@ -2,6 +2,7 @@
 
 #include "imgui_mmultiplayer.h"
 #include <windows.h>
+#include "../settings.h"
 
 namespace ImGui {
     ImGuiWindow *BeginRawScene(const char *name)  { 
@@ -396,9 +397,41 @@ namespace ImGui {
         return value_changed;
     }
 
-    void SeperatorWithPadding(float paddingVeritcal) { 
-        ImGui::Dummy(ImVec2(0.0f, paddingVeritcal));
+    void SpacingY(float y) {
+        ImGui::Dummy(ImVec2(0.0f, y));
         ImGui::Separator();
-        ImGui::Dummy(ImVec2(0.0f, paddingVeritcal));
+        ImGui::Dummy(ImVec2(0.0f, y));
+    }
+
+    void HotkeyResettable(const char* text, const char* label, int* keyBind, int defaultKeyBind, const char* sub, const char* key, bool showToggleResetKey)
+    {
+        char buffer[0xFF];
+        sprintf_s(buffer, "%s##%s", text, label);
+
+        if (ImGui::Hotkey(buffer, keyBind)) {
+            Settings::SetSetting(sub, key, *keyBind);
+        }
+
+        if (showToggleResetKey) {
+            ImGui::SameLine();
+            sprintf_s(buffer, "Reset##%s-reset", label);
+
+            if (ImGui::Button(buffer)) {
+                *keyBind = defaultKeyBind;
+                Settings::SetSetting(sub, key, defaultKeyBind);
+            }
+        }
+    }
+
+    void HelpMarker(const char* desc)
+    {
+        ImGui::TextDisabled("(?)");
+        if (ImGui::BeginItemTooltip())
+        {
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+            ImGui::TextUnformatted(desc);
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
     }
 }

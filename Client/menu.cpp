@@ -9,6 +9,18 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_mmultiplayer.h"
 #include "menu.h"
+#include "mmultiplayer.h"
+
+#if MMULTIPLAYER_DEBUG_IMGUI
+static bool imGuiWindowOpen = false;
+#endif
+
+#if MMULTIPLAYER_DEBUG_SPINNERS
+static bool imSpinnersWindowOpen = false;
+
+#define IMSPINNER_DEMO
+#include "imgui/imgui_spinner.h"
+#endif
 
 static auto show = false;
 static std::vector<MenuTab> tabs;
@@ -17,7 +29,7 @@ static std::wstring levelName;
 
 static void RenderMenu(IDirect3DDevice9 *device) {
 	if (show) {
-		ImGui::Begin("MMultiplayer 2.2.0");
+		ImGui::Begin("MMultiplayer " MMULTIPLAYER_VERSION);
 		ImGui::BeginTabBar("");
 
 		for (auto tab : tabs) {
@@ -30,14 +42,49 @@ static void RenderMenu(IDirect3DDevice9 *device) {
 		ImGui::EndTabBar();
 		ImGui::End();
 	}
+
+#if MMULTIPLAYER_DEBUG_IMGUI
+	if (imGuiWindowOpen)
+	{
+		ImGui::ShowDemoWindow(&imGuiWindowOpen);
+	}
+#endif
+#if MMULTIPLAYER_DEBUG_SPINNERS
+	if (imSpinnersWindowOpen && ImGui::Begin("ImSpinners Demo", &imSpinnersWindowOpen))
+	{
+		ImSpinner::demoSpinners();
+		ImGui::End();
+	}
+#endif
 }
 
-/*** Basic Tabs ***/
-static void EngineTab() {
-	// Temp
-	ImGui::Text("ImGui Version: %s", IMGUI_VERSION);
-	ImGui::SeperatorWithPadding(2.5f);
+#if MMULTIPLAYER_DEBUG_INFO
+static void DebugTab() {
+	ImGui::SeparatorText("Versions");
+	ImGui::Text("ImGui: %s", IMGUI_VERSION);
 
+	// I don't know what version this is in. Nothing can be found in the file or on github
+	ImGui::Text("ImSpinner: Unknown");
+	ImGui::Text("Nlohmann Json: %d.%d.%d", NLOHMANN_JSON_VERSION_MAJOR, NLOHMANN_JSON_VERSION_MINOR, NLOHMANN_JSON_VERSION_PATCH);
+	ImGui::SpacingY();
+
+#if MMULTIPLAYER_DEBUG_IMGUI
+	if (ImGui::Button("ImGui##debug-imgui"))
+	{
+		imGuiWindowOpen = !imGuiWindowOpen;
+	}
+#endif
+
+#if MMULTIPLAYER_DEBUG_SPINNERS
+	if (ImGui::Button("ImSpinners##debug-imspinners"))
+	{
+		imSpinnersWindowOpen = !imSpinnersWindowOpen;
+	}
+#endif
+}
+#endif
+
+static void EngineTab() {
 	auto engine = Engine::GetEngine();
 	if (!engine) {
 		return;
@@ -62,8 +109,6 @@ static void EngineTab() {
 		commandInputCallback();
 	}
 
-	ImGui::SeperatorWithPadding(2.5f);
-
 	bool check = engine->bSmoothFrameRate;
 	ImGui::Checkbox("Smooth Framerate##engine-smooth-framerate", &check);
 	engine->bSmoothFrameRate = check;
@@ -77,7 +122,7 @@ static void EngineTab() {
 		ImGui::InputFloat("Gamma##engine-gamma", &client->DisplayGamma);
 	}
 
-	ImGui::SeperatorWithPadding(2.5f);
+	ImGui::SpacingY();
 
 	if (ImGui::Hotkey("Menu Keybind##menu-show", &showKeybind)) {
 		Settings::SetSetting("menu", "showKeybind", showKeybind);
@@ -106,22 +151,32 @@ static void WorldTab() {
 		return;
 	}
 
-	ImGui::InputFloat("Time Dilation##world-time-dilation", &world->TimeDilation);
-	ImGui::InputFloat("Gravity##-world-gravity", &world->WorldGravityZ);
+	ImGui::Text("Time Dilation");
+	ImGui::InputFloat("##world-time-dilation", &world->TimeDilation);
+
+	ImGui::Text("Gravity");
+	ImGui::InputFloat("##world-gravity", &world->WorldGravityZ);
 
 	if (levelName.empty()) {
 		levelName = world->GetMapName(false).c_str();
 	}
 
-	ImGui::SeperatorWithPadding(2.5f);
-
+	ImGui::SpacingY();
 	auto levels = world->StreamingLevels;
-	if (ImGui::TreeNode("world##world-levels", "%ws (%d)", levelName.c_str(), levels.Num())) {
+	if (ImGui::TreeNode("world##world-levels", "%ws (%d)", levelName.c_str(), levels.Num())) 
+	{
 		for (auto i = 0UL; i < levels.Num(); ++i) {
 			auto level = levels.GetByIndex(i);
 			if (level) {
 				bool check = level->bShouldBeLoaded;
-				ImGui::Checkbox(level->PackageName.GetName().c_str(), &check);
+				auto label = level->PackageName.GetName();
+
+				if (level->PackageName.Number > 0)
+				{
+					label += "_" + std::to_string(level->PackageName.Number - 1);
+				}
+
+				ImGui::Checkbox(label.c_str(), &check);
 
 				if (check) {
 					level->bShouldBeLoaded = level->bShouldBeVisible = true;
@@ -170,6 +225,9 @@ bool Menu::Initialize() {
 		levelName = newLevelName;
 	});
 
+#if MMULTIPLAYER_DEBUG_INFO
+	AddTab("Debug", DebugTab);
+#endif
 	AddTab("Engine", EngineTab);
 	AddTab("World", WorldTab);
 

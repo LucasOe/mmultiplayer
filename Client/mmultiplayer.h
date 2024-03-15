@@ -1,7 +1,7 @@
 #pragma once
 
-#define MMULTIPLAYER_VERSION "2.2.0" // Major, Minor, Patch
-#define MMULTIPLAYER_DEBUG 0
+#define MMULTIPLAYER_VERSION "2.3.0" // Major, Minor, Patch
+#define MMULTIPLAYER_DEBUG 1
 
 #if MMULTIPLAYER_DEBUG
     // Whenever it should use the local address or the server address, no need to change in the client.cpp

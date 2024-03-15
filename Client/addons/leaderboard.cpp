@@ -1,53 +1,85 @@
-#include "client.h"
-#include "leaderboard.h"
-
 #include <codecvt>
-#include <algorithm>
 
 #include "../engine.h"
-#include "../imgui/imgui.h"
-#include "../imgui/imgui_internal.h"
+#include "../imgui/imgui_mmultiplayer.h"
+
+// Disable warnings that shows up when making a build with imgui_spinner
+#pragma warning(push)
+#pragma warning(disable : 4018)
+#pragma warning(disable : 4244)
+#include "../imgui/imgui_spinner.h"
+#pragma warning(pop)
+
 #include "../menu.h"
 #include "../util.h"
 #include "../settings.h"
 
-#define MS_TO_KPH   3.6f    // Meter per seconds to Kilometers per hour
-#define CMS_TO_KPH  0.036f  // Centimeter per seconds to Kilometers per hour
+#include "client.h"
+#include "leaderboard.h"
+#include "../mmultiplayer.h"
 
 // clang-format off
 
-static char NameInput[0x20] = {0};
-static char KeyInput[0x14] = {0};
-static std::string Name;
-static std::string Key;
+// Forward Decloration
+class Leaderboard;
+
+// Addon
+static bool Enabled;
+
+static bool IsMetric = true;
+static bool PractiseMode;
+static bool IsLoggedIn;
+static bool IsLoggingIn;
+static bool IsDownloading;
+
+static char UsernameInput[0x20] = {0};
+static char PasswordInput[0x80] = {0};
+static std::string Username;
+static std::string Password;
+
+// Used for the leaderboard below the main leaderboard. Like the ingame, you can see what rank you have
+static PlayerStruct PlayerInfo;
+static LeaderboardDataStruct PlayerLeaderboardInfo;
+
 static std::string LevelName;
 
+// Used for comparing the previous value with the current value. Similar to ASL for Livesplit without the "Current"
+// Example: timetrial->NumPassedCheckPoints > Old.NumPassedCheckPoints
 static OldStruct Old;
 
-// Info about the current tick such as time, avgspeed, and etc
+// Info about the time, avgspeed, and etc during the current tick
 static InfoStruct Info;
 static TimeTrialInfoStruct TimeTrialInfo;
 
-// Time Trial
+// Holds the leaderboard data for the current selected leaderboard
+static std::vector<LeaderboardDataStruct> LeaderboardData;
+static int GameModeValue;
+static int CourseTimeTrialValue;
+static int CourseLevelRaceValue;
+static int SortByValue;
+static int TimeFrameValue;
+
+// Extra info collected during a Time Trial run
 static std::vector<InfoStruct> TimeTrialCheckpointRespawnInfo;
 static std::vector<TimeTrialInfoStruct> TimeTrialCheckpointInfo;
 
-// Chapter Speedrun
+// Extra info collected during a Chapter Speedrun run
 static std::vector<InfoStruct> SpeedrunCheckpointInfo;
 static std::vector<InfoStruct> SpeedrunReactionTimeInfo;
 static std::vector<InfoStruct> SpeedrunPlayerDeathsInfo;
 
 // Timestamps in unix time. These are used to know if the run was started properly or not
-static std::chrono::milliseconds UnixTimeStampStart = std::chrono::milliseconds(0);
-static std::chrono::milliseconds UnixTimeStampEnd = std::chrono::milliseconds(0);
+static std::chrono::seconds UnixTimeStampStart = std::chrono::seconds(0);
+static std::chrono::seconds UnixTimeStampEnd = std::chrono::seconds(0);
 
+// Topspeed info used by both time trial and chapter speedrun
 static float TopSpeed = 0.0f;
 static InfoStruct TopSpeedInfo = {0};
 
 static float PreviousTime = 0.0f;
 static float PreviousDistance = 0.0f;
 
-static void SaveData(const Classes::ATdPlayerPawn* pawn, const Classes::ATdPlayerController* controller, const Classes::ATdSPTimeTrialGame* timetrial, const Classes::ATdSPLevelRace* speedrun)
+static void SaveData(const Classes::ATdPlayerPawn* pawn, const Classes::ATdPlayerController* controller, const Classes::ATdSPTimeTrialGame* timetrial, const Classes::ATdSPLevelRace* speedrun, const Classes::AWorldInfo* world)
 {
     if (pawn)
     {
@@ -89,6 +121,12 @@ static void SaveData(const Classes::ATdPlayerPawn* pawn, const Classes::ATdPlaye
         Old.RaceEndTimeStamp = timetrial->RaceEndTimeStamp;
         Old.PlayerDistance = timetrial->PlayerDistance;
     }
+
+    if (world)
+    {
+        Old.TimeSeconds = world->TimeSeconds;
+        Old.RealTimeSeconds = world->RealTimeSeconds;
+    }
 }
 
 static void ResetData()
@@ -103,8 +141,8 @@ static void ResetData()
     Info = {0};
     TimeTrialInfo = {0};
 
-    UnixTimeStampStart = std::chrono::milliseconds(0);
-    UnixTimeStampEnd = std::chrono::milliseconds(0);
+    UnixTimeStampStart = std::chrono::seconds(0);
+    UnixTimeStampEnd = std::chrono::seconds(0);
 
     TopSpeed = 0.0f;
     TopSpeedInfo = {0};
@@ -113,104 +151,367 @@ static void ResetData()
     PreviousDistance = 0.0f;
 }
 
+static void ShowLoadingText(const char* text, const float radius = 7.0f, const float thickness = 3.0f, const float speed = 10.0f)
+{
+    ImSpinner::SpinnerAng("", radius, thickness, ImSpinner::white, ImSpinner::half_white, speed, ImSpinner::PI_DIV_2);
+    ImGui::SameLine(32.0f);
+
+    // TODO: Adjust text so it aligns with the spinning icon
+    ImGui::Text(text);
+}
+
 static void LeaderboardTab()
 {
-    ImGui::Text("Name");
-    if (ImGui::InputText("##leaderboard-name-input", NameInput, sizeof(NameInput)))
+    /*
+    if (ImGui::Begin("Leaderboard Debug##leaderboard-debug"))
     {
-        if (Name != NameInput)
-        {
-            Settings::SetSetting("race", "playerName", Name = NameInput);
-        }
+        ImGui::Text("IsMetric: %s", IsMetric ? "true" : "false");
+        ImGui::Text("PractiseMode: %s", PractiseMode ? "true" : "false");
+        ImGui::Text("IsLoggedIn: %s", IsLoggedIn ? "true" : "false");
+        ImGui::Text("IsLoggingIn: %s", IsLoggingIn ? "true" : "false");
+        ImGui::Text("IsDownloading: %s", IsDownloading ? "true" : "false");
+
+        ImGui::Dummy(ImVec2(0.0f, 6.0f));
+        ImGui::Text("PlayerInfo.FixedId: %s", PlayerInfo.FixedId.c_str());
+        ImGui::Text("PlayerInfo.SkillRating: %d", PlayerInfo.SkillRating);
+        ImGui::Text("PlayerInfo.DisplayName: %s", PlayerInfo.DisplayName.c_str());
+        ImGui::Text("PlayerInfo.SessionToken: %s", PlayerInfo.SessionToken.c_str());
+
+        ImGui::Dummy(ImVec2(0.0f, 6.0f));
+        ImGui::Text("PlayerLeaderboardInfo.RunId: %s", PlayerLeaderboardInfo.RunId.c_str());
+        ImGui::Text("PlayerLeaderboardInfo.Rank: %d", PlayerLeaderboardInfo.Rank);
+        ImGui::Text("PlayerLeaderboardInfo.PlayerId: %s", PlayerLeaderboardInfo.PlayerId.c_str());
+        ImGui::Text("PlayerLeaderboardInfo.DisplayName: %s", PlayerLeaderboardInfo.DisplayName.c_str());
+        ImGui::Text("PlayerLeaderboardInfo.SkillRating: %d", PlayerLeaderboardInfo.SkillRating);
+        ImGui::Text("PlayerLeaderboardInfo.Time: %f", PlayerLeaderboardInfo.Time);
+        ImGui::Text("PlayerLeaderboardInfo.AvgSpeed: %f", PlayerLeaderboardInfo.AvgSpeed);
+        ImGui::Text("PlayerLeaderboardInfo.Distance: %f", PlayerLeaderboardInfo.Distance);
+
+        ImGui::Dummy(ImVec2(0.0f, 6.0f));
+        ImGui::Text("GameModeValue: %d", GameModeValue);
+        ImGui::Text("CourseTimeTrialValue: %d", CourseTimeTrialValue);
+        ImGui::Text("CourseLevelRaceValue: %d", CourseLevelRaceValue);
+        ImGui::Text("SortByValue: %d", SortByValue);
+        ImGui::Text("TimeFrameValue: %d", TimeFrameValue);
+
+        ImGui::End();
+    }
+    */
+
+    if (ImGui::Checkbox("Enabled##leaderboard-enabled", &Enabled)) {
+        Settings::SetSetting("leaderboard", "enabled", Enabled);
+    }
+    
+    if (!Enabled) {
+        return;
     }
 
-    ImGui::Text("Key (%d chars)", strlen(Key.c_str()));
-    if (ImGui::InputText("##leaderboard-key-input", KeyInput, sizeof(KeyInput)))
-    {
-        if (Key != KeyInput)
-        {
-            Settings::SetSetting("race", "key", Key = KeyInput);
-        }
+    if (ImGui::Checkbox("Metric##leaderboard-metric", &IsMetric)) {
+        Settings::SetSetting("leaderboard", "metric", IsMetric);
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    //ImGui::SameLine();
+    //ImGui::HelpMarker("Display 20.28 km/h or 12.60 mph");
+    ImGui::SpacingY();
 
-    if (!Name.empty() && !Key.empty())
+    Client client;
+    if (!client.IsConnected())
     {
-        ImGui::Text("Your runs that you finish will be uploaded to a server");
+        ImGui::Text("No connection to the server or mmultiplayer is disabled\nIn the Multiplayer tab, right under it, it should say \"Status: Connected\"");
+        return;
+    }
+
+    if (!IsLoggedIn && !IsLoggingIn)
+    {
+        ImGui::Text("Username");
+        if (ImGui::InputText("##leaderboard-username", UsernameInput, sizeof(UsernameInput)))
+        {
+            Username = UsernameInput;
+        }
+
+        ImGui::Text("Password");
+        if (ImGui::InputText("##leaderboard-password", PasswordInput, sizeof(PasswordInput), ImGuiInputTextFlags_Password))
+        {
+            Password = PasswordInput;
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, 2.0f));
+
+        ImGui::BeginDisabled(Username.size() < 3 || Password.size() < 3);
+        if (ImGui::Button("Login##leaderboard-login"))
+        {
+            json json = {
+                {"type", "leaderboard"},
+                {"subtype", "login"},
+                {"username", Username},
+                {"password", Password}
+            };
+
+            IsLoggingIn = client.SendJsonMessage(json);
+        }
+        ImGui::EndDisabled();
+    }
+    else if (IsLoggingIn)
+    {
+        ShowLoadingText("Logging in");
     }
     else
     {
-        ImGui::Text("Your runs that you finish will >> NOT << be uploaded to a server");
-        if (Name.empty())
+        ImGui::Text("Logged in as %s", PlayerInfo.DisplayName.c_str());
+        ImGui::Checkbox("Practise", &PractiseMode);
+        ImGui::SameLine();
+        ImGui::HelpMarker("The runs you do wont be uploaded to the server if set to false"); 
+        
+        if (ImGui::Button("Logout##leaderboard-logout"))
         {
-            ImGui::Text("- The Name can't be empty!");
+            IsLoggedIn = false;
         }
-        if (Key.empty())
+    }
+
+    ImGui::SpacingY();
+
+    ImGui::BeginDisabled(IsDownloading || IsLoggingIn);
+    if (ImGui::Button("Update##leaderboard-download-runs"))
+    {
+        LeaderboardData.clear();
+        
+        json json = {
+            {"type", "leaderboard"},
+            {"subtype", "get"},
+            {"gamemode", std::to_string(GameModeValue)},
+            {"course", std::to_string(GameModeValue == TIMETRIAL ? CourseTimeTrialValue : CourseLevelRaceValue)},
+            {"sortby", std::to_string(SortByValue)},
+            {"timeframe", std::to_string(TimeFrameValue)}
+        };
+
+        if (IsLoggedIn && SortByValue != 0 /* 0 == All-Top */)
         {
-            ImGui::Text("- The Key can't be empty!");
+            json.push_back({ "player", PlayerInfo.FixedId });
+        }
+
+        IsDownloading = client.SendJsonMessage(json);
+
+    }
+    ImGui::EndDisabled();
+
+    ImGui::Dummy(ImVec2(0.0f, 6.0f));
+
+    if (ImGui::CollapsingHeader("Leaderboard"))
+    {
+        ImGui::Dummy(ImVec2(0.0f, 2.0f));
+        static float offsetFromStart = 128.0f;
+
+        ImGui::Text("Game Mode:");
+        ImGui::SameLine(offsetFromStart);
+        ImGui::Combo("##leaderboard-filter-gamemode", &GameModeValue, GameModeTable, IM_ARRAYSIZE(GameModeTable));
+
+        ImGui::Text("Select Course:");
+        ImGui::SameLine(offsetFromStart);
+        if (GameModeValue == TIMETRIAL)
+        {
+            ImGui::Combo("##leaderboard-filter-course", &CourseTimeTrialValue, CourseTimeTrialTable, IM_ARRAYSIZE(CourseTimeTrialTable));
+        }
+        else
+        {
+            ImGui::Combo("##leaderboard-filter-course", &CourseLevelRaceValue, CourseLevelRaceTable, IM_ARRAYSIZE(CourseLevelRaceTable));
+        }
+
+        ImGui::Text("Sort By:");
+        ImGui::SameLine(offsetFromStart);
+        ImGui::Combo("##leaderboard-filter-sortby", &SortByValue, SortByTable, IM_ARRAYSIZE(SortByTable));
+
+        ImGui::Text("Time Frame:");
+        ImGui::SameLine(offsetFromStart);
+        ImGui::Combo("##leaderboard-filter-timeframe", &TimeFrameValue, TimeFrameTable, IM_ARRAYSIZE(TimeFrameTable));
+        ImGui::Dummy(ImVec2(0.0f, 12.0f));
+
+        static ImGuiTableFlags tableFlags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersInner;
+        static ImGuiTableFlags columnFlags = ImGuiTableColumnFlags_WidthFixed;
+
+        if (IsDownloading)
+        {
+            char buffer[0x69];
+            sprintf_s(buffer, "Downloading \"%s\" Runs", GameModeValue == TIMETRIAL ? CourseTimeTrialTable[CourseTimeTrialValue] : CourseLevelRaceTable[CourseLevelRaceValue]);
+            
+            ShowLoadingText(buffer);
+        }
+        else
+        {
+            static int columns = 6;
+            static int rowsToShow = 10;
+
+            static float rankWidth = 40.0f;
+            static float playerWidth = 256.0f;
+            static float ratingWidth = 48.0f;
+            static float timeWidth = 92.0f;
+            static float avgSpeedWidth = 92.0f;
+            static float distanceWidth = 92.0f;
+
+            static float rowHeight = 28.8f;
+            static float tableHeight = rowsToShow * rowHeight;
+
+            ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(5.0f, 5.0f));
+            if (ImGui::BeginTable("leaderboard-table-main", columns, tableFlags, ImVec2(0.0f, tableHeight)))
+            {
+                ImGui::TableSetupScrollFreeze(0, 1);
+                ImGui::TableSetupColumn("Rank", columnFlags, rankWidth);
+                ImGui::TableSetupColumn("Player", columnFlags, playerWidth);
+                ImGui::TableSetupColumn("Rating", columnFlags, ratingWidth);
+                ImGui::TableSetupColumn("Time", columnFlags, timeWidth);
+                ImGui::TableSetupColumn("Avg Speed", columnFlags, avgSpeedWidth);
+                ImGui::TableSetupColumn("Distance", columnFlags, distanceWidth);
+                ImGui::TableHeadersRow();
+
+                for (size_t row = 0; row < LeaderboardData.size(); row++)
+                {
+                    ImGui::TableNextRow();
+                    
+                    ImGui::TableNextColumn(); 
+                    ImGui::Text("%d", LeaderboardData[row].Rank);
+
+                    ImGui::TableNextColumn(); 
+                    ImGui::Text("%s", LeaderboardData[row].DisplayName.c_str());
+
+                    ImGui::TableNextColumn(); 
+                    ImGui::Text("%d", LeaderboardData[row].SkillRating);
+
+                    ImGui::TableNextColumn(); 
+                    ImGui::Text(FormatTime(LeaderboardData[row].Time).c_str());
+
+                    ImGui::TableNextColumn(); 
+                    ImGui::Text(FormatAverageSpeed(LeaderboardData[row].AvgSpeed, IsMetric).c_str());
+
+                    ImGui::TableNextColumn(); 
+                    ImGui::Text(FormatDistance(LeaderboardData[row].Distance, IsMetric).c_str());
+                }
+
+                ImGui::EndTable();
+            }
+
+            if (!IsLoggedIn)
+            {
+                ImGui::PopStyleVar();
+                ImGui::TreePop();
+                return;
+            }
+
+            ImGui::Dummy(ImVec2(0.0f, 8.0f));
+            if (ImGui::BeginTable("leaderboard-table-solo", columns, tableFlags, ImVec2(0.0f, rowHeight)))
+            {
+                ImGui::TableSetupColumn("Rank", columnFlags, rankWidth);
+                ImGui::TableSetupColumn("Player", columnFlags, playerWidth);
+                ImGui::TableSetupColumn("Rating", columnFlags, ratingWidth);
+                ImGui::TableSetupColumn("Time", columnFlags, timeWidth);
+                ImGui::TableSetupColumn("Avg Speed", columnFlags, avgSpeedWidth);
+                ImGui::TableSetupColumn("Distance", columnFlags, distanceWidth);
+
+                ImGui::TableNextColumn();
+                if (PlayerLeaderboardInfo.Rank == 0)
+                {
+                    ImGui::Text("-");
+                }
+                else
+                {
+                    ImGui::Text("%d", PlayerLeaderboardInfo.Rank);
+                }
+
+                ImGui::TableNextColumn();
+                ImGui::Text("%s", PlayerInfo.DisplayName.c_str());
+
+                ImGui::TableNextColumn();
+                ImGui::Text("%d", PlayerInfo.SkillRating);
+
+                ImGui::TableNextColumn();
+                ImGui::Text(FormatTime(PlayerLeaderboardInfo.Time).c_str());
+
+                ImGui::TableNextColumn();
+                ImGui::Text(FormatAverageSpeed(PlayerLeaderboardInfo.AvgSpeed, IsMetric).c_str());
+
+                ImGui::TableNextColumn();
+                ImGui::Text(FormatDistance(PlayerLeaderboardInfo.Distance, IsMetric).c_str());
+
+                ImGui::EndTable();
+            }
+
+            ImGui::PopStyleVar();
+            ImGui::TreePop();
         }
     }
 }
 
-static void SendJsonData(json jsonData)
+static void SendJsonPostData(json jsonData)
 {
-    jsonData.push_back({"Username", Name});
-    jsonData.push_back({"Key", Key});
-    jsonData.push_back({"StartTimeStampUnix", UnixTimeStampStart.count()});
-    jsonData.push_back({"EndTimeStampUnix", UnixTimeStampEnd.count()});
+    jsonData.push_back({"FixedId", PlayerInfo.FixedId});
+    jsonData.push_back({"SessionToken", PlayerInfo.SessionToken});
+    jsonData.push_back({"UnixTimeStampStart", UnixTimeStampStart.count()});
+    jsonData.push_back({"UnixTimeStampEnd", UnixTimeStampEnd.count()});
 
-    if (!Name.empty() && !Key.empty())
+    json json = {
+        {"type", "leaderboard"},
+        {"subtype", "post"},
+        {"body", jsonData.dump()}
+    };
+
+    Client client;
+    if (client.IsConnected())
     {
-        json json = {
-            {"type", "post"}, 
-            {"body", jsonData.dump()}
-        };
-
-        Client client;
         if (client.SendJsonMessage(json))
         {
-            printf("data sent successfully! :D\n\n");
+            printf("data sent successfully! c:\n\n");
         }
         else
         {
-            printf("data failed to send! Multiplayer disabled or no internet connection?\n\n");
+            printf("data failed to send! :c\n\n");
         }
-    }
-    else
-    {
-        printf("data failed to send. Check leaderboard tab to see if it can send it or not\n\n");
     }
 
     ResetData();
 }
 
-static std::chrono::milliseconds GetTimeInMillisecondsSinceEpoch()
+static json InfoStructToJson(const InfoStruct info)
 {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
+    if (info.WorldRealTimeSeconds == 0.0f)
+    {
+        return { 
+            {"Time", info.Time},
+            {"Distance", info.Distance},
+            {"AvgSpeed", info.AvgSpeed},
+            {"TopSpeed", info.TopSpeed},
+            {"IntermediateTime", info.IntermediateTime},
+            {"IntermediateDistance", info.IntermediateDistance},
+            {"PlayerLocation", {
+                info.Location.X,
+                info.Location.Y,
+                info.Location.Z
+            }},
+            {"UnixTime", info.UnixTime.count()},
+        };
+    }
+
+    return { 
+        {"Time", info.Time},
+        {"Distance", info.Distance},
+        {"AvgSpeed", info.AvgSpeed},
+        {"TopSpeed", info.TopSpeed},
+        {"WorldTimeSeconds", info.WorldTimeSeconds},
+        {"WorldRealTimeSeconds", info.WorldRealTimeSeconds},
+        {"CheckpointWeight", info.CheckpointWeight},
+        {"PlayerLocation", {
+            info.Location.X,
+            info.Location.Y,
+            info.Location.Z
+        }},
+        {"UnixTime", info.UnixTime.count()},
+    };
 }
 
-static json VectorInfoToJson(const std::vector<InfoStruct> info)
+static json VectorInfoStructToJson(const std::vector<InfoStruct> info)
 {
     json json;
 
     for (size_t i = 0; i < info.size(); i++)
     {
-        json.push_back({
-            {"Time", info[i].Time},
-            {"Distance", info[i].Distance},
-            {"AvgSpeed", info[i].AvgSpeed},
-            {"TopSpeed", info[i].TopSpeed},
-            {"WorldTimeSeconds", info[i].WorldTimeSeconds},
-            {"WorldRealTimeSeconds", info[i].WorldRealTimeSeconds},
-            {"CheckpointWeight", info[i].CheckpointWeight},
-            {"PlayerLocation", {
-                {"X", info[i].Location.X / 100.0f},
-                {"Y", info[i].Location.Y / 100.0f},
-                {"Z", info[i].Location.Z / 100.0f}}
-            },
-            {"UnixTime", info[i].UnixTime.count()},
-        });
+        json.push_back(InfoStructToJson(info[i]));
     }
 
     return json;
@@ -229,7 +530,7 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial)
     Info.IntermediateTime = time;
     Info.IntermediateDistance = distance;
     Info.Location = Old.Location;
-    Info.UnixTime = GetTimeInMillisecondsSinceEpoch();
+    Info.UnixTime = GetCurrentTimeInSeconds();
 
     // Time Trial Countdown
     if (timetrial->RaceCountDownTimer == timetrial->RaceCountDownTime + 1 && timetrial->LastPlayerResetTime == timetrial->WorldInfo->TimeSeconds)
@@ -298,12 +599,9 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial)
         printf("timetrial: race finished\n");
         UnixTimeStampEnd = Info.UnixTime;
 
-        if (TimeTrialCheckpointInfo.size() != timetrial->NumPassedCheckPoints || UnixTimeStampStart == std::chrono::milliseconds(0))
+        if (TimeTrialCheckpointInfo.size() != timetrial->NumPassedCheckPoints || UnixTimeStampStart == std::chrono::seconds(0))
         {
             printf("timetrial: invalid data! :(\n");
-            printf("- timetrial->NumPassedCheckPoints: %d\n", timetrial->NumPassedCheckPoints);
-            printf("- TimeTrialCheckpointInfo.size(): %d\n", TimeTrialCheckpointInfo.size());
-            printf("- UnixTimeStampStart: %lld\n\n", UnixTimeStampStart.count());
             return;
         }
 
@@ -315,49 +613,35 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial)
         {
             json jsonRespawns;
 
-            for (size_t j = 0; j < TimeTrialCheckpointInfo[i].RespawnInfo.size(); j++)
-            {
-                jsonRespawns.push_back({
-                    {"Time", TimeTrialCheckpointInfo[i].RespawnInfo[j].Time},
-                    {"Distance", TimeTrialCheckpointInfo[i].RespawnInfo[j].Distance},
-                    {"AvgSpeed", TimeTrialCheckpointInfo[i].RespawnInfo[j].AvgSpeed},
-                    {"TopSpeed", TimeTrialCheckpointInfo[i].RespawnInfo[j].TopSpeed},
-                    {"IntermediateTime", TimeTrialCheckpointInfo[i].RespawnInfo[j].IntermediateTime},
-                    {"IntermediateDistance", TimeTrialCheckpointInfo[i].RespawnInfo[j].IntermediateDistance},
-                    {"Location", {
-                        {"X", TimeTrialCheckpointInfo[i].RespawnInfo[j].Location.X / 100.0f}, 
-                        {"Y", TimeTrialCheckpointInfo[i].RespawnInfo[j].Location.Y / 100.0f}, 
-                        {"Z", TimeTrialCheckpointInfo[i].RespawnInfo[j].Location.Z / 100.0f}}
-                    },
-                    {"UnixTime", TimeTrialCheckpointInfo[i].RespawnInfo[j].UnixTime.count()}
-                });
-            }
-
             jsonCheckpoints.push_back({
                 {"AvgSpeed", TimeTrialCheckpointInfo[i].AvgSpeed},
                 {"TimedCheckpoint", TimeTrialCheckpointInfo[i].TimedCheckpoint},
                 {"IntermediateTime", TimeTrialCheckpointInfo[i].IntermediateTime},
-                {"AccumulatedIntermediateTime", TimeTrialCheckpointInfo[i].AccumulatedIntermediateTime},
                 {"IntermediateDistance", TimeTrialCheckpointInfo[i].IntermediateDistance},
-                {"AccumulatedIntermediateDistance", TimeTrialCheckpointInfo[i].AccumulatedIntermediateDistance},
                 {"UnixTime", TimeTrialCheckpointInfo[i].UnixTime.count()},
-                {"RespawnInfo", jsonRespawns},
-                {"TopSpeedInfo", {
-                    {"Time", TimeTrialCheckpointInfo[i].TopSpeedInfo.Time},
-                    {"Distance", TimeTrialCheckpointInfo[i].TopSpeedInfo.Distance},
-                    {"AvgSpeed", TimeTrialCheckpointInfo[i].TopSpeedInfo.AvgSpeed},
-                    {"TopSpeed", TimeTrialCheckpointInfo[i].TopSpeedInfo.TopSpeed},
-                    {"IntermediateTime", TimeTrialCheckpointInfo[i].TopSpeedInfo.IntermediateTime},
-                    {"IntermediateDistance", TimeTrialCheckpointInfo[i].TopSpeedInfo.IntermediateDistance},
-                    {"Location", {
-                        {"X", TimeTrialCheckpointInfo[i].TopSpeedInfo.Location.X / 100.0f},
-                        {"Y", TimeTrialCheckpointInfo[i].TopSpeedInfo.Location.Y / 100.0f},
-                        {"Z", TimeTrialCheckpointInfo[i].TopSpeedInfo.Location.Z / 100.0f}
-                    }},
-                    {"UnixTime", TimeTrialCheckpointInfo[i].TopSpeedInfo.UnixTime.count()}
-                }}
+                {"RespawnInfo", VectorInfoStructToJson(TimeTrialCheckpointInfo[i].RespawnInfo)},
+                {"TopSpeedInfo", InfoStructToJson(TimeTrialCheckpointInfo[i].TopSpeedInfo)},
             });
         }
+
+        const auto start = static_cast<Classes::ATdTimeTrialStart*>(timetrial->StartPoints[0]);
+
+        jsonCheckpointData.push_back({
+            // AActor
+            {"Location", {
+                start->Location.X,
+                start->Location.Y,
+                start->Location.Z
+            }},
+            {"Rotation", {
+                ConvertRotationToFloat(start->Rotation.Pitch),
+                ConvertRotationToFloat(start->Rotation.Roll),
+                ConvertRotationToFloat(start->Rotation.Yaw)
+            }},
+
+            // ATdTimeTrialStart
+            {"TrackIndex", start->TrackIndex.GetValue()},
+        });
 
         for (int i = 0; i < timetrial->NumPassedCheckPoints; i++)
         {
@@ -370,44 +654,44 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial)
                 jsonBelongToTracks.push_back({
                     {"TrackIndex", track->BelongToTracks[j].TrackIndex.GetValue()},
                     {"OrderIndex", track->BelongToTracks[j].OrderIndex},
-                    {"bNoIntermediateTime", track->BelongToTracks[j].bNoIntermediateTime == 1 ? true : false}
+                    {"bNoIntermediateTime", track->BelongToTracks[j].bNoIntermediateTime == TRUE ? true : false}
                 });
             }
 
             jsonCheckpointData.push_back({
-                // UObject
-                {"FullName", track->GetFullName()},
-
                 // AActor
-                {"X", track->Location.X / 100.0f},
-                {"Y", track->Location.Y / 100.0f},
-                {"Z", track->Location.Z / 100.0f},
+                {"Location", {
+                    track->Location.X, 
+                    track->Location.Y, 
+                    track->Location.Z
+                }},
 
                 // ATdTimerCheckpoint
                 {"BelongToTracks", jsonBelongToTracks},
                 {"CustomHeight", track->CustomHeight},
                 {"CustomWidthScale", track->CustomWidthScale},
-                {"bNoRespawn", track->bNoRespawn == 1 ? true : false},
+                {"bNoRespawn", track->bNoRespawn == TRUE ? true : false},
                 {"InitialHeight", track->InitialHeight},
                 {"InitialRadius", track->InitialRadius},
 
                 // ATdPlaceableCheckpoint
-                {"bShouldBeBased", track->bShouldBeBased == 1 ? true : false},
+                {"bShouldBeBased", track->bShouldBeBased == TRUE ? true : false},
             });
         }
 
         for (int i = 0; i < timetrial->NumPassedTimerCheckPoints; i++)
         {
-            jsonIntermediateDistances.push_back(timetrial->CurrentTackData.IntermediateDistance[i] / 100.0f);
+            jsonIntermediateDistances.push_back(timetrial->CurrentTackData.IntermediateDistance[i]);
         }
 
         json jsonData = {
             // The current map name in lower case
             {"MapName", LevelName},
+            {"Gamemode", "TimeTrial"},
 
             // Time Trial data
-            {"TotalTime", timetrial->CurrentTimeData.TotalTime},
-            {"PlayerDistance", timetrial->PlayerDistance},
+            {"Time", timetrial->CurrentTimeData.TotalTime},
+            {"Distance", timetrial->PlayerDistance},
             {"AvgSpeed", (timetrial->PlayerDistance / timetrial->CurrentTimeData.TotalTime) * MS_TO_KPH},
 
             // Custom data
@@ -418,17 +702,17 @@ static void OnTickTimeTrial(Classes::ATdSPTimeTrialGame* timetrial)
                 {"ActiveTTStretch", timetrial->ActiveTTStretch.GetValue()},
                 {"QualifyingTime", timetrial->QualifyingTime},
                 {"StarRatingTimes", {
-                    {"3", timetrial->StarRatingTimes[0]},
-                    {"2", timetrial->StarRatingTimes[1]},
-                    {"1", timetrial->StarRatingTimes[2]}}
-                },
-                {"TotalDistance", timetrial->CurrentTackData.TotalDistance / 100.0f},
+                    timetrial->StarRatingTimes[0],
+                    timetrial->StarRatingTimes[1],
+                    timetrial->StarRatingTimes[2]
+                }},
+                {"TotalDistance", timetrial->CurrentTackData.TotalDistance},
                 {"IntermediateDistances", jsonIntermediateDistances},
-                {"CheckpointData", jsonCheckpointData}}
-            }
+                {"CheckpointData", jsonCheckpointData}
+            }}
         };
 
-        SendJsonData(jsonData);
+        SendJsonPostData(jsonData);
     }
 }
 
@@ -445,7 +729,7 @@ static void OnTickSpeedRun(Classes::ATdSPLevelRace* speedrun)
     Info.WorldRealTimeSeconds = speedrun->WorldInfo->RealTimeSeconds;
     Info.CheckpointWeight = speedrun->TdGameData->CheckpointManager->ActiveCheckpointWeight;
     Info.Location = Old.Location;
-    Info.UnixTime = GetTimeInMillisecondsSinceEpoch();
+    Info.UnixTime = GetCurrentTimeInSeconds();
 
     // Speedrun Restarted Using Binding
     if (pawn->WorldInfo->RealTimeSeconds == 0.0f && speedrun->TdGameData->TimeAttackClock == 0.0f && speedrun->TdGameData->TimeAttackDistance != 0.0f)
@@ -460,7 +744,7 @@ static void OnTickSpeedRun(Classes::ATdSPLevelRace* speedrun)
         printf("speedrun: race started\n");
 
         ResetData();
-        UnixTimeStampStart = GetTimeInMillisecondsSinceEpoch();
+        UnixTimeStampStart = GetCurrentTimeInSeconds();
     }
 
     // Top Speed
@@ -505,45 +789,59 @@ static void OnTickSpeedRun(Classes::ATdSPLevelRace* speedrun)
         UnixTimeStampEnd = Info.UnixTime;
 
         // If this is zero, that means that multiplayer was launched or leaderboard got toggled on during the race and therefore is invalid
-        if (UnixTimeStampStart == std::chrono::milliseconds(0))
+        if (UnixTimeStampStart == std::chrono::seconds(0))
         {
-            printf("speedrun: invalid data! :(\n- UnixTimeStampStart: %lld\n\n", UnixTimeStampStart.count());
+            printf("speedrun: invalid data! :(\n");
             return;
+        }
+
+        json jsonLevelStreaming;
+
+        auto levels = speedrun->WorldInfo->StreamingLevels;
+        for (size_t i = 0; i < levels.Num(); i++)
+        {
+            auto level = levels.GetByIndex(i);
+            if (level)
+            {
+                jsonLevelStreaming.push_back(level->PackageName.GetName());
+            }
         }
 
         json jsonData = {
             // The current map name in lower case
             {"MapName", LevelName},
+            {"Gamemode", "LevelRace"},
 
-            // Speedrun
-            {"TimeAttackClock", speedrun->TdGameData->TimeAttackClock},
-            {"TimeAttackDistance", speedrun->TdGameData->TimeAttackDistance},
+            // ATdSPLevelRace
+            {"Time", speedrun->TdGameData->TimeAttackClock},
+            {"Distance", speedrun->TdGameData->TimeAttackDistance},
+            {"AvgSpeed", (speedrun->TdGameData->TimeAttackDistance / speedrun->TdGameData->TimeAttackClock) * MS_TO_KPH},
 
-            // World Info Time
-            {"WorldTimeSeconds", pawn->WorldInfo->TimeSeconds},
-            {"WorldRealTimeSeconds", pawn->WorldInfo->RealTimeSeconds},
+            // AWorldInfo
+            {"TimeSeconds", pawn->WorldInfo->TimeSeconds},
+            {"RealTimeSeconds", pawn->WorldInfo->RealTimeSeconds},
 
             // Custom data
-            {"AvgSpeed", (speedrun->TdGameData->TimeAttackDistance / speedrun->TdGameData->TimeAttackClock) * MS_TO_KPH},
-            {"CheckpointInfo", VectorInfoToJson(SpeedrunCheckpointInfo)},
-            {"ReactionTimeInfo", VectorInfoToJson(SpeedrunReactionTimeInfo)},
-            {"PlayerDeathsInfo", VectorInfoToJson(SpeedrunPlayerDeathsInfo)}
+            {"LevelStreamingData", jsonLevelStreaming},
+            {"CheckpointInfo", VectorInfoStructToJson(SpeedrunCheckpointInfo)},
+            {"ReactionTimeInfo", VectorInfoStructToJson(SpeedrunReactionTimeInfo)},
+            {"PlayerDeathsInfo", VectorInfoStructToJson(SpeedrunPlayerDeathsInfo)}
         };
 
-        SendJsonData(jsonData);
+        SendJsonPostData(jsonData);
     }
 }
 
 static void OnTick(const float deltaTime)
 {
-    if (Name.empty() || Key.empty() || LevelName.empty() || LevelName == Map_MainMenu)
+    if (!Enabled || LevelName.empty() || LevelName == Map_MainMenu || PractiseMode)
     {
         return;
     }
 
-    const auto world = Engine::GetWorld();
-    const auto pawn = Engine::GetPlayerPawn();
-    const auto controller = Engine::GetPlayerController();
+    auto world = Engine::GetWorld();
+    auto pawn = Engine::GetPlayerPawn();
+    auto controller = Engine::GetPlayerController();
 
     if (!world || !pawn || !controller)
     {
@@ -554,38 +852,138 @@ static void OnTick(const float deltaTime)
     {
         std::string game = world->Game->GetName();
 
-        if (game.find("TdSPTimeTrialGame") != -1)
+        if (game.find("TdSPTimeTrialGame") != std::string::npos)
         {
             auto timetrial = static_cast<Classes::ATdSPTimeTrialGame*>(world->Game);
 
             OnTickTimeTrial(timetrial);
-            SaveData(pawn, controller, timetrial, nullptr);
+            SaveData(pawn, controller, timetrial, nullptr, world);
         }
-        else if (game.find("TdSPLevelRace") != -1)
+        else if (game.find("TdSPLevelRace") != std::string::npos)
         {
             auto speedrun = static_cast<Classes::ATdSPLevelRace*>(world->Game);
 
             OnTickSpeedRun(speedrun);
-            SaveData(pawn, controller, nullptr, speedrun);
+            SaveData(pawn, controller, nullptr, speedrun, world);
         }
+    }
+}
+
+void Leaderboard::HandleMsg(json &msg)
+{
+    const auto msgSubType = msg["subtype"];
+    const auto msgData = msg["data"];
+    const auto msgStatusCode = msg["statusCode"];
+
+    printf("data: %s", msgData.get<std::string>().c_str());
+
+    auto json = json::parse(msgData.get<std::string>());
+
+    if (msgStatusCode != 200)
+    {
+        // TODO: Handle status codes that isn't 200
+        return;
+    }
+
+    if (msgSubType == "login")
+    {
+        PlayerInfo.FixedId = json["FixedId"].get<std::string>();
+        PlayerInfo.DisplayName = json["DisplayName"].get<std::string>();
+        PlayerInfo.SkillRating = json["SkillRating"];
+        PlayerInfo.SessionToken = json["SessionToken"].get<std::string>();
+
+        IsLoggingIn = false;
+        IsLoggedIn = true;
+    }
+    else if (msgSubType == "player")
+    {
+        IsDownloading = false;
+
+        if (msgData.get<std::string>() == "no")
+        {
+            // Player doesn't have a run on the seleted filters
+            return;
+        }
+
+        int i = 0;
+        PlayerLeaderboardInfo.RunId = json[i++].get<std::string>();
+        PlayerLeaderboardInfo.Rank = json[i++];
+        PlayerLeaderboardInfo.PlayerId = json[i++].get<std::string>();
+        PlayerLeaderboardInfo.DisplayName = PlayerInfo.DisplayName = json[i++].get<std::string>();
+        PlayerLeaderboardInfo.Time = json[i++];
+        PlayerLeaderboardInfo.Distance = json[i++];
+        PlayerLeaderboardInfo.AvgSpeed = json[i++];
+        PlayerLeaderboardInfo.SkillRating = PlayerInfo.SkillRating = json[i++];
+    }
+    else if (msgSubType == "runs")
+    {
+        // TODO: In go, make it so it sends like 5 or 10 runs at the time, then only clear the leaderboard if it's runs from 0 to x
+        // TODO: Show the leaderboard once we have downloaded all the runs, maybe update the spinner text with a percentage sign?
+
+        for (size_t i = 0; i < json.size(); i++)
+        {
+            LeaderboardDataStruct run;
+            int j = 0;
+
+            run.RunId = json[i][j++].get<std::string>();
+            run.Rank = json[i][j++];
+            run.PlayerId = json[i][j++].get<std::string>();
+            run.DisplayName = json[i][j++].get<std::string>();
+            run.Time = json[i][j++];
+            run.Distance = json[i][j++];
+            run.AvgSpeed = json[i][j++];
+            run.SkillRating = json[i][j++];
+
+            LeaderboardData.push_back(run);
+
+            if (IsLoggedIn && run.PlayerId == PlayerInfo.FixedId)
+            {
+                PlayerLeaderboardInfo = run;
+                PlayerInfo.DisplayName = run.DisplayName;
+                PlayerInfo.SkillRating = run.SkillRating;
+            }
+        }
+
+        IsDownloading = false;
+
+        /*
+        int batch = 0;
+        if (batch == 10)
+        {
+            // If were not in the leaderboard after download is complete, send a get request to get the rank we're on
+            if (PlayerLeaderboardInfo.Rank == 0)
+            {
+                Client client;
+                client.SendJsonMessage({
+                    {"type", "leaderboard"},
+                    {"subtype", "get"},
+                    {"gamemode", std::to_string(GameModeValue)},
+                    {"course", std::to_string(GameModeValue == TIMETRIAL ? CourseTimeTrialValue : CourseLevelRaceValue)},
+                    {"sortby", std::to_string(SortByValue)},
+                    {"timeframe", std::to_string(TimeFrameValue)},
+                    {"player", PlayerInfo.FixedId},
+                });
+            }
+            else
+            {
+                IsDownloading = false;
+            }
+        }
+        */
     }
 }
 
 bool Leaderboard::Initialize()
 {
-    Name = Settings::GetSetting("race", "playerName", "").get<std::string>();
-    strncpy_s(NameInput, sizeof(NameInput), Name.c_str(), sizeof(NameInput) - 1);
-
-    Key = Settings::GetSetting("race", "key", "").get<std::string>();
-    strncpy_s(KeyInput, sizeof(KeyInput), Key.c_str(), sizeof(KeyInput) - 1);
-
     Menu::AddTab("Leaderboard", LeaderboardTab);
     Engine::OnTick(OnTick);
 
-    Engine::OnPreLevelLoad([](const wchar_t* levelNameW) {
+    Engine::OnPreLevelLoad([](const wchar_t* levelNameW) 
+    {
         LevelName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(levelNameW);
 
-        std::transform(LevelName.begin(), LevelName.end(), LevelName.begin(), [](char c) {
+        std::transform(LevelName.begin(), LevelName.end(), LevelName.begin(), [](char c) 
+        {
             return tolower(c);
         });
     });

@@ -76,7 +76,8 @@ class Client : public Addon {
         unsigned int TaggedPlayerId;
         unsigned int CoolDownTag = 5;
     };
-
+    
+    bool IsConnected();
     bool SendJsonMessage(json msg);
 
     static std::vector<Client::Player *> GetPlayerList();

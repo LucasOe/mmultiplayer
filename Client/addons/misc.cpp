@@ -45,7 +45,7 @@ static void MiscTab() {
         return;
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::SpacingY(2.5f);
 
     // Auto Roll
     if (ImGui::Checkbox("Auto Roll", &autorollEnabled)) {
@@ -168,12 +168,6 @@ static void MiscTab() {
                 ImGui::SetTooltip("If you take any damage at all, it will instantly start a new game");
             }
         }
-    }
-}
-
-static void OnRender(IDirect3DDevice9 *) {
-    if (!enabled) {
-        return;
     }
 }
 
@@ -313,7 +307,6 @@ bool Misc::Initialize() {
 
     Menu::AddTab("Misc", MiscTab);
     Engine::OnTick(OnTick);
-    Engine::OnRenderScene(OnRender);
 
     Engine::OnPostLevelLoad([](const wchar_t *newLevelName) {
         levelName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(newLevelName);

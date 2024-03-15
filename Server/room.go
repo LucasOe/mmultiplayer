@@ -259,6 +259,21 @@ func (room *Room) sendMessageExceptUnsafe(id uint32, msg interface{}) {
 	}
 }
 
+func (room *Room) SendMessageTo(id uint32, msg interface{}) {
+	room.rwMu.RLock()
+	defer room.rwMu.RUnlock()
+
+	room.sendMessageToUnsafe(id, msg)
+}
+
+func (room *Room) sendMessageToUnsafe(id uint32, msg interface{}) {
+	for _, c := range room.Clients {
+		if c.Id == id {
+			go c.SendMessage(msg)
+		}
+	}
+}
+
 func (room *Room) SendLastPackets(client *Client, conn net.PacketConn, addr net.Addr) {
 	room.rwMu.RLock()
 	defer room.rwMu.RUnlock()

@@ -355,7 +355,6 @@ static void Load(Trainer::Save &save, Classes::ATdPlayerPawn *pawn,
 }
 
 static void TrainerTab() {
-    #pragma region Player
     if (ImGui::Checkbox("Show Player Info", &showPlayerInfo)) {
         Settings::SetSetting("player", "showInfo", showPlayerInfo);
     }
@@ -404,8 +403,7 @@ static void TrainerTab() {
         }
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
-    #pragma endregion
+    ImGui::SpacingY(2.5f);
 
     if (ImGui::Checkbox("Trainer Enabled##trainer-enabled", &enabled)) {
         Settings::SetSetting("trainer", "enabled", enabled);
@@ -420,13 +418,8 @@ static void TrainerTab() {
         return;
     }
 
-    if (ImGui::Checkbox("Tooltip##trainer-tooltip", &tooltip)) {
-        Settings::SetSetting("trainer", "tooltip", tooltip);
-    }
+    ImGui::SpacingY(2.5f);
 
-    ImGui::SeperatorWithPadding(2.5f);
-
-    #pragma region Reset
     if (hasSave) {
         if (ImGui::Button("Reset Save##trainer-reset-save")) {
             hasSave = false;
@@ -453,12 +446,9 @@ static void TrainerTab() {
         Settings::SetSetting("trainer", "resetFlyingSpeed", resetFlyingSpeed);
     }
 
-    if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-        ImGui::SetTooltip("Resets the flying speed back to normal once flying has been activated.\nIf set to false, the speed will not be reset");
-    }
-    #pragma endregion
-
-    #pragma region SidestepBeamer
+    ImGui::SameLine(); 
+    ImGui::HelpMarker("Resets the flying speed back to normal once flying has been activated.\nIf set to false, the speed will not be reset");
+    
     if (ImGui::Checkbox("Sidestep Beamer##trainer-beamer-sidestep", &sidestepBeamer)) {
         Settings::SetSetting("trainer", "sidestepBeamer", sidestepBeamer);
     }
@@ -468,9 +458,8 @@ static void TrainerTab() {
             Settings::SetSetting("trainer", "sidestepBeamerForMe", sidestepBeamerForMe);
         }
 
-        if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
-            ImGui::SetTooltip("If set to false, you need to manually hold your left keybind or right keybind when beamer is active");
-        } 
+        ImGui::SameLine(); 
+        ImGui::HelpMarker("If set to false, you need to manually hold your left keybind or right keybind when beamer is active");
 
         if (sidestepBeamerForMe) {
             ImGui::Dummy(ImVec2(0.0f, 6.0f));
@@ -486,187 +475,31 @@ static void TrainerTab() {
             }
 
             ImGui::Dummy(ImVec2(0.0f, 6.0f));
-
-            if (ImGui::Hotkey("Left Keybind##trainer-sidestepBeamerLeftKeybind", &sidestepBeamerLeftKeybind)) {
-                Settings::SetSetting("trainer", "sidestepBeamerLeftKeybind", sidestepBeamerLeftKeybind);
-            }
-
-            if (toggleResetKeybinds) {
-                ImGui::SameLine();
-
-                if (ImGui::Button("Reset##trainer-reset-sidestepBeamerLeftKeybind")) {
-                    Settings::SetSetting("trainer", "sidestepBeamerLeftKeybind", sidestepBeamerLeftKeybind = VK_A);
-                }
-            }
-
-            if (ImGui::Hotkey("Right Keybind##trainer-sidestepBeamerRightKeybind", &sidestepBeamerRightKeybind)) {
-                Settings::SetSetting("trainer", "sidestepBeamerRightKeybind", sidestepBeamerRightKeybind);
-            }
-
-            if (toggleResetKeybinds) {
-                ImGui::SameLine();
-
-                if (ImGui::Button("Reset##trainer-reset-sidestepBeamerRightKeybind")) {
-                    Settings::SetSetting("trainer", "sidestepBeamerRightKeybind", sidestepBeamerRightKeybind = VK_D);
-                }
-            }
-        }
-    }
-    #pragma endregion
-
-    ImGui::SeperatorWithPadding(2.5f);
-
-    #pragma region Keybinds
-    if (ImGui::Hotkey("God##trainer-god", &godKeybind)) {
-        Settings::SetSetting("trainer", "godKeybind", godKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##godKeybind")) {
-            Settings::SetSetting("trainer", "godKeybind", godKeybind = VK_1);
+            ImGui::HotkeyResettable("Left Keybind", "trainer-sidestepBeamerLeftKeybind", &sidestepBeamerLeftKeybind, VK_A, "trainer", "sidestepBeamerLeftKeybind", toggleResetKeybinds);
+            ImGui::HotkeyResettable("Right Keybind", "trainer-sidestepBeamerRightKeybind", &sidestepBeamerRightKeybind, VK_D, "trainer", "sidestepBeamerRightKeybind", toggleResetKeybinds);
         }
     }
 
-    if (ImGui::Hotkey("Checkpoint##trainer-checkpoint", &checkpointKeybind)) {
-        Settings::SetSetting("trainer", "checkpointKeybind", checkpointKeybind);
-    }
+    ImGui::SpacingY(2.5f);
 
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##checkpointKeybind")) {
-            Settings::SetSetting("trainer", "checkpointKeybind", checkpointKeybind = VK_3);
-        }
-    }
-
-    if (ImGui::Hotkey("Save##trainer-save", &saveKeybind)) {
-        Settings::SetSetting("trainer", "saveKeybind", saveKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##saveKeybind")) {
-            Settings::SetSetting("trainer", "saveKeybind", saveKeybind = VK_4);
-        }
-    }
-
-    if (ImGui::Hotkey("Load##trainer-load", &loadKeybind)) {
-        Settings::SetSetting("trainer", "loadKeybind", loadKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##loadKeybind")) {
-            Settings::SetSetting("trainer", "loadKeybind", loadKeybind = VK_5);
-        }
-    }
+    ImGui::HotkeyResettable("God", "trainer-god", &godKeybind, VK_1, "trainer", "godKeybind", toggleResetKeybinds);
+    ImGui::HotkeyResettable("Checkpoint", "trainer-checkpoint", &checkpointKeybind, VK_3, "trainer", "checkpointKeybind", toggleResetKeybinds);
+    ImGui::HotkeyResettable("Save", "trainer-save", &saveKeybind, VK_4, "trainer", "saveKeybind", toggleResetKeybinds);
+    ImGui::HotkeyResettable("Load", "trainer-load", &loadKeybind, VK_5, "trainer", "loadKeybind", toggleResetKeybinds);
 
     ImGui::Dummy(ImVec2(0.0f, 6.0f));
-
-    if (ImGui::Hotkey("Fly##trainer-fly", &fly.Keybind)) {
-        Settings::SetSetting("trainer", "flyKeybind", fly.Keybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##flyKeybind")) {
-            Settings::SetSetting("trainer", "flyKeybind", fly.Keybind = VK_2);
-        }
-    }
-
-    if (ImGui::Hotkey("Fly Up##trainer-fly-up", &fly.UpKeybind)) {
-        Settings::SetSetting("trainer", "flyUpKeybind", fly.UpKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##flyUpKeybind")) {
-            Settings::SetSetting("trainer", "flyUpKeybind", fly.UpKeybind = VK_SPACE);
-        }
-    }
-
-    if (ImGui::Hotkey("Fly Down##trainer-fly-down", &fly.DownKeybind)) {
-        Settings::SetSetting("trainer", "flyDownKeybind", fly.DownKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##flyDownKeybind")) {
-            Settings::SetSetting("trainer", "flyDownKeybind", fly.DownKeybind = VK_SHIFT);
-        }
-    }
-
-    if (ImGui::Hotkey("Fly Faster##trainer-fly-faster", &fly.FasterKeybind)) {
-        Settings::SetSetting("trainer", "flyFasterKeybind", fly.FasterKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##flyFasterKeybind")) {
-            Settings::SetSetting("trainer", "flyFasterKeybind", fly.FasterKeybind = VK_E);
-        }
-    }
-
-    if (ImGui::Hotkey("Fly Slower##trainer-fly-slower", &fly.SlowerKeybind)) {
-        Settings::SetSetting("trainer", "flySlowerKeybind", fly.SlowerKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##flySlowerKeybind")) {
-            Settings::SetSetting("trainer", "flySlowerKeybind", fly.SlowerKeybind = VK_Q);
-        }
-    }
-
+    ImGui::HotkeyResettable("Fly", "trainer-fly", &fly.Keybind, VK_2, "trainer", "flyKeybind", toggleResetKeybinds);
+    ImGui::HotkeyResettable("Fly Up", "trainer-fly-up", &fly.UpKeybind, VK_SPACE, "trainer", "flyUpKeybind", toggleResetKeybinds);
+    ImGui::HotkeyResettable("Fly Down", "trainer-fly-down", &fly.DownKeybind, VK_SHIFT, "trainer", "flyDownKeybind", toggleResetKeybinds);
+    ImGui::HotkeyResettable("Fly Faster", "trainer-fly-faster", &fly.FasterKeybind, VK_E, "trainer", "flyFasterKeybind", toggleResetKeybinds);
+    ImGui::HotkeyResettable("Fly Slower", "trainer-fly-slower", &fly.SlowerKeybind, VK_Q, "trainer", "flySlowerKeybind", toggleResetKeybinds);
+    
     ImGui::Dummy(ImVec2(0.0f, 6.0f));
+    ImGui::HotkeyResettable("Kickglitch", "trainer-kickglitch", &kgKeybind, VK_NONE, "trainer", "kgKeybind", toggleResetKeybinds);
+    ImGui::HotkeyResettable("Beamer", "trainer-beamer", &beamerKeybind, VK_NONE, "trainer", "beamerKeybind", toggleResetKeybinds);
+    ImGui::HotkeyResettable("Strang", "trainer-strang", &strangKeybind, VK_NONE, "trainer", "strangKeybind", toggleResetKeybinds);
 
-    if (ImGui::Hotkey("Kickglitch##trainer-kickglitch", &kgKeybind)) {
-        Settings::SetSetting("trainer", "kgKeybind", kgKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##kgKeybind")) {
-            Settings::SetSetting("trainer", "kgKeybind", kgKeybind = VK_NONE);
-        }
-    }
-
-    if (ImGui::Hotkey("Beamer##trainer-beamer", &beamerKeybind)) {
-        Settings::SetSetting("trainer", "beamerKeybind", beamerKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##beamerKeybind")) {
-            Settings::SetSetting("trainer", "beamerKeybind", beamerKeybind = VK_NONE);
-        }
-    }
-
-    if (ImGui::Hotkey("Strang##trainer-strang", &strangKeybind)) {
-        Settings::SetSetting("trainer", "strangKeybind", strangKeybind);
-    }
-
-    if (toggleResetKeybinds) {
-        ImGui::SameLine();
-
-        if (ImGui::Button("Reset##strangKeybind")) {
-            Settings::SetSetting("trainer", "strangKeybind", strangKeybind = VK_NONE);
-        }
-    }
-    #pragma endregion
-
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::SpacingY(2.5f);
 
     if (ImGui::Checkbox("Toggle Reset Keybinds##toggleResetKeybinds", &toggleResetKeybinds)) {
         Settings::SetSetting("trainer", "toggleResetKeybinds", toggleResetKeybinds);

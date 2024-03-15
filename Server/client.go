@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"io"
 	"log"
 	"math"
 	"net"
@@ -12,6 +13,8 @@ import (
 	"sync"
 	"time"
 )
+
+var url = ""
 
 const (
 	CharacterFaith = iota
@@ -36,6 +39,15 @@ type Client struct {
 	level      string
 	lastPacket []byte
 	position   position
+}
+
+type LeaderboardRunData []struct {
+	PlayerName     string  `json:"PlayerName"`
+	Distance       float64 `json:"Distance"`
+	AvgSpeed       float64 `json:"AvgSpeed"`
+	Time           float64 `json:"Time"`
+	SkillRating    int     `json:"SkillRating"`
+	IsDownloadable bool    `json:"IsDownloadable"`
 }
 
 func (client *Client) connectMsg(msg map[string]interface{}) {
@@ -253,18 +265,132 @@ func (client *Client) sendPostDataMsg(msg map[string]interface{}) {
 
 	jsonString, ok := msg["body"].(string)
 	if !ok {
-		log.Printf("Error: %s", jsonString)
+		log.Printf("Error post data is not a string")
 		return
 	}
 
-	post, err := http.DefaultClient.Post("secret :)", "application/json", bytes.NewBuffer([]byte(jsonString)))
+	post, err := http.DefaultClient.Post(url+"/submit.php", "application/json", bytes.NewBuffer([]byte(jsonString)))
 	if err != nil {
-		log.Printf("Error: %s", err)
+		log.Printf("Error sending post data")
 		return
 	}
-	defer post.Body.Close()
 
-	log.Printf("data sent - response code: %d", post.StatusCode)
+	defer post.Body.Close()
+}
+
+func (client *Client) sendGetDataMsg(msg map[string]interface{}) {
+	client.rwMu.Lock()
+	defer client.rwMu.Unlock()
+
+	gamemode, errorMsg := msg["gamemode"].(string)
+	if !errorMsg {
+		log.Printf("Error: gamemode is nil")
+		return
+	}
+
+	course, errorMsg := msg["course"].(string)
+	if !errorMsg {
+		log.Printf("Error: course is nil")
+		return
+	}
+
+	sortby, errorMsg := msg["sortby"].(string)
+	if !errorMsg {
+		log.Printf("Error: sortby is nil")
+		return
+	}
+
+	timeframe, errorMsg := msg["timeframe"].(string)
+	if !errorMsg {
+		log.Printf("Error: timeframe is nil")
+		return
+	}
+
+	params := "?gamemode=" + gamemode + "&course=" + course + "&sortby=" + sortby + "&timeframe=" + timeframe
+
+	if sortby != "0" {
+		player, errorMsg := msg["player"].(string)
+		if !errorMsg {
+			log.Printf("Error: player is nil")
+			return
+		}
+
+		params = params + "&player=" + player
+	}
+
+	log.Printf(url + "/get.php" + params)
+
+	get, err := http.DefaultClient.Get(url + "/get.php" + params)
+	if err != nil {
+		log.Printf("Error sending get request")
+		return
+	}
+
+	defer get.Body.Close()
+
+	body, err := io.ReadAll(get.Body)
+	if err != nil {
+		log.Printf("Error reading get data")
+		return
+	}
+
+	/*
+		// https://www.sohamkamani.com/golang/json/#json-arrays
+		var leaderboard []LeaderboardRunData
+		leaderboardError := json.Unmarshal(body, &leaderboard)
+
+		if leaderboardError != nil {
+			log.Printf("Error converting json into leaderboard struct")
+			return
+		}
+	*/
+
+	client.room.SendMessageTo(client.Id, map[string]interface{}{
+		"type":       "leaderboard",
+		"subtype":    "runs",
+		"id":         client.Id,
+		"data":       string(body),
+		"statusCode": get.StatusCode,
+	})
+}
+
+func (client *Client) sendLoginMsg(msg map[string]interface{}) {
+	client.rwMu.Lock()
+	defer client.rwMu.Unlock()
+
+	username, errorMsg := msg["username"].(string)
+	if !errorMsg {
+		log.Printf("Error: username is nil")
+		return
+	}
+
+	password, errorMsg := msg["password"].(string)
+	if !errorMsg {
+		log.Printf("Error: password is nil")
+		return
+	}
+
+	get, err := http.DefaultClient.Get(url + "/signin.php?username=" + username + "&password=" + password)
+	if err != nil {
+		log.Printf("Error sending get request")
+		return
+	}
+
+	defer get.Body.Close()
+
+	body, err := io.ReadAll(get.Body)
+	if err != nil {
+		log.Printf("Error reading get data")
+		return
+	}
+
+	client.room.SendMessageTo(client.Id, map[string]interface{}{
+		"type":       "leaderboard",
+		"subtype":    "login",
+		"id":         client.Id,
+		"data":       string(body),
+		"statusCode": get.StatusCode,
+	})
 }
 
 func getTimeDurationSecondsField(obj map[string]interface{}, field string) (time.Duration, bool) {
@@ -336,8 +462,19 @@ func (client *Client) tcpHandler() {
 			client.deadMsg()
 		case "disconnect":
 			client.disconnectMsg()
-		case "post":
-			client.sendPostDataMsg(msg)
+		case "leaderboard":
+			msgSubType, ok := getTrimStringField(msg, "subtype")
+			if !ok {
+				continue
+			}
+			switch msgSubType {
+			case "login":
+				client.sendLoginMsg(msg)
+			case "post":
+				client.sendPostDataMsg(msg)
+			case "get":
+				client.sendGetDataMsg(msg)
+			}
 		}
 	}
 }

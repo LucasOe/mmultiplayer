@@ -1,4 +1,5 @@
 #include <WinUser.h>
+#include <chrono>
 
 #pragma once
 
@@ -60,10 +61,83 @@
 #define GameMode_None           ""
 #define GameMode_Tag            "tag"
 
+#define MS_TO_KPH               3.6f        // Meter per seconds to Kilometers per hour
+#define CMS_TO_KPH              0.036f      // Centimeter per seconds to Kilometers per hour
+
 // Calculates the distance and returns a float value in meters
 inline static float Distance(Classes::FVector from, Classes::FVector to) 
 { 
 	return sqrt(((from.X - to.X) * (from.X - to.X)) + ((from.Y - to.Y) * (from.Y - to.Y)) + ((from.Z - to.Z) * (from.Z - to.Z))) / 100;
+}
+
+// Converts 4294918136 to -270.0439453125f
+inline static float ConvertRotationToFloat(int rotation)
+{
+    return (static_cast<float>(rotation % 0x10000) / static_cast<float>(0x10000)) * 360.0f;
+}
+
+template <typename T>
+static std::string FormatHelper(const char* format, const T value)
+{
+    char buff[0x69];
+    snprintf(buff, sizeof(buff), format, value);
+    return std::string(buff);
+}
+
+static std::string FormatTime(const float time)
+{
+    if (time <= 0.0f)
+    {
+        return "--:--.---";
+    }
+
+    if (time > 3600.0f)
+    {
+        return "+59:59.999";
+    }
+
+    const int minutes = (int)floorf(time / 60.0f);
+    const int seconds = (int)floorf(time - (minutes * 60.0f));
+    const int milliseconds = (int)floorf((time - floorf(time)) * 1000.0f);
+
+    char buff[0xF];
+    snprintf(buff, sizeof(buff), "%02d:%02d.%03d", minutes, seconds, milliseconds);
+    return std::string(buff);
+}
+
+static std::string FormatAverageSpeed(const float avgSpeed, const bool isMetric)
+{
+    if (avgSpeed < 0.0f)
+    {
+        return "n/a";
+    }
+
+    if (isMetric)
+    {
+        return FormatHelper("%.2f km/h", avgSpeed);
+    }
+
+    return FormatHelper("%.2f mph", avgSpeed / 1.609344f);
+}
+
+static std::string FormatDistance(const float distance, const bool isMetric)
+{
+    if (distance < 0.0f)
+    {
+        return "n/a";
+    }
+
+    if (isMetric)
+    {
+        return FormatHelper("%.0f m", distance);
+    }
+
+    return FormatHelper("%.0f yds", distance / 0.9144f);
+}
+
+inline static std::chrono::seconds GetCurrentTimeInSeconds()
+{
+    return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch());
 }
 
 static INPUT input = {0};

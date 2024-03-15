@@ -13,9 +13,13 @@
 #include "../json.h"
 #include "../menu.h"
 #include "../settings.h"
+#include "../util.h"
+#include "../mmultiplayer.h"
 
 #include "client.h"
-#include "../util.h"
+#include "leaderboard.h"
+
+class Leaderboard;
 
 static char roomInput[0xFF] = {0};
 static char nameInput[0xFF] = {0};
@@ -62,6 +66,11 @@ static Client::Player *GetPlayerById(unsigned int id) {
 
 std::vector<Client::Player *> Client::GetPlayerList() { return players.List; }
 
+bool Client::IsConnected()
+{
+    return !disabled && connected;
+}
+
 static void IgnorePlayerInput(bool ignoreInput) {
     const auto controller = Engine::GetPlayerController();
 
@@ -82,7 +91,14 @@ static bool Setup() {
     }
 
     addrinfo *result = nullptr;
-    if (getaddrinfo("176.58.101.83", nullptr, nullptr, &result)) {
+
+#if MMULTIPLAYER_DEBUG_LOCAL
+    const char* address = "127.0.0.1";
+#else
+    const char* address = "176.58.101.83";
+#endif
+
+    if (getaddrinfo(address, nullptr, nullptr, &result)) {
         printf("client: getaddrinfo failed\n");
         return false;
     }
@@ -795,6 +811,16 @@ static void ClientListener() {
                 previousTaggedId = msgTaggedPlayerId;
                 IgnorePlayerInput(client.Id == msgTaggedPlayerId);
             }
+            else if (msgType == "leaderboard")
+            {
+                if (msg["id"] != client.Id)
+                {
+                    continue;
+                }
+
+                Leaderboard lb;
+                lb.HandleMsg(msg);
+            }
         }
 
         if (statusThread.joinable()) {
@@ -1144,7 +1170,7 @@ static void OnRenderTag(IDirect3DDevice9 *device) {
 
 static void MultiplayerTab() {
     ImGui::Text("Status: %s", connected ? "Connected" : disabled ? "Multiplayer Disabled" : "Connecting");
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::SpacingY();
 
     Client cli;
 
@@ -1252,7 +1278,7 @@ static void MultiplayerTab() {
         roomInputCallback();
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::SpacingY();
 
     if (ImGui::Checkbox("Show Nametags##client-show-nametags",
                         &players.ShowNameTags)) {
@@ -1268,7 +1294,6 @@ static void MultiplayerTab() {
         Settings::SetSetting("client", "showChatOverlay", chat.ShowOverlay);
     }
 
-    /*
     ImGui::SameLine();
 
     if (ImGui::Checkbox("Disable Multiplayer##client-disabled", &disabled)) {
@@ -1278,9 +1303,8 @@ static void MultiplayerTab() {
 
         Settings::SetSetting("client", "disabled", disabled);
     }
-    */
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::SpacingY();
     ImGui::Text("Chat");
 
     chat.Mutex.lock();
@@ -1310,7 +1334,7 @@ static void MultiplayerTab() {
         Settings::SetSetting("client", "chatKeybind", chat.Keybind = VK_T);
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::SpacingY();
 
     players.Mutex.lock_shared();
     if (ImGui::TreeNode("##client-players", "Players (%d)",
@@ -1350,7 +1374,7 @@ static void TagTab() {
         }
     }
 
-    ImGui::SeperatorWithPadding(2.5f);
+    ImGui::SpacingY();
 
     if (client.Level == Map_MainMenu) {
         ImGui::Text("You can't start tag when you're in the main menu");
@@ -1434,7 +1458,7 @@ bool Client::Initialize() {
     chat.Keybind = Settings::GetSetting("client", "chatKeybind", VK_T);
     players.ShowNameTags = Settings::GetSetting("client", "showNameTags", true);
     chat.ShowOverlay = Settings::GetSetting("client", "showChatOverlay", true);
-    //disabled = Settings::GetSetting("client", "disabled", false);
+    disabled = Settings::GetSetting("client", "disabled", false);
 
     // Functions
     Menu::AddTab("Multiplayer", MultiplayerTab);
