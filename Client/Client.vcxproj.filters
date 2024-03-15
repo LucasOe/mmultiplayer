@@ -255,7 +255,7 @@
     <ClInclude Include="addons\trainer.h">
       <Filter>Header Files\addons</Filter>
     </ClInclude>
-    <ClInclude Include="addons\leaderboard.h">
+    <ClInclude Include="addons\tournament.h">
       <Filter>Header Files\addons</Filter>
     </ClInclude>
     <ClInclude Include="debug.h">
@@ -269,9 +269,6 @@
     </ClInclude>
     <ClInclude Include="mmultiplayer.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui\imgui_spinner.h">
-      <Filter>Header Files\imgui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -380,7 +377,7 @@
     <ClCompile Include="addons\trainer.cpp">
       <Filter>Source Files\addons</Filter>
     </ClCompile>
-    <ClCompile Include="addons\leaderboard.cpp">
+    <ClCompile Include="addons\tournament.cpp">
       <Filter>Source Files\addons</Filter>
     </ClCompile>
     <ClCompile Include="debug.cpp">

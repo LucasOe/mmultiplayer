@@ -1,15 +1,14 @@
 #include "client.h"
-#include "leaderboard.h"
+#include "tournament.h"
 
 #include <codecvt>
 #include <algorithm>
 
 #include "../engine.h"
-#include "../imgui/imgui.h"
-#include "../imgui/imgui_internal.h"
 #include "../menu.h"
 #include "../util.h"
 #include "../settings.h"
+#include "../imgui/imgui_mmultiplayer.h"
 
 #define MS_TO_KPH   3.6f    // Meter per seconds to Kilometers per hour
 #define CMS_TO_KPH  0.036f  // Centimeter per seconds to Kilometers per hour
@@ -571,7 +570,7 @@ static void OnTick(const float deltaTime)
     }
 }
 
-bool Leaderboard::Initialize()
+bool Tournament::Initialize()
 {
     Name = Settings::GetSetting("race", "playerName", "").get<std::string>();
     strncpy_s(NameInput, sizeof(NameInput), Name.c_str(), sizeof(NameInput) - 1);
@@ -593,7 +592,7 @@ bool Leaderboard::Initialize()
     return true;
 }
 
-std::string Leaderboard::GetName()
+std::string Tournament::GetName()
 {
-    return "Leaderboard";
+    return "Tournament";
 }

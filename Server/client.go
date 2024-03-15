@@ -257,7 +257,8 @@ func (client *Client) sendPostDataMsg(msg map[string]interface{}) {
 		return
 	}
 
-	post, err := http.DefaultClient.Post("secret :)", "application/json", bytes.NewBuffer([]byte(jsonString)))
+	// Replace url with the real url. More info on what it sends can be found in tournament.cpp
+	post, err := http.DefaultClient.Post("url", "application/json", bytes.NewBuffer([]byte(jsonString)))
 	if err != nil {
 		log.Printf("Error: %s", err)
 		return

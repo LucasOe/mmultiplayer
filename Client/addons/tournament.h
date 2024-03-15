@@ -3,7 +3,7 @@
 #include <chrono>
 #include "../addon.h"
 
-class Leaderboard : public Addon 
+class Tournament : public Addon
 {
   public:
     bool Initialize();
