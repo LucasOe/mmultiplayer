@@ -365,14 +365,14 @@ struct Tracker
 
     Tracker()
     {
-        Value = T();
+        Value = std::numeric_limits<T>::lowest();
         TimeHit = 0.0f;
         ResetAfterSeconds = 2.75f; // 2.75f Comes from checking how long it took for the original speedometer to reset
     }
 
     void Reset()
     {
-        Value = 0.0f;
+        Value = std::numeric_limits<T>::lowest();
         TimeHit = 0.0f;
     }
 
