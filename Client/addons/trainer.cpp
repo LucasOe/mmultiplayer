@@ -7,6 +7,10 @@
 #include "../settings.h"
 #include "../util.h"
 
+#pragma warning (push)
+#pragma warning (disable: 4244)
+#pragma warning (disable: 26495)
+
 static bool Enabled = false;
 static bool GodToolActivated = false;
 static bool KickglitchToolActivated = false;
@@ -108,7 +112,7 @@ private:
     char LabelBuffer[32];
     char FormatBuffer[32];
     int DefaultPositionIndex;
-    int PreviuosPositionIndex;
+    int PreviousPositionIndex;
     std::string DefaultLabel;
     std::string DefaultFormat;
 
@@ -157,7 +161,7 @@ public:
         ImGui::Text("DrawIndex: %d", DrawIndex);
         ImGui::Text("PositionIndex: %d", PositionIndex);
         ImGui::Text("DefaultPositionIndex: %d", DefaultPositionIndex);
-        ImGui::Text("PreviuosPositionIndex: %d", PreviuosPositionIndex);
+        ImGui::Text("PreviousPositionIndex: %d", PreviousPositionIndex);
         ImGui::Separator(5.0f);
         */
 
@@ -290,7 +294,7 @@ public:
         }
         else if (resetToPreviousPositionIndex)
         {
-            positionIndex = PreviuosPositionIndex;
+            positionIndex = PreviousPositionIndex;
         }
 
         PositionIndex = Settings::GetSetting({ "Speedometer", "Item", ItemName, "PositionIndex" }, positionIndex);
@@ -315,7 +319,7 @@ public:
     void SaveSettings()
     {
         Settings::SetSetting({ "Speedometer", "Item", ItemName, "DrawIndex" }, DrawIndex);
-        Settings::SetSetting({ "Speedometer", "Item", ItemName, "PositionIndex" }, PreviuosPositionIndex = PositionIndex);
+        Settings::SetSetting({ "Speedometer", "Item", ItemName, "PositionIndex" }, PreviousPositionIndex = PositionIndex);
         Settings::SetSetting({ "Speedometer", "Item", ItemName, "IsVisible" }, IsVisible);
         Settings::SetSetting({ "Speedometer", "Item", ItemName, "ModifyDisplayedValue" }, ModifyDisplayedValue);
         Settings::SetSetting({ "Speedometer", "Item", ItemName, "Multiply" }, Multiply);
@@ -334,7 +338,7 @@ public:
         ItemName = name;
         DefaultLabel = Label = label;
         DefaultFormat = Format = format;
-        DefaultPositionIndex = PreviuosPositionIndex = PositionIndex = positionIndex;
+        DefaultPositionIndex = PreviousPositionIndex = PositionIndex = positionIndex;
 
         positionIndex++;
     }
@@ -1766,3 +1770,5 @@ std::string Trainer::GetName()
 { 
     return "Trainer"; 
 }
+
+#pragma warning (pop)
