@@ -1,4 +1,6 @@
 #pragma once
+#pragma warning (push)
+#pragma warning (disable: 26495)
 
 #include "../addon.h"
 #include "../sdk.h"
@@ -82,3 +84,5 @@ class Client : public Addon
 
     static std::vector<Client::Player *> GetPlayerList();
 };
+
+#pragma warning (pop)

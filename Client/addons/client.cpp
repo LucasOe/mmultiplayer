@@ -43,7 +43,7 @@ static struct
     bool ShowOverlay = true;
     int Keybind = 0;
     std::string Raw;
-    unsigned long long LastTime;
+    unsigned long long LastTime = 0ULL;
     std::mutex Mutex;
 } Chat;
 
@@ -1206,7 +1206,7 @@ static void OnRenderGames(IDirect3DDevice9 *device)
             return;
         }
 
-        auto timeLeftTick = TaggedTimed + (UserClient.CoolDownTag * 1000) - GetTickCount64();
+        auto timeLeftTick = TaggedTimed + static_cast<unsigned long long>(UserClient.CoolDownTag * 1000) - GetTickCount64();
         auto timeLeft = (float)timeLeftTick / 1000;
 
         if (timeLeft < 0.0f || timeLeft > UINT_MAX) 

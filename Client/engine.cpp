@@ -9,6 +9,9 @@
 #include "imgui/imgui_impl_dx9.h"
 #include "imgui/imgui_impl_win32.h"
 
+#pragma warning (push)
+#pragma warning (disable: 26495)
+
 // D3D9 and window hooks
 static struct {
     std::vector<RenderSceneCallback> Callbacks;
@@ -88,6 +91,8 @@ static struct {
     std::vector<TickCallback> Callbacks;
     void(__thiscall *Original)(float *, int, float) = nullptr;
 } tick;
+
+#pragma warning (pop)
 
 // Forward declaration (required)
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -625,7 +630,7 @@ Classes::AWorldInfo *Engine::GetWorld(bool update) {
     }
 
     if (!cache || update) {
-        const auto objects = Classes::UObject::GetGlobalObjects();
+        const auto& objects = Classes::UObject::GetGlobalObjects();
         for (auto i = 0UL; i < objects.Num(); ++i) {
             const auto object = objects.GetByIndex(i);
             if (!(object && object->IsA(Classes::AWorldInfo::StaticClass()))) {
