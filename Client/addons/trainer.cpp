@@ -757,37 +757,44 @@ static void LoadSpeedometerWindowSettings(bool loadItemColors)
 
 static void InitializeSpeedometer()
 {
-    Items.clear();
-    Items.push_back(&LocationX);
-    Items.push_back(&LocationY);
-    Items.push_back(&LocationZ);
-    Items.push_back(&TopHeight);
-    Items.push_back(&Speed);
-    Items.push_back(&TopSpeed);
-    Items.push_back(&Pitch);
-    Items.push_back(&Yaw);
-    Items.push_back(&Checkpoint);
-    Items.push_back(&MovementState);
-    Items.push_back(&Health);
-    Items.push_back(&ReactionTime);
-    Items.push_back(&LastJumpLocation);
-    Items.push_back(&LastJumpLocationDelta);
+    static bool initialized = false;
 
-    int index = 0;
-    LocationX.SetNameAndDefaults("Location X", "X", index);
-    LocationY.SetNameAndDefaults("Location Y", "Y", index);
-    LocationZ.SetNameAndDefaults("Location Z", "Z", index);
-    TopHeight.SetNameAndDefaults("Top Height", "ZT", index);
-    Speed.SetNameAndDefaults("Speed", "V", index);
-    TopSpeed.SetNameAndDefaults("Top Speed", "VT", index);
-    Pitch.SetNameAndDefaults("Pitch", "RX", index);
-    Yaw.SetNameAndDefaults("Yaw", "RZ", index);
-    Checkpoint.SetNameAndDefaults("Checkpoint", "T", index);
-    MovementState.SetNameAndDefaults("Movement State", "S", index, "%d");
-    Health.SetNameAndDefaults("Health", "H", index, "%d");
-    ReactionTime.SetNameAndDefaults("Reaction Time", "RT", index);
-    LastJumpLocation.SetNameAndDefaults("Last Jump Location", "SZ", index);
-    LastJumpLocationDelta.SetNameAndDefaults("Last Jump Location Delta", "SZD", index);
+    if (!initialized)
+    {
+        initialized = true;
+
+        Items.clear();
+        Items.push_back(&LocationX);
+        Items.push_back(&LocationY);
+        Items.push_back(&LocationZ);
+        Items.push_back(&TopHeight);
+        Items.push_back(&Speed);
+        Items.push_back(&TopSpeed);
+        Items.push_back(&Pitch);
+        Items.push_back(&Yaw);
+        Items.push_back(&Checkpoint);
+        Items.push_back(&MovementState);
+        Items.push_back(&Health);
+        Items.push_back(&ReactionTime);
+        Items.push_back(&LastJumpLocation);
+        Items.push_back(&LastJumpLocationDelta);
+
+        int index = 0;
+        LocationX.SetNameAndDefaults("Location X", "X", index);
+        LocationY.SetNameAndDefaults("Location Y", "Y", index);
+        LocationZ.SetNameAndDefaults("Location Z", "Z", index);
+        TopHeight.SetNameAndDefaults("Top Height", "ZT", index);
+        Speed.SetNameAndDefaults("Speed", "V", index);
+        TopSpeed.SetNameAndDefaults("Top Speed", "VT", index);
+        Pitch.SetNameAndDefaults("Pitch", "RX", index);
+        Yaw.SetNameAndDefaults("Yaw", "RZ", index);
+        Checkpoint.SetNameAndDefaults("Checkpoint", "T", index);
+        MovementState.SetNameAndDefaults("Movement State", "S", index, "%d");
+        Health.SetNameAndDefaults("Health", "H", index, "%d");
+        ReactionTime.SetNameAndDefaults("Reaction Time", "RT", index);
+        LastJumpLocation.SetNameAndDefaults("Last Jump Location", "SZ", index);
+        LastJumpLocationDelta.SetNameAndDefaults("Last Jump Location Delta", "SZD", index);
+    }
 
     // Check if there are any speedometer settings before loading from settings
     bool foundSettings = Settings::GetSetting({ "Speedometer", "Item" }, json::object()).is_null();
@@ -1081,7 +1088,7 @@ static void OnRender(IDirect3DDevice9* device)
             ImGui::SeparatorText("Variables");
             {
                 ImGui::SliderFloat("Rounding", &Speedometer.Style.WindowRounding, 0.0f, 16.0f, "%.2f");
-                ImGui::SliderFloat("Border Size", &Speedometer.Style.WindowBorderSize, 0.0f, 1.0f, "%.2f");
+                ImGui::SliderFloat("Border Size", &Speedometer.Style.WindowBorderSize, 0.0f, 2.0f, "%.2f");
             }
 
             ImGui::SeparatorText("Colors");
@@ -1553,6 +1560,32 @@ void __fastcall StateHandlerHook(void *pawn, void *idle, float delta, int change
     StateHandlerOriginal(pawn, delta, changedState);
 }
 
+// For OnInput()
+static void ResetPlayer(Classes::ATdPlayerPawn* pawn, Classes::ATdPlayerController* controller)
+{
+    const auto movementState = pawn->MovementState.GetValue();
+
+    pawn->InitialState = "Walking";
+    pawn->SetInitialState();
+    controller->InitialState = "PlayerWalking";
+    controller->SetInitialState();
+
+    pawn->StopSlideEffect();
+    pawn->StopAllCustomAnimations(0.0f);
+    pawn->SetMove(Classes::EMovement::MOVE_Walking, false, false);
+
+    controller->bIgnoreLookInput = 0;
+    controller->bIgnoreMoveInput = 0;
+    controller->bIgnoreButtonInput = 0;
+
+    if (movementState == Classes::EMovement::MOVE_RumpSlide)
+    {
+        pawn->WalkableFloorZ = 0.71f;
+        pawn->GravityModifier = 1.0f;
+        pawn->StreakEffectOverride = 0;
+    }
+}
+
 bool Trainer::Initialize() 
 {
     // Settings
@@ -1617,25 +1650,16 @@ bool Trainer::Initialize()
                     const auto pawn = Engine::GetPlayerPawn();
                     const auto controller = Engine::GetPlayerController();
 
-                    if (pawn && pawn->Health > 0 && controller && pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled)
+                    if (pawn && controller && pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled)
                     {
-                        pawn->InitialState = "Walking";
-                        pawn->SetInitialState();
-                        controller->InitialState = "PlayerWalking";
-                        controller->SetInitialState();
-
-                        pawn->StopAllCustomAnimations(0.0f);
-                        pawn->SetMove(Classes::EMovement::MOVE_Walking, false, false);
-
-                        pawn->SetIgnoreLookInput(false);
-                        pawn->SetIgnoreMoveInput(false);
-                        controller->IgnoreButtonInput(false);
-                        controller->IgnoreLookInput(false);
-                        controller->IgnoreMoveInput(false); 
-                    }
-                    else 
-                    {
-                        GodToolActivated = false;
+                        if (pawn->Health > 0)
+                        {
+                            ResetPlayer(pawn, controller);
+                        }
+                        else 
+                        {
+                            GodToolActivated = false;
+                        }
                     }
                 }
             }
@@ -1651,19 +1675,7 @@ bool Trainer::Initialize()
 
                     if (pawn && pawn->Health > 0 && controller)
                     {
-                        pawn->InitialState = "Walking";
-                        pawn->SetInitialState();
-                        controller->InitialState = "PlayerWalking";
-                        controller->SetInitialState();
-
-                        pawn->StopAllCustomAnimations(0.0f);
-                        pawn->SetMove(Classes::EMovement::MOVE_Walking, false, false);
-
-                        pawn->SetIgnoreLookInput(false);
-                        pawn->SetIgnoreMoveInput(false);
-                        controller->IgnoreButtonInput(false);
-                        controller->IgnoreLookInput(false);
-                        controller->IgnoreMoveInput(false);
+                        ResetPlayer(pawn, controller);
 
                         Fly.Velocity = {0};
                         Fly.Location = pawn->Location;
