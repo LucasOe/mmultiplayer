@@ -1206,7 +1206,7 @@ static void OnRenderGames(IDirect3DDevice9 *device)
             return;
         }
 
-        auto timeLeftTick = TaggedTimed + static_cast<unsigned long long>(UserClient.CoolDownTag * 1000) - GetTickCount64();
+        auto timeLeftTick = TaggedTimed + (static_cast<unsigned long long>(UserClient.CoolDownTag) * 1000) - GetTickCount64();
         auto timeLeft = (float)timeLeftTick / 1000;
 
         if (timeLeft < 0.0f || timeLeft > UINT_MAX) 
@@ -1472,9 +1472,9 @@ static void MultiplayerTab()
 
 static void GamesTab() 
 {
-    ImGui::SeparatorText("Tag##Games-Tag");
+    ImGui::SeparatorText("Tag##Tag");
     {
-        if (ImGui::Checkbox("Distance Overlay##tag-distance-overlay", &ShowTagDistanceOverlay))
+        if (ImGui::Checkbox("Distance Overlay##Tag-DistanceOverlay", &ShowTagDistanceOverlay))
         {
             Settings::SetSetting({ "Games", "Tag", "ShowDistanceOverlay" }, ShowTagDistanceOverlay);
         }
@@ -1482,52 +1482,48 @@ static void GamesTab()
 
         if (UserClient.GameMode == GameMode_Tag)
         {
-            ImGui::Checkbox("Cooldown Overlay##tag-cooldown-overlay", &ShowTagCooldownOverlay);
-            ImGui::HelpMarker("When someone gets tagged, it will show (if true) at the top middle of the screen of the cooldown\nin seconds until they can move again");
+            ImGui::Checkbox("Cooldown Overlay##Tag-CooldownOverlay", &ShowTagCooldownOverlay);
+            ImGui::HelpMarker("When someone gets tagged, it will show at the top middle of the screen of the cooldown in seconds until they can move again");
         }
 
-        ImGui::Separator(5.0f);
-
-        if (UserClient.Level == Map_MainMenu)
+        if (UserClient.Level == Map_MainMenu || Players.List.size() == 0)
         {
-            ImGui::Text("You can't start tag when you're in the main menu");
-        }
-        else if (Players.List.size() == 0)
-        {
-            ImGui::Text("You can't start tag when you're alone");
+            ImGui::Separator(5.0f);
+            ImGui::TextWrapped("You can't start tag when you're in the main menu or when there are no other players in the room!");
         }
         else
         {
+            char buffer[0xFF];
+
             if (UserClient.GameMode == GameMode_None)
             {
-                if (ImGui::InputInt("Cooldown##tag-change-cooldown", &TagCooldown, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue))
-                {
-                    TagCooldown = UserClient.CoolDownTag = max(1, min(60, TagCooldown));
+                ImGui::SliderInt("Cooldown Timer##Tag-CooldownSlider", &TagCooldown, 1, 60, "%d", ImGuiSliderFlags_AlwaysClamp);
+                ImGui::HelpMarker("Change to cooldown to be anywhere from 1 to 60. Cooldown is in seconds and default is 5");
 
+                ImGui::Separator(5.0f);
+
+                if (ImGui::Button("Update Cooldown Timer##Tag-UpdateCooldownTime"))
+                {
                     SendJsonMessage({
                         {"type", "cooldown"},
                         {"cooldown", UserClient.CoolDownTag},
-                        });
+                    });
 
-                    char buffer[0xFF];
                     sprintf_s(buffer, sizeof(buffer), "[Tag] %s changed the cooldown to be %d second%s", UserClient.Name.c_str(), TagCooldown, TagCooldown != 1 ? "s" : "");
 
                     SendJsonMessage({
                         {"type", "announce"},
                         {"body", buffer},
-                        });
+                    });
                 }
 
-                ImGui::HelpMarker("Change to cooldown to be anywhere from 1 to 60. Press enter to update");
-                ImGui::DummyVertical(5.0f);
-
-                if (ImGui::Button("Start Tag"))
+                ImGui::SameLine();
+                if (ImGui::Button("Start Tag##Tag-StartTag"))
                 {
                     SendJsonMessage({
                         {"type", "startTagGameMode"},
                     });
 
-                    char buffer[0xFF];
                     sprintf_s(buffer, sizeof(buffer), "[Tag] %s started tag", UserClient.Name.c_str());
 
                     SendJsonMessage({
@@ -1539,19 +1535,18 @@ static void GamesTab()
 
             if (UserClient.GameMode == GameMode_Tag)
             {
-                if (ImGui::Button("End Tag"))
+                if (ImGui::Button("End Tag##Tag-EndTag"))
                 {
                     SendJsonMessage({
                         {"type", "endGameMode"},
-                        });
+                    });
 
-                    char buffer[0xFF];
                     sprintf_s(buffer, sizeof(buffer), "[Tag] %s ended tag", UserClient.Name.c_str());
 
                     SendJsonMessage({
                         {"type", "announce"},
                         {"body", buffer},
-                        });
+                    });
                 }
             }
         }
