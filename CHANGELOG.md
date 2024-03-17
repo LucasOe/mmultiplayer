@@ -5,11 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.2.0] - 2024-03-12
+## [2.2.0] - 2024-03-25
 
 ### Added
 - Customizable speedometer with way more options than ever before
 - You can now hide the overlay again in trainer which was removed in 2.1.0
+- In Misc tab, you can select to disable auto lockon on AI
 
 ### Fixed
 - Faith being unable to move after teleporting in a few movement states
