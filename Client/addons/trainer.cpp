@@ -1543,6 +1543,146 @@ static void OnTick(const float deltaTime)
     }
 }
 
+static void OnInput(unsigned int& msg, int keycode)
+{
+    if (!Enabled)
+    {
+        return;
+    }
+
+    if (Fly.Enabled && (msg == WM_KEYDOWN || msg == WM_KEYUP) && (keycode == Fly.FasterKeybind || keycode == Fly.SlowerKeybind))
+    {
+        msg = WM_NULL;
+        return;
+    }
+
+    if (msg == WM_KEYDOWN)
+    {
+        auto resetPlayer = [](Classes::ATdPlayerPawn* pawn, Classes::ATdPlayerController* controller)
+        {
+            const auto movementState = pawn->MovementState.GetValue();
+
+            pawn->InitialState = "Walking";
+            pawn->SetInitialState();
+            controller->InitialState = "PlayerWalking";
+            controller->SetInitialState();
+
+            pawn->StopSlideEffect();
+            pawn->StopAllCustomAnimations(0.0f);
+            pawn->SetMove(Classes::EMovement::MOVE_Walking, false, false);
+
+            controller->bIgnoreLookInput = 0;
+            controller->bIgnoreMoveInput = 0;
+            controller->bIgnoreButtonInput = 0;
+
+            if (movementState == Classes::EMovement::MOVE_RumpSlide)
+            {
+                pawn->WalkableFloorZ = 0.71f;
+                pawn->GravityModifier = 1.0f;
+                pawn->StreakEffectOverride = 0;
+            }
+        };
+
+        if (keycode == GodKeybind)
+        {
+            GodToolActivated = !GodToolActivated;
+
+            if (GodToolActivated)
+            {
+                const auto pawn = Engine::GetPlayerPawn();
+                const auto controller = Engine::GetPlayerController();
+
+                if (pawn && controller && pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled)
+                {
+                    if (pawn->Health > 0)
+                    {
+                        resetPlayer(pawn, controller);
+                    }
+                    else
+                    {
+                        GodToolActivated = false;
+                    }
+                }
+            }
+        }
+
+        if (keycode == Fly.Keybind)
+        {
+            Fly.Enabled = !Fly.Enabled;
+
+            if (Fly.Enabled)
+            {
+                const auto pawn = Engine::GetPlayerPawn();
+                const auto controller = Engine::GetPlayerController();
+
+                if (pawn && pawn->Health > 0 && controller)
+                {
+                    resetPlayer(pawn, controller);
+
+                    Fly.Velocity = { 0 };
+                    Fly.Location = pawn->Location;
+
+                    if (Fly.ResetSpeed)
+                    {
+                        Fly.Speed = Fly.DefaultSpeed;
+                    }
+                }
+                else
+                {
+                    Fly.Enabled = false;
+                }
+            }
+            else
+            {
+                const auto pawn = Engine::GetPlayerPawn();
+                if (pawn)
+                {
+                    static const auto fps = 62.0f;
+                    Fly.Velocity.X *= fps;
+                    Fly.Velocity.Y *= fps;
+                    Fly.Velocity.Z *= fps;
+
+                    pawn->Velocity = Fly.Velocity;
+                    pawn->bCollideWorld = true;
+                    pawn->EnterFallingHeight = -1e30f;
+                    pawn->Physics = Classes::EPhysics::PHYS_Falling;
+                }
+            }
+        }
+
+        if (!Fly.Enabled)
+        {
+            if (keycode == KickglitchKeybind)
+            {
+                const auto pawn = Engine::GetPlayerPawn();
+                if (pawn)
+                {
+                    KickglitchToolActivated = true;
+                }
+            }
+
+            if (keycode == BeamerKeybind)
+            {
+                const auto pawn = Engine::GetPlayerPawn();
+
+                if (pawn && pawn->MovementState == Classes::EMovement::MOVE_WallClimbing)
+                {
+                    if (SidestepBeamer && SidestepBeamerAutomatic)
+                    {
+                        PressKey(SidestepBeamerPressLeftKeybind ? SidestepBeamerLeftKeybind : SidestepBeamerRightKeybind);
+                    }
+                    BeamerToolActivated = true;
+                }
+            }
+
+            if (keycode == StrangKeybind)
+            {
+                StrangToolActivated = true;
+            }
+        }
+    }
+}
+
 void __fastcall StateHandlerHook(void *pawn, void *idle, float delta, int changedState) 
 {
     if (pawn && pawn == Engine::GetPlayerPawn() && StrangToolActivated && changedState) 
@@ -1558,32 +1698,6 @@ void __fastcall StateHandlerHook(void *pawn, void *idle, float delta, int change
     }
 
     StateHandlerOriginal(pawn, delta, changedState);
-}
-
-// For OnInput()
-static void ResetPlayer(Classes::ATdPlayerPawn* pawn, Classes::ATdPlayerController* controller)
-{
-    const auto movementState = pawn->MovementState.GetValue();
-
-    pawn->InitialState = "Walking";
-    pawn->SetInitialState();
-    controller->InitialState = "PlayerWalking";
-    controller->SetInitialState();
-
-    pawn->StopSlideEffect();
-    pawn->StopAllCustomAnimations(0.0f);
-    pawn->SetMove(Classes::EMovement::MOVE_Walking, false, false);
-
-    controller->bIgnoreLookInput = 0;
-    controller->bIgnoreMoveInput = 0;
-    controller->bIgnoreButtonInput = 0;
-
-    if (movementState == Classes::EMovement::MOVE_RumpSlide)
-    {
-        pawn->WalkableFloorZ = 0.71f;
-        pawn->GravityModifier = 1.0f;
-        pawn->StreakEffectOverride = 0;
-    }
 }
 
 bool Trainer::Initialize() 
@@ -1626,120 +1740,7 @@ bool Trainer::Initialize()
 
     Engine::OnPreLevelLoad([](const wchar_t *) { KickglitchToolActivated = BeamerToolActivated = false; });
 
-    Engine::OnInput([](unsigned int &msg, int keycode) 
-    {
-        if (!Enabled) 
-        {
-            return;
-        }
-
-        if (Fly.Enabled && (msg == WM_KEYDOWN || msg == WM_KEYUP) && (keycode == Fly.FasterKeybind || keycode == Fly.SlowerKeybind)) 
-        {
-            msg = WM_NULL;
-            return;
-        }
-
-        if (msg == WM_KEYDOWN) 
-        {
-            if (keycode == GodKeybind) 
-            {
-                GodToolActivated = !GodToolActivated;
-
-                if (GodToolActivated) 
-                {
-                    const auto pawn = Engine::GetPlayerPawn();
-                    const auto controller = Engine::GetPlayerController();
-
-                    if (pawn && controller && pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled)
-                    {
-                        if (pawn->Health > 0)
-                        {
-                            ResetPlayer(pawn, controller);
-                        }
-                        else 
-                        {
-                            GodToolActivated = false;
-                        }
-                    }
-                }
-            }
-
-            if (keycode == Fly.Keybind) 
-            {
-                Fly.Enabled = !Fly.Enabled;
-
-                if (Fly.Enabled) 
-                {
-                    const auto pawn = Engine::GetPlayerPawn();
-                    const auto controller = Engine::GetPlayerController();
-
-                    if (pawn && pawn->Health > 0 && controller)
-                    {
-                        ResetPlayer(pawn, controller);
-
-                        Fly.Velocity = {0};
-                        Fly.Location = pawn->Location;
-                        
-                        if (Fly.ResetSpeed) 
-                        {
-                            Fly.Speed = Fly.DefaultSpeed;
-                        }
-                    } 
-                    else 
-                    {
-                        Fly.Enabled = false;
-                    }
-                } 
-                else 
-                {
-                    const auto pawn = Engine::GetPlayerPawn();
-                    if (pawn) 
-                    {
-                        static const auto fps = 62.0f;
-                        Fly.Velocity.X *= fps;
-                        Fly.Velocity.Y *= fps;
-                        Fly.Velocity.Z *= fps;
-
-                        pawn->Velocity = Fly.Velocity;
-                        pawn->bCollideWorld = true;
-                        pawn->EnterFallingHeight = -1e30f;
-                        pawn->Physics = Classes::EPhysics::PHYS_Falling;
-                    }
-                }
-            }
-
-            if (!Fly.Enabled) 
-            {
-                if (keycode == KickglitchKeybind) 
-                {
-                    const auto pawn = Engine::GetPlayerPawn();
-                    if (pawn) 
-                    {
-                        KickglitchToolActivated = true;
-                    }
-                }
-
-                if (keycode == BeamerKeybind) 
-                {
-                    const auto pawn = Engine::GetPlayerPawn();
-
-                    if (pawn && pawn->MovementState == Classes::EMovement::MOVE_WallClimbing) 
-                    {
-                        if (SidestepBeamer && SidestepBeamerAutomatic) 
-                        {
-                            PressKey(SidestepBeamerPressLeftKeybind ? SidestepBeamerLeftKeybind : SidestepBeamerRightKeybind);
-                        }
-                        BeamerToolActivated = true;
-                    }
-                }
-
-                if (keycode == StrangKeybind) 
-                {
-                    StrangToolActivated = true;
-                }
-            }
-        }
-    });
+    Engine::OnInput(OnInput);
 
     Menu::OnVisibilityChange([](bool show)
     {
