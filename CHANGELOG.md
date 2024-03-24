@@ -10,7 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Customizable speedometer with way more options than ever before
 - You can now hide the overlay again in trainer which was removed in 2.1.0
-- In Misc tab, you can select to disable auto lockon on AI
+- Misc tab
+  - Disable auto lockon on AI
+  - Color Scale
+  - Tunnel Vision
 
 ### Fixed
 - Faith being unable to move after teleporting in a few movement states

@@ -73,21 +73,6 @@ static struct
     bool ResetSpeed = true;
 } Fly;
 
-static json ImVec4ToJson(const ImVec4& v)
-{
-    return json{{"R", v.x}, {"G", v.y}, {"B", v.z}, {"A", v.w}};
-}
-
-static ImVec4 JsonToImVec4(const json& j)
-{
-    ImVec4 v;
-    v.x = j.at("R").get<float>();
-    v.y = j.at("G").get<float>();
-    v.z = j.at("B").get<float>();
-    v.w = j.at("A").get<float>();
-    return v;
-}
-
 class Item
 {
 public:

@@ -90,3 +90,32 @@ inline static void ReleaseKey()
     Input.ki.dwFlags = KEYEVENTF_KEYUP;
     SendInput(1, &Input, sizeof(INPUT));
 }
+
+static json ImVec4ToJson(const ImVec4& v)
+{
+    return json{ {"R", v.x}, {"G", v.y}, {"B", v.z}, {"A", v.w} };
+}
+
+static ImVec4 JsonToImVec4(const json& j)
+{
+    ImVec4 v;
+    v.x = j.at("R").get<float>();
+    v.y = j.at("G").get<float>();
+    v.z = j.at("B").get<float>();
+    v.w = j.at("A").get<float>();
+    return v;
+}
+
+static json FVectorToJson(const Classes::FVector& v)
+{
+    return json{ {"R", v.X}, {"G", v.Y}, {"B", v.Z} };
+}
+
+static Classes::FVector JsonToFVector(const json& j)
+{
+    Classes::FVector v;
+    v.X = j.at("R").get<float>();
+    v.Y = j.at("G").get<float>();
+    v.Z = j.at("B").get<float>();
+    return v;
+}
