@@ -20,6 +20,13 @@ static bool NoWallrunChallenge = false;
 static bool NoWallclimbChallenge = false;
 static bool NoHealthRegenerationEnabled = false;
 
+static bool TunnelVisionEnabled = false;
+static bool TunnelVisionInverted = false;
+static ImVec2 TunnelVisionSize = ImVec2(128.0f, 128.0f);
+
+static bool CustomColorScaleEnabled = false;
+static Classes::FVector CustomColorScaleValues = Classes::FVector{1.0f, 1.0f, 1.0f};
+
 enum class EOhko : uint8_t 
 {
     Normal,
@@ -66,11 +73,60 @@ static void MiscTab()
     }
     ImGui::HelpMarker("If enabled, it will automatically roll every time for you");
 
-    if (ImGui::Checkbox("No Auto Lock", &AutoLockDisabled))
+    if (ImGui::Checkbox("No Auto Lockon", &AutoLockDisabled))
     {
         Settings::SetSetting({ "Misc", "AutoLockDisabled" }, AutoLockDisabled);
     }
     ImGui::HelpMarker("Disables the camera lock on when getting too close to an AI");
+
+    // Color Scale
+    {
+        if (ImGui::Checkbox("Customize Color Scale", &CustomColorScaleEnabled))
+        {
+            Settings::SetSetting({ "Misc", "ColorScale", "Enabled" }, CustomColorScaleEnabled);
+
+            if (!CustomColorScaleEnabled && controller->PlayerCamera)
+            {
+                controller->PlayerCamera->ColorScale = Classes::FVector{ 1.0f, 1.0f, 1.0f };
+            }
+        }
+
+        if (CustomColorScaleEnabled)
+        {
+            ImGui::ColorEdit3("Color Scale", &CustomColorScaleValues.X, ImGuiColorEditFlags_Float);
+            ImGui::HelpMarker("Default value for all is 1.0 (white)");
+
+            if (ImGui::Button("Save##ColorScaleSave"))
+            {
+                Settings::SetSetting({ "Misc", "ColorScale", "Values" }, FVectorToJson(CustomColorScaleValues));
+            }
+        }
+    }
+
+    // Tunnel Vision
+    {
+        if (ImGui::Checkbox("Tunnel Vision", &TunnelVisionEnabled))
+        {
+            Settings::SetSetting({ "Misc", "TunnelVision", "Enabled" }, TunnelVisionEnabled);
+        }
+
+        if (TunnelVisionEnabled)
+        {
+            if (ImGui::Checkbox("Tunnel Vision Inverted", &TunnelVisionInverted))
+            {
+                Settings::SetSetting({ "Misc", "TunnelVision", "Inverted" }, TunnelVisionInverted);
+            }
+
+            ImGui::Text("Tunnel Vision Size");
+            if (ImGui::InputFloat2("##TunnelVision-Size", &TunnelVisionSize.x, "%.2f", ImGuiInputTextFlags_EnterReturnsTrue))
+            {
+                Settings::SetSetting({ "Misc", "TunnelVision", "Width" }, TunnelVisionSize.x);
+                Settings::SetSetting({ "Misc", "TunnelVision", "Height" }, TunnelVisionSize.y);
+            }
+            ImGui::HelpMarker("Customize the width and height. If you wanted cinematic bars, the width needs to be greater than half your "
+                "current width. For the height, it needs to be less than half the height. Press enter to save the width and height.\n\nDefault value for both is 128");
+        }
+    }
 
     if (ImGui::Checkbox("No Consequtive Wallruns Limit", &ConsequtiveWallrunsLimitRemoved)) 
     {
@@ -157,7 +213,7 @@ static void MiscTab()
                     pawn->Health = pawn->MaxHealth;
                 }
 
-                ImGui::HelpMarker("Health regeneration is turned off. If you have 100 health and take 15 damage, you'll have 85 health for the rest of the game.\nIf you reach 0 health, it will start a new game for you");
+                ImGui::HelpMarker("Health regeneration is turned off. If you have 100 health and take 15 damage, you'll have 85 health for the rest of the game. If you reach 0 health, it will start a new game for you");
             }
             else
             {
@@ -357,6 +413,52 @@ static void OnTick(float deltaTime)
             StartNewGame();
         }
     }
+
+    if (CustomColorScaleEnabled)
+    {
+        if (controller->PlayerCamera)
+        {
+            controller->PlayerCamera->ColorScale = CustomColorScaleValues;
+        }
+    }
+}
+
+static void OnRender(IDirect3DDevice9* device)
+{
+    if (!Enabled)
+    {
+        return;
+    }
+
+    auto pawn = Engine::GetPlayerPawn();
+    auto controller = Engine::GetPlayerController();
+
+    if (!pawn && !controller || LevelName == Map_MainMenu)
+    {
+        return;
+    }
+
+    if (TunnelVisionEnabled)
+    {
+        auto window = ImGui::BeginRawScene("##TunnelVision-Scene");
+        auto displaySize = ImGui::GetMainViewport()->Size;
+        const float width = TunnelVisionSize.x;
+        const float height = TunnelVisionSize.y;
+
+        if (!TunnelVisionInverted)
+        {
+            window->DrawList->AddRectFilled({ 0, 0 }, { displaySize.x / 2 + width, displaySize.y / 2 - height }, IM_COL32_BLACK);
+            window->DrawList->AddRectFilled({ displaySize.x / 2 + width, 0 }, { displaySize.x, displaySize.y / 2 + height }, IM_COL32_BLACK);
+            window->DrawList->AddRectFilled({ displaySize.x / 2 - width, displaySize.y / 2 + height }, { displaySize.x, displaySize.y }, IM_COL32_BLACK);
+            window->DrawList->AddRectFilled({ 0, displaySize.y / 2 - height }, { displaySize.x / 2 - width, displaySize.y }, IM_COL32_BLACK);
+        }
+        else
+        {
+            window->DrawList->AddRectFilled({ displaySize.x / 2 - width, displaySize.y / 2 - height }, { displaySize.x / 2 + width, displaySize.y / 2 + height }, IM_COL32_BLACK);
+        }
+
+        ImGui::EndRawScene();
+    }
 }
 
 bool Misc::Initialize() 
@@ -376,8 +478,17 @@ bool Misc::Initialize()
     OneHitKnockOut.Enabled = Settings::GetSetting({ "Misc", "OneHitKnockOut", "Enabled" }, false);
     OneHitKnockOut.Type = Settings::GetSetting({ "Misc", "OneHitKnockOut", "Type" }, EOhko::Normal).get<EOhko>();
 
+    TunnelVisionEnabled = Settings::GetSetting({ "Misc", "TunnelVision", "Enabled" }, false);
+    TunnelVisionInverted = Settings::GetSetting({ "Misc", "TunnelVision", "Inverted" }, false);
+    TunnelVisionSize.x = Settings::GetSetting({ "Misc", "TunnelVision", "Width" }, 128.0f);
+    TunnelVisionSize.y = Settings::GetSetting({ "Misc", "TunnelVision", "Height" }, 128.0f);
+
+    CustomColorScaleEnabled = Settings::GetSetting({ "Misc", "ColorScale", "Enabled" }, false);
+    CustomColorScaleValues = JsonToFVector(Settings::GetSetting({ "Misc", "ColorScale", "Values" }, FVectorToJson(Classes::FVector{1.0f, 1.0f, 1.0f})));
+
     Menu::AddTab("Misc", MiscTab);
     Engine::OnTick(OnTick);
+    Engine::OnRenderScene(OnRender);
 
     Engine::OnPostLevelLoad([](const wchar_t *newLevelName) 
     {
