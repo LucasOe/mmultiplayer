@@ -1,6 +1,3 @@
-# Why is this set to read-only?
-I'm feeling a bit drained from working on the multiplayer mod and I don't want to play this game anymore. I want to do something else that feels more fulfilling than working on this.
-
 # Mirror's Edge Multiplayer Mod
 
 ## Setup
