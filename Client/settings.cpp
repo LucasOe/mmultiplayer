@@ -7,10 +7,7 @@ static json settings;
 
 static std::string GetSettingsPath() 
 {
-	char path[MAX_PATH];
-	GetTempPathA(sizeof(path), path);
-
-	return std::string(path) + "mmultiplayer.settings";
+	return "mmultiplayer-settings.json";
 }
 
 void Settings::SetSetting(const std::vector<std::string> keys, const json value) 
@@ -56,18 +53,18 @@ json Settings::GetSetting(const std::vector<std::string> keys, const json defaul
 
 void Settings::Load() 
 {
-	auto reset = true;
+	bool reset = true;
 
-	auto f = new std::ifstream(GetSettingsPath());
-	if (f) 
+	auto file = new std::ifstream(GetSettingsPath());
+	if (file)
 	{
 		try 
 		{
-			settings = json::parse(*f);
+			settings = json::parse(*file);
 			reset = false;
 		} catch (json::parse_error e) {}
 
-		f->close();
+		file->close();
 	}
 
 	if (reset) 
