@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -173,6 +173,8 @@
     <ClInclude Include="addons\dolly.h" />
     <ClInclude Include="addons\misc.h" />
     <ClInclude Include="addons\trainer.h" />
+    <ClInclude Include="addons\chaos\chaos.h" />
+    <ClInclude Include="addons\chaos\effect.h" />
     <ClInclude Include="engine.h" />
     <ClInclude Include="addon.h" />
     <ClInclude Include="hook.h" />
@@ -246,6 +248,11 @@
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="addons\chaos\chaos.cpp" />
+    <ClCompile Include="addons\chaos\effect.cpp" />
+    <ClCompile Include="addons\chaos\effects\dvdscreensaver.cpp" />
+    <ClCompile Include="addons\chaos\effects\autojump.cpp" />
+    <ClCompile Include="addons\chaos\effects\nothing.cpp" />
     <ClCompile Include="addons\client.cpp" />
     <ClCompile Include="addons\dolly.cpp" />
     <ClCompile Include="addons\misc.cpp" />

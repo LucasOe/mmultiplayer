@@ -22,7 +22,7 @@ static void RenderMenu(IDirect3DDevice9 *device)
 {
 	if (ShowMenu)
 	{
-		ImGui::Begin("MMultiplayer 2.2.0", NULL, ImGuiWindowFlags_NoCollapse);
+		ImGui::Begin("MMultiplayer 2.3.0", NULL, ImGuiWindowFlags_NoCollapse);
 		ImGui::BeginTabBar("");
 
 		for (auto tab : Tabs) 

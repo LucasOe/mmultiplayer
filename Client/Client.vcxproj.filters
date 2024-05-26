@@ -21,6 +21,9 @@
     <Filter Include="Header Files\addons">
       <UniqueIdentifier>{78e177e8-1b0e-4bbd-b22d-192ed0d7b535}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\addons\chaos">
+      <UniqueIdentifier>{f1f15211-561b-493c-a46c-180897f5c144}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source Files">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
@@ -36,6 +39,12 @@
     </Filter>
     <Filter Include="Source Files\addons">
       <UniqueIdentifier>{b5dd9396-45e2-4559-a7b7-e19e6779427a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\addons\chaos">
+      <UniqueIdentifier>{981c8322-7e0a-43bb-86ab-fded9311ec43}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\addons\chaos\effects">
+      <UniqueIdentifier>{2ed84692-e577-44e1-b357-cd51cc7c68bb}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -264,6 +273,12 @@
     <ClInclude Include="addons\misc.h">
       <Filter>Header Files\addons</Filter>
     </ClInclude>
+    <ClInclude Include="addons\chaos\chaos.h">
+      <Filter>Header Files\addons\chaos</Filter>
+    </ClInclude>
+    <ClInclude Include="addons\chaos\effect.h">
+      <Filter>Header Files\addons\chaos</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -376,6 +391,21 @@
     </ClCompile>
     <ClCompile Include="addons\misc.cpp">
       <Filter>Source Files\addons</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\chaos.cpp">
+      <Filter>Source Files\addons\chaos</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effect.cpp">
+      <Filter>Source Files\addons\chaos</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\autojump.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\nothing.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\dvdscreensaver.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
