@@ -407,5 +407,17 @@
     <ClCompile Include="addons\chaos\effects\dvdscreensaver.cpp">
       <Filter>Source Files\addons\chaos\effects</Filter>
     </ClCompile>
+    <ClCompile Include="addons\chaos\effects\fov.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\forcerandomdirection.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\framerate.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\timescale.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

@@ -22,21 +22,16 @@ public:
         Name = name;
     }
 
-    void OnStart() override
+    void Start() override
     {
         JumpTimeDelay = RandomFloat(JumpTimeDelayMax);
         JumpTimeActivatedAt = static_cast<float>(GetTickCount64());
     }
 
-    void OnTick(const float deltaTime) override
+    void Tick(const float deltaTime) override
     {
         auto pawn = Engine::GetPlayerPawn();
         auto controller = Engine::GetPlayerController();
-
-        if (pawn->Health <= 0 || !controller)
-        {
-            return;
-        }
 
         if (JumpType == JumpType::Constant)
         {
@@ -53,7 +48,15 @@ public:
         }
     }
 
-    void OnEnd() override {}
+    bool Shutdown() override 
+    {
+        return true;
+    }
+
+    std::string GetType() override
+    {
+        return "AutoJump";
+    }
 
 private:
     bool CanJump()

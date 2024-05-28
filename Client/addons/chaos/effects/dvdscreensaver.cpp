@@ -8,26 +8,30 @@ public:
     DvdScreenSaver(const std::string& name)
     {
         Name = name;
-    }
 
-    void OnStart() override 
-    {
         // TODO: Load image
     }
 
-    void OnTick(const float deltaTime) override 
+    void Start() override {}
+
+    void Tick(const float deltaTime) override 
     {
-        const auto window = ImGui::BeginRawScene("##DvdScreenSaver");
-        const auto& io = ImGui::GetIO();
+        auto window = ImGui::BeginRawScene("##DvdScreenSaver");
+        auto& io = ImGui::GetIO();
 
         // TODO: Move Image
 
         ImGui::EndRawScene();
     }
 
-    void OnEnd() override 
+    bool Shutdown() override 
     {
-        // Free image
+        return true;
+    }
+
+    std::string GetType() override
+    {
+        return "DvdScreenSaver";
     }
 };
 
