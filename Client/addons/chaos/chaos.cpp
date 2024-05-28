@@ -5,7 +5,8 @@
 #include "../../settings.h"
 #include "../../util.h"
 
-static bool Enabled = false;
+static bool IsEnabled = false;
+static bool IsPaused = false;
 
 static float MaxTime = 20.0f;
 static float TimerHeight = 18.0f;
@@ -18,9 +19,10 @@ std::vector<Effect*> ActiveEffects;
 
 static void ChaosTab() 
 {
-    ImGui::Checkbox("Enabled##Chaos-Enabled", &Enabled);
+    ImGui::Checkbox("Is Enabled##Chaos-Enabled", &IsEnabled);
+    ImGui::Checkbox("Is Paused##Chaos-Paused", &IsPaused);
 
-    if (ImGui::SliderFloat("Time##Chaos-MaxTime", &MaxTime, 10.0f, 60.0f, "%.0f", ImGuiSliderFlags_AlwaysClamp))
+    if (ImGui::SliderFloat("Time##Chaos-MaxTime", &MaxTime, 5.0f, 60.0f, "%.0f", ImGuiSliderFlags_AlwaysClamp))
     {
         TimeSeconds = 0.0f;
     }
@@ -31,12 +33,16 @@ static void ChaosTab()
     ImGui::ColorEdit4("Background Color##Chaos-Timer-BackgroundColor", &BackgroundColor.x);
     ImGui::ColorEdit4("Timer Color##Chaos-Timer-Color", &TimerColor.x);
     ImGui::Separator(2.5f);
-    ImGui::Text("TimeSeconds: %f", TimeSeconds);
+
+    for (auto effect : Effects())
+    {
+        ImGui::Text("%s (%s)", effect->Name.c_str(), effect->GetType().c_str());
+    }
 }
 
 static void OnRender(IDirect3DDevice9*) 
 {
-    if (!Enabled) 
+    if (!IsEnabled)
     {
         return;
     }
@@ -64,7 +70,7 @@ static void OnRender(IDirect3DDevice9*)
 
 static void OnTick(float deltaTime) 
 {
-    if (!Enabled) 
+    if (!IsEnabled || IsPaused)
     {
         return;
     }
@@ -72,31 +78,63 @@ static void OnTick(float deltaTime)
     auto pawn = Engine::GetPlayerPawn();
     auto controller = Engine::GetPlayerController();
 
-    if (pawn && controller && pawn->Health > 0)
+    if (!pawn || !controller)
     {
-        TimeSeconds += deltaTime;
+        return;
+    }
 
-        if (TimeSeconds >= MaxTime)
+    TimeSeconds += deltaTime;
+
+    if (TimeSeconds >= MaxTime)
+    {
+        TimeSeconds = 0.0f;
+
+        for (int attempt = 0; attempt < 100; attempt++)
         {
-            TimeSeconds = 0.0f; 
-            
-            // Temp to only allow one effect to be active 
-            if (!ActiveEffects.empty())
+            auto effect = Effects()[rand() % (int)Effects().size()];
+
+            bool isDuplicate = false;
+            for (auto activeEffect : ActiveEffects)
             {
-                ActiveEffects.clear();
+                if (effect->GetType() == activeEffect->GetType())
+                {
+                    isDuplicate = true;
+                    break;
+                }
             }
 
-            auto effect = Effects()[rand() % (int)Effects().size()];
-            effect->OnStart();
+            if (isDuplicate == false)
+            {
+                effect->TimeLeftInSeconds = MaxTime * 3;
+                effect->Start();
 
-            ActiveEffects.push_back(effect);
-        }
-
-        for (auto effect : ActiveEffects)
-        {
-            effect->OnTick(deltaTime);
+                ActiveEffects.push_back(effect);
+                break;
+            }
         }
     }
+
+    for (auto it = ActiveEffects.rbegin(); it != ActiveEffects.rend(); ++it)
+    {
+        auto effect = *it;
+        effect->TimeLeftInSeconds -= deltaTime;
+
+        if (effect->TimeLeftInSeconds >= 0.0f)
+        {
+            effect->Tick(deltaTime);
+        }
+        else
+        {
+            if (!effect->Shutdown())
+            {
+                printf("Chaos: The effect \"%s\" didn't shut down correctly and might persist\n", effect->Name.c_str());
+            }
+
+            ActiveEffects.erase((it + 1).base());
+        }
+    }
+
+    ActiveEffects.shrink_to_fit();
 }
 
 bool Chaos::Initialize() 

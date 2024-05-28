@@ -10,11 +10,19 @@ public:
         Name = name;
     }
 
-    void OnStart() override {}
+    void Start() override {}
 
-    void OnTick(const float deltaTime) override {}
+    void Tick(const float deltaTime) override {}
 
-    void OnEnd() override {}
+    bool Shutdown() override 
+    {
+        return true;
+    }
+
+    std::string GetType() override
+    {
+        return "Nothing";
+    }
 };
 
 //REGISTER_EFFECT(Nothing, "Do Nothing");

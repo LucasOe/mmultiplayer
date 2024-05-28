@@ -252,7 +252,11 @@
     <ClCompile Include="addons\chaos\effect.cpp" />
     <ClCompile Include="addons\chaos\effects\dvdscreensaver.cpp" />
     <ClCompile Include="addons\chaos\effects\autojump.cpp" />
+    <ClCompile Include="addons\chaos\effects\forcerandomdirection.cpp" />
+    <ClCompile Include="addons\chaos\effects\fov.cpp" />
+    <ClCompile Include="addons\chaos\effects\framerate.cpp" />
     <ClCompile Include="addons\chaos\effects\nothing.cpp" />
+    <ClCompile Include="addons\chaos\effects\timescale.cpp" />
     <ClCompile Include="addons\client.cpp" />
     <ClCompile Include="addons\dolly.cpp" />
     <ClCompile Include="addons\misc.cpp" />
