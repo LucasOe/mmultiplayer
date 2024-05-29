@@ -13,6 +13,7 @@ public:
 
     virtual void Start() = 0;
     virtual void Tick(const float deltaTime) = 0;
+    virtual void Render(IDirect3DDevice9* device) = 0;
     virtual bool Shutdown() = 0;
     virtual std::string GetType() = 0;
 

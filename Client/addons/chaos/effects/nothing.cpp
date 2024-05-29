@@ -14,6 +14,8 @@ public:
 
     void Tick(const float deltaTime) override {}
 
+    void Render(IDirect3DDevice9* device) override {}
+
     bool Shutdown() override 
     {
         return true;

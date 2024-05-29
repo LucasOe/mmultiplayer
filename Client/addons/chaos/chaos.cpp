@@ -40,7 +40,7 @@ static void ChaosTab()
     }
 }
 
-static void OnRender(IDirect3DDevice9*) 
+static void OnRender(IDirect3DDevice9* device) 
 {
     if (!IsEnabled)
     {
@@ -62,10 +62,13 @@ static void OnRender(IDirect3DDevice9*)
         for (auto effect : ActiveEffects)
         {
             ImGui::Text("%s", effect->Name.c_str());
+
+            effect->Render(device);
         }
 
         ImGui::End();
     }
+
 }
 
 static void OnTick(float deltaTime) 
