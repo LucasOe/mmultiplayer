@@ -26,6 +26,8 @@ public:
         }
     }
 
+    void Render(IDirect3DDevice9* device) override {}
+
     bool Shutdown() override 
     {
         auto pawn = Engine::GetPlayerPawn();

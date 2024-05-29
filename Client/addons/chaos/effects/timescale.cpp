@@ -21,6 +21,8 @@ public:
         world->TimeDilation = NewTimescale;
     }
 
+    void Render(IDirect3DDevice9* device) override {}
+
     bool Shutdown() override
     {
         auto world = Engine::GetWorld();
@@ -35,12 +37,12 @@ public:
     }
 };
 
-using TimescaleOneTenths = Timescale;
+using TimescaleQuarter = Timescale;
 using TimescaleHalf = Timescale;
 using TimescaleDouble = Timescale;
 using TimescaleQuad = Timescale; 
 
-REGISTER_EFFECT(TimescaleOneTenths, "0.1x Timescale", 0.1f);
+REGISTER_EFFECT(TimescaleQuarter, "0.25x Timescale", 0.25f);
 REGISTER_EFFECT(TimescaleHalf, "0.5x Timescale", 0.5f);
 REGISTER_EFFECT(TimescaleDouble, "2x Timescale", 2.0f);
 REGISTER_EFFECT(TimescaleQuad, "4x Timescale", 4.0f);

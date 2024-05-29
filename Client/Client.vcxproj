@@ -144,6 +144,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
+      <AdditionalDependencies>d3d9.lib;d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -250,11 +252,13 @@
   <ItemGroup>
     <ClCompile Include="addons\chaos\chaos.cpp" />
     <ClCompile Include="addons\chaos\effect.cpp" />
+    <ClCompile Include="addons\chaos\effects\camerashake.cpp" />
     <ClCompile Include="addons\chaos\effects\dvdscreensaver.cpp" />
     <ClCompile Include="addons\chaos\effects\autojump.cpp" />
     <ClCompile Include="addons\chaos\effects\forcerandomdirection.cpp" />
     <ClCompile Include="addons\chaos\effects\fov.cpp" />
     <ClCompile Include="addons\chaos\effects\framerate.cpp" />
+    <ClCompile Include="addons\chaos\effects\gravity.cpp" />
     <ClCompile Include="addons\chaos\effects\nothing.cpp" />
     <ClCompile Include="addons\chaos\effects\timescale.cpp" />
     <ClCompile Include="addons\client.cpp" />

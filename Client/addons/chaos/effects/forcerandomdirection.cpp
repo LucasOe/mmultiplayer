@@ -67,6 +67,8 @@ public:
         Time = 0.0f;
     }
 
+    void Render(IDirect3DDevice9* device) override {}
+
     bool Shutdown() override
     {
         return true;

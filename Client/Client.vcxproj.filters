@@ -419,5 +419,11 @@
     <ClCompile Include="addons\chaos\effects\timescale.cpp">
       <Filter>Source Files\addons\chaos\effects</Filter>
     </ClCompile>
+    <ClCompile Include="addons\chaos\effects\gravity.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\camerashake.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

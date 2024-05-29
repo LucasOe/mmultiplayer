@@ -32,6 +32,8 @@ public:
         engine->bSmoothFrameRate = bSmoothFrameRate;
     }
 
+    void Render(IDirect3DDevice9* device) override {}
+
     bool Shutdown() override
     {
         auto engine = Engine::GetEngine();
@@ -50,5 +52,5 @@ public:
 using ConsoleFramerate = Framerate;
 using UncappedFramerate = Framerate;
 
-REGISTER_EFFECT(ConsoleFramerate, "Console Experience", 30.0f, FALSE);
-REGISTER_EFFECT(UncappedFramerate, "No Framerate Cap", 0.0f, TRUE);
+REGISTER_EFFECT(ConsoleFramerate, "Console Experience", 30.0f, TRUE);
+REGISTER_EFFECT(UncappedFramerate, "No Framerate Cap", 0.0f, FALSE);
