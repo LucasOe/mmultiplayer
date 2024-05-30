@@ -37,8 +37,9 @@ public:
 
     void Tick(const float deltaTime) override 
     {
-        auto& io = ImGui::GetIO();
+        const auto& io = ImGui::GetIO();
 
+        // FIXME: If the player respawns and the image is about to hit a boundary, it could go out of bounds or get stuck  
         Position += Speed * deltaTime;
 
         if (Position.x <= 0.0f || Position.x + Image.Width >= io.DisplaySize.x)

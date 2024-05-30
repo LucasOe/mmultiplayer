@@ -6,6 +6,7 @@ class CameraShake : public Effect
 {
 private:
     int Intensity = 0;
+
 public:
     CameraShake(const std::string& name, const int intensity)
     {

@@ -255,6 +255,7 @@
     <ClCompile Include="addons\chaos\effects\camerashake.cpp" />
     <ClCompile Include="addons\chaos\effects\dvdscreensaver.cpp" />
     <ClCompile Include="addons\chaos\effects\autojump.cpp" />
+    <ClCompile Include="addons\chaos\effects\fallonback.cpp" />
     <ClCompile Include="addons\chaos\effects\forcerandomdirection.cpp" />
     <ClCompile Include="addons\chaos\effects\fov.cpp" />
     <ClCompile Include="addons\chaos\effects\framerate.cpp" />
