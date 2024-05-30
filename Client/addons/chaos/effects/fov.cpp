@@ -6,6 +6,7 @@ class Fov : public Effect
 {
 private:
     float NewFov = 100.0f;
+
 public:
     Fov(const std::string& name, const float fov)
     {

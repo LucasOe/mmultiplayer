@@ -6,6 +6,7 @@ class Timescale : public Effect
 {
 private:
     float NewTimescale = 1.0f;
+
 public:
     Timescale(const std::string& name, const float timescale)
     {

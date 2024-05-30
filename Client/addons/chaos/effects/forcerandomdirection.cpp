@@ -36,32 +36,16 @@ public:
         {
             return;
         }
- 
-        controller->Rotation.Yaw = RandomInt(0, 65535);
 
-        // pawn->VelocityDir2D.X;
-        // pawn->VelocityDir2D.Y;
-        // 
-        // Found in UnMath.h (INT is a custom typedef which is a int32_t aka int)
-        // class FRotator
-        // {
-        // public:
-        //     // Variables.
-        //     INT Pitch; // Looking up and down (0=Straight Ahead, +Up, -Down).
-        //     INT Yaw;   // Rotating around (running in circles), 0=East, +North, -South.
-        //     INT Roll;  // Rotation about axis of screen, 0=Straight, +Clockwise, -CCW.
-        // }
-        // 
-        //              N       W       S       E
-        //              16384   32767   49151   0
-        // Dir2D X =    0f      -1f     0f      1f
-        // Dir2D Y =    1f      0f      -1f     0f
-        //
-        // TODO: Figure out how to change the velocity to the new direction with help of VelocityDir2D variable
-        // The float range of Velocity is -3500 to 3500
-        // 
-        // pawn->Velocity.X = ??;
-        // pawn->Velocity.Y = ??;
+        const int newYawValue = RandomInt(0, 65535);
+        controller->Rotation.Yaw = newYawValue;
+
+        const float yawInRadians = (newYawValue / 65535.0f) * 2.0f * CONST_Pi;
+        const float dirX = cos(yawInRadians);
+        const float dirY = sin(yawInRadians);
+
+        pawn->Velocity.X = dirX * pawn->VelocityMagnitude2D;
+        pawn->Velocity.Y = dirY * pawn->VelocityMagnitude2D;
 
         RandomDelay = RandomFloat(MaxDelay);
         Time = 0.0f;
