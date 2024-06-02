@@ -443,10 +443,7 @@
     <ClCompile Include="addons\chaos\effects\camerarotation.cpp">
       <Filter>Source Files\addons\chaos\effects</Filter>
     </ClCompile>
-    <ClCompile Include="addons\chaos\effects\forcewalking.cpp">
-      <Filter>Source Files\addons\chaos\effects</Filter>
-    </ClCompile>
-    <ClCompile Include="addons\chaos\effects\forcecrouching.cpp">
+    <ClCompile Include="addons\chaos\effects\forcestate.cpp">
       <Filter>Source Files\addons\chaos\effects</Filter>
     </ClCompile>
     <ClCompile Include="addons\chaos\effects\colorscale.cpp">
