@@ -19,7 +19,7 @@ public:
 
     void Start() override 
     {
-        DisplayName = DisplayNames[RandomInt(DisplayNames.size())];
+        DisplayName = DisplayNames[RandomInt(DisplayNames.size() - 1)];
     }
 
     void Tick(const float deltaTime) override {}

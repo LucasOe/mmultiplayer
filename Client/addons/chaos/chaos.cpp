@@ -176,7 +176,7 @@ static void AddRandomEffect()
         EffectRandomizerHasBeenSeeded = true;
     }
 
-    std::uniform_int_distribution<int> dist(0, Effects().size());
+    std::uniform_int_distribution<int> dist(0, Effects().size() - 1);
 
     for (int attempt = 0; attempt < 100; attempt++)
     {
