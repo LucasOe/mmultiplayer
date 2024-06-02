@@ -254,8 +254,11 @@
     <ClCompile Include="addons\chaos\effect.cpp" />
     <ClCompile Include="addons\chaos\effects\camerarotation.cpp" />
     <ClCompile Include="addons\chaos\effects\camerashake.cpp" />
+    <ClCompile Include="addons\chaos\effects\colorscale.cpp" />
     <ClCompile Include="addons\chaos\effects\disableinput.cpp" />
     <ClCompile Include="addons\chaos\effects\dvdscreensaver.cpp" />
+    <ClCompile Include="addons\chaos\effects\forcecrouching.cpp" />
+    <ClCompile Include="addons\chaos\effects\forcewalking.cpp" />
     <ClCompile Include="addons\chaos\effects\jump.cpp" />
     <ClCompile Include="addons\chaos\effects\fallonback.cpp" />
     <ClCompile Include="addons\chaos\effects\forcerandomdirection.cpp" />
