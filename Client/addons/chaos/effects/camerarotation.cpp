@@ -38,7 +38,7 @@ public:
             float rotationIncrement = degreesPerSecond * deltaTime;
 
             int roll = static_cast<int>(controller->Rotation.Roll % 0x10000);
-            controller->Rotation.Roll = roll + rotationIncrement;
+            controller->Rotation.Roll = static_cast<int>(roll + rotationIncrement);
         }
         else
         {
@@ -72,7 +72,7 @@ public:
 };
 
 using CameraRotateOnce = CameraRotation;
-using CameraUpdsideDown = CameraRotation;
+using CameraUpsideDown = CameraRotation;
 
 REGISTER_EFFECT(CameraRotateOnce, "Camera Rotate Once", true);
-REGISTER_EFFECT(CameraUpdsideDown, "Camera Updside Down", false);
+REGISTER_EFFECT(CameraUpsideDown, "Camera Upside Down", false);
