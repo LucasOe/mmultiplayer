@@ -8,10 +8,12 @@ private:
     float NewFov = 100.0f;
 
 public:
-    Fov(const std::string& name, const float fov)
+    Fov(const std::string& name, float newFov)
     {
         Name = name;
-        NewFov = fov;
+        DisplayName = name;
+
+        NewFov = newFov;
     }
 
     void Start() override {}
@@ -43,7 +45,7 @@ public:
         return false;
     }
 
-    std::string GetType() override
+    std::string GetType() const override
     {
         return "Fov";
     }
@@ -52,5 +54,5 @@ public:
 using LowFov = Fov;
 using HighFov = Fov;
 
-REGISTER_EFFECT(LowFov, "40 Fov", 40.0f);
+REGISTER_EFFECT(LowFov, "60 Fov", 60.0f);
 REGISTER_EFFECT(HighFov, "150 Fov", 150.0f);

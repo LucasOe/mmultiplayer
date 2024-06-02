@@ -2,24 +2,27 @@
 
 #include "../effect.h"
 
-enum class JumpType
+enum class JumpTypeEffect
 {
     Random,
     Constant
 };
 
-template <JumpType JumpType>
-class AutoJump : public Effect
+class Jump : public Effect
 {
 private:
     float JumpTimeDelayMax = 6.9f;
     float JumpTimeDelay = 1.0f;
     float JumpTimeActivatedAt = 0.0f;
+    JumpTypeEffect JumpType;
 
 public:
-    AutoJump(const std::string& name)
+    Jump(const std::string& name, JumpTypeEffect jumpType)
     {
         Name = name;
+        DisplayName = name;
+
+        JumpType = jumpType;
     }
 
     void Start() override
@@ -33,9 +36,9 @@ public:
         auto pawn = Engine::GetPlayerPawn();
         auto controller = Engine::GetPlayerController();
 
-        if (JumpType == JumpType::Constant)
+        if (JumpType == JumpTypeEffect::Constant)
         {
-            Jump();
+            ForceJump();
         }
         else
         {
@@ -44,7 +47,7 @@ public:
                 return;
             }
 
-            Jump();
+            ForceJump();
         }
     }
 
@@ -55,9 +58,9 @@ public:
         return true;
     }
 
-    std::string GetType() override
+    std::string GetType() const override
     {
-        return "AutoJump";
+        return "Jump";
     }
 
 private:
@@ -66,7 +69,7 @@ private:
         return (static_cast<float>(GetTickCount64()) - JumpTimeActivatedAt) / 1000 > JumpTimeDelay;
     }
 
-    void Jump()
+    void ForceJump()
     {
         JumpTimeActivatedAt = static_cast<float>(GetTickCount64());
         JumpTimeDelay = RandomFloat(JumpTimeDelayMax);
@@ -74,8 +77,8 @@ private:
     }
 };
 
-using JumpRandomly = AutoJump<JumpType::Random>;
-using JumpConstantly = AutoJump<JumpType::Constant>;
+using JumpRandomly = Jump;
+using JumpConstantly = Jump;
 
-REGISTER_EFFECT(JumpRandomly, "Jump Randomly");
-REGISTER_EFFECT(JumpConstantly, "Jump Constantly");
+REGISTER_EFFECT(JumpRandomly, "Jump Randomly", JumpTypeEffect::Random);
+REGISTER_EFFECT(JumpConstantly, "Jump Constantly", JumpTypeEffect::Constant);

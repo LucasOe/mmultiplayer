@@ -398,7 +398,7 @@
     <ClCompile Include="addons\chaos\effect.cpp">
       <Filter>Source Files\addons\chaos</Filter>
     </ClCompile>
-    <ClCompile Include="addons\chaos\effects\autojump.cpp">
+    <ClCompile Include="addons\chaos\effects\jump.cpp">
       <Filter>Source Files\addons\chaos\effects</Filter>
     </ClCompile>
     <ClCompile Include="addons\chaos\effects\nothing.cpp">
@@ -426,6 +426,21 @@
       <Filter>Source Files\addons\chaos\effects</Filter>
     </ClCompile>
     <ClCompile Include="addons\chaos\effects\fallonback.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\health.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\invertedcontrols.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\disableinput.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\killbots.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\camerarotation.cpp">
       <Filter>Source Files\addons\chaos\effects</Filter>
     </ClCompile>
   </ItemGroup>

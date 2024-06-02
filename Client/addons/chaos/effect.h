@@ -4,30 +4,51 @@
 #include "../../engine.h"
 #include "../../imgui/imgui_mmultiplayer.h"
 #include <vector>
+#include <random>
+
+enum class EffectDuration
+{
+    Short,
+    Normal,
+    Long,
+};
 
 class Effect
 {
+// Inherited classes should not modify these
 public:
-    float TimeLeftInSeconds = 0.0f; // This is here for now until I find a better way
+    bool IsEnabled = true;
+    float DurationTimeAllocated = 0.0f;
+    EffectDuration DurationType = EffectDuration::Normal;
+
+// Variables and functions to override
+public:
     std::string Name = "";
+    std::string DisplayName = "";
 
     virtual void Start() = 0;
     virtual void Tick(const float deltaTime) = 0;
     virtual void Render(IDirect3DDevice9* device) = 0;
+
     virtual bool Shutdown() = 0;
-    virtual std::string GetType() = 0;
+    virtual std::string GetType() const = 0;
 
-    // >> Helper functions 
-    // TODO: Find better a better way generate these numbers 
+// Helper functions
+public:
+    // Min value is set to 0
+    int RandomInt(const int max) const;
+    int RandomInt(const int min, const int max) const;
 
-    static int RandomInt(const int min, const int max)
+    // Min value is set to 0.0f
+    float RandomFloat(const float max) const;                   
+    float RandomFloat(const float min, const float max) const;
+
+// Seeding, you don't need to do anything in your effect with these
+public:
+    mutable std::mt19937 rng;
+    void SetSeed(const int newSeed) const
     {
-        return rand() % (max - min + 1) + min;
-    }
-
-    static float RandomFloat(const float max)
-    {
-        return static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * max;
+        rng.seed(newSeed);
     }
 };
 
