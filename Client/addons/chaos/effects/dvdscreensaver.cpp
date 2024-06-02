@@ -25,6 +25,9 @@ public:
     DvdScreenSaver(const std::string& name, const std::string& filename)
     {
         Name = name;
+        DisplayName = name;
+        DurationType = EffectDuration::Long;
+
         Speed = ImVec2(128.0f, 128.0f);
         Image.Filename = filename;
     }
@@ -87,7 +90,7 @@ public:
         return true;
     }
 
-    std::string GetType() override
+    std::string GetType() const override
     {
         return "DvdScreenSaver";
     }

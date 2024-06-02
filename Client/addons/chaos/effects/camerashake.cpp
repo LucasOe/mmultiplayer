@@ -8,9 +8,11 @@ private:
     int Intensity = 0;
 
 public:
-    CameraShake(const std::string& name, const int intensity)
+    CameraShake(const std::string& name, int intensity)
     {
         Name = name;
+        DisplayName = name;
+
         Intensity = intensity;
     }
 
@@ -32,7 +34,7 @@ public:
         return true;
     }
 
-    std::string GetType() override
+    std::string GetType() const override
     {
         return "CameraShake";
     }

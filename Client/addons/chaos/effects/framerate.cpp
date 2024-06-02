@@ -14,6 +14,8 @@ public:
     Framerate(const std::string& name, float framerate, unsigned long smoothFramerate)
     {
         Name = name;
+        DisplayName = name;
+
         FrameRateToApply = framerate;
         bSmoothFrameRate = smoothFramerate;
     }
@@ -43,7 +45,7 @@ public:
         return engine->MaxSmoothedFrameRate == PreviousMaxFrameRate && engine->bSmoothFrameRate == PreviousbSmoothFrameRate;
     }
 
-    std::string GetType() override 
+    std::string GetType() const override 
     { 
         return "Framerate"; 
     }

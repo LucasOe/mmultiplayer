@@ -8,9 +8,11 @@ private:
     float NewTimescale = 1.0f;
 
 public:
-    Timescale(const std::string& name, const float timescale)
+    Timescale(const std::string& name, float timescale)
     {
         Name = name;
+        DisplayName = name;
+
         NewTimescale = timescale;
     }
 
@@ -32,7 +34,7 @@ public:
         return true;
     }
 
-    std::string GetType() override
+    std::string GetType() const override
     {
         return "Timescale";
     }

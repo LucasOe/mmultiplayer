@@ -13,6 +13,7 @@ public:
     ForceRandomDirection(const std::string& name)
     {
         Name = name;
+        DisplayName = name;
     }
 
     void Start() override 
@@ -37,10 +38,10 @@ public:
             return;
         }
 
-        const int newYawValue = RandomInt(0, 65535);
+        const int newYawValue = RandomInt(0, 65536);
         controller->Rotation.Yaw = newYawValue;
 
-        const float yawInRadians = (newYawValue / 65535.0f) * 2.0f * CONST_Pi;
+        const float yawInRadians = (newYawValue / 65536.0f) * 2.0f * CONST_Pi;
         const float dirX = cos(yawInRadians);
         const float dirY = sin(yawInRadians);
 
@@ -58,7 +59,7 @@ public:
         return true;
     }
 
-    std::string GetType() override
+    std::string GetType() const override
     {
         return "ForceRandomDirection";
     }

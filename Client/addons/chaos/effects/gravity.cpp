@@ -6,20 +6,32 @@ class Gravity : public Effect
 {
 private:
     float GravityModifier = 0.0f;
+    float NewAccelRate = 0.0f;
+    float PreviousAccelRate = 6144.0f;
 
 public:
     Gravity(const std::string& name, float gravityModifier)
     {
         Name = name;
+        DisplayName = name;
+
         GravityModifier = gravityModifier;
     }
 
-    void Start() override {}
+    void Start() override 
+    {
+        const auto pawn = Engine::GetPlayerPawn();
+        PreviousAccelRate = pawn->AccelRate;
+        NewAccelRate = pawn->AccelRate * GravityModifier;
+    }
 
     void Tick(const float deltaTime) override
     {
         const auto world = Engine::GetWorld();
         world->WorldGravityZ = world->DefaultGravityZ * GravityModifier;
+        
+        const auto pawn = Engine::GetPlayerPawn();
+        pawn->AccelRate = NewAccelRate;
     }
 
     void Render(IDirect3DDevice9* device) override {}
@@ -29,10 +41,13 @@ public:
         const auto world = Engine::GetWorld();
         world->WorldGravityZ = world->DefaultGravityZ;
 
+        const auto pawn = Engine::GetPlayerPawn();
+        pawn->AccelRate = PreviousAccelRate;
+
         return true;
     }
 
-    std::string GetType() override
+    std::string GetType() const override
     {
         return "Gravity";
     }

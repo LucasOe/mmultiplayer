@@ -19,7 +19,7 @@ static byte forceRollPatchOriginal[6];
 
 static bool hideQueued = false;
 
-static void ForceRoll(bool force) {
+void Dolly::ForceRoll(bool force) {
     if (force) {
         memcpy(forceRollPatch, "\x90\x90\x90\x90\x90\x90", 6);
     } else {
@@ -138,8 +138,11 @@ static void ShiftTimeline(int amount) {
 static void FixPlayer() {
     auto pawn = Engine::GetPlayerPawn();
     auto controller = Engine::GetPlayerController();
+
+    Dolly dolly;
+
     if (!pawn || !controller) {
-        ForceRoll(false);
+        dolly.ForceRoll(false);
         return;
     }
 
@@ -152,7 +155,7 @@ static void FixPlayer() {
     hideQueued = true;
 
     if (hide) {
-        ForceRoll(true);
+        dolly.ForceRoll(true);
     } else {
         for (auto &r : recordings) {
             if (r.Actor) {
@@ -161,7 +164,7 @@ static void FixPlayer() {
         }
 
         pawn->EnterFallingHeight = -1e30f;
-        ForceRoll(false);
+        dolly.ForceRoll(false);
     }
 }
 
@@ -171,6 +174,8 @@ static void DollyTab() {
     if (!pawn || !controller) {
         return;
     }
+
+    Dolly dolly;
 
     if (playing) {
         if (ImGui::Button("Stop##dolly")) {
@@ -281,7 +286,7 @@ static void DollyTab() {
 
     ImGui::SameLine();
     ImGui::Checkbox("Force Roll##dolly", &forceRoll);
-    ForceRoll(cameraView || forceRoll);
+    dolly.ForceRoll(cameraView || forceRoll);
 
     if (ImGui::CollapsingHeader("Markers##dolly")) {
         for (auto i = 0UL; i < markers.size(); ++i) {

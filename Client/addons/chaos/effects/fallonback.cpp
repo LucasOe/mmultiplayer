@@ -13,6 +13,7 @@ public:
     FallOnBack(const std::string& name)
     {
         Name = name;
+        DisplayName = name;
     }
 
     void Start() override
@@ -45,7 +46,7 @@ public:
         return true;
     }
 
-    std::string GetType() override
+    std::string GetType() const override
     {
         return "FallOnBack";
     }
