@@ -98,4 +98,4 @@ public:
 
 using DvdScreenSaverEffect = DvdScreenSaver;
 
-REGISTER_EFFECT(DvdScreenSaverEffect, "Dvd ScreenSaver", "dvd.png");
+//REGISTER_EFFECT(DvdScreenSaverEffect, "Dvd ScreenSaver", "dvd.png");
