@@ -15,11 +15,15 @@ enum class EffectDuration
 
 class Effect
 {
-// Inherited classes should not modify these
+// Inherited classes should not modify these but you can use them
 public:
     bool IsEnabled = true;
     float DurationTimeAllocated = 0.0f;
     EffectDuration DurationType = EffectDuration::Normal;
+
+// Varibles to use if your effect is does one thing and is done after success
+public:
+    bool IsDone = false;
 
 // Variables and functions to override
 public:
@@ -29,7 +33,6 @@ public:
     virtual void Start() = 0;
     virtual void Tick(const float deltaTime) = 0;
     virtual void Render(IDirect3DDevice9* device) = 0;
-
     virtual bool Shutdown() = 0;
     virtual std::string GetType() const = 0;
 

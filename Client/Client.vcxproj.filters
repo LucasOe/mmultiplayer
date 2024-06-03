@@ -449,5 +449,11 @@
     <ClCompile Include="addons\chaos\effects\colorscale.cpp">
       <Filter>Source Files\addons\chaos\effects</Filter>
     </ClCompile>
+    <ClCompile Include="addons\chaos\effects\suicide.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\gotomainmenu.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

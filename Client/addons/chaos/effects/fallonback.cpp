@@ -33,6 +33,11 @@ public:
             return;
         }
 
+        if (pawn->MovementState != Classes::EMovement::MOVE_Walking)
+        {
+            return;
+        }
+
         pawn->OnTdFallOnBack(nullptr);
 
         Time = 0.0f;
