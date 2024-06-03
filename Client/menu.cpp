@@ -9,6 +9,8 @@
 #include "imgui/imgui.h"
 #include "menu.h"
 
+#define MMultiplayerVersion "2.3.0-alpha.1"
+
 static bool ShowMenu = false;
 static int ShowKeybind = 0;
 static std::vector<MenuTab> Tabs;
@@ -22,7 +24,9 @@ static void RenderMenu(IDirect3DDevice9 *device)
 {
 	if (ShowMenu)
 	{
-		ImGui::Begin("MMultiplayer 2.3.0", NULL, ImGuiWindowFlags_NoCollapse);
+		ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(720, 420), ImGuiCond_FirstUseEver);
+		ImGui::Begin("MMultiplayer " MMultiplayerVersion, NULL, ImGuiWindowFlags_NoCollapse);
 		ImGui::BeginTabBar("");
 
 		for (auto tab : Tabs) 
@@ -46,6 +50,9 @@ static void EngineTab()
 	{
 		return;
 	}
+
+	ImGui::TextWrapped("Thanks for trying out this build! (" MMultiplayerVersion ") c:\n\nI'm looking for feedback for this chaos addon. What effects could be added, removed, default settings changed, and etc.");
+	ImGui::Separator(5.0f);
 
 	static char command[0xFFF] = { 0 };
 

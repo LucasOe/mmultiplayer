@@ -63,7 +63,7 @@ using MarsGravity = Gravity;
 using JupiterGravity = Gravity;
 //using SaturnGravity = Gravity;
 //using UranusGravity = Gravity;
-using NeptuneGravity = Gravity;
+//using NeptuneGravity = Gravity;
 using PlutoGravity = Gravity;
  
 // Source for the float values, thank you Dave :)
@@ -76,5 +76,5 @@ REGISTER_EFFECT(MarsGravity, "Mars Gravity", 0.377f);
 REGISTER_EFFECT(JupiterGravity, "Jupiter Gravity", 2.36f);
 //REGISTER_EFFECT(SaturnGravity, "Saturn Gravity", 0.916f);
 //REGISTER_EFFECT(UranusGravity, "Uranus Gravity", 0.889f);
-REGISTER_EFFECT(NeptuneGravity, "Neptune Gravity", 1.12f);
+//REGISTER_EFFECT(NeptuneGravity, "Neptune Gravity", 1.12f);
 REGISTER_EFFECT(PlutoGravity, "Pluto Gravity", 0.071f);

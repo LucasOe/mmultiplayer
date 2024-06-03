@@ -7,7 +7,9 @@ class Nothing : public Effect
 private:
     std::vector<std::string> DisplayNames = {
         "Do Nothing",
-        "Teleport To Current Location"
+        "Teleport To Current Location",
+        "Give Current Health To Player",
+        // Need more...
     };
 
 public:
@@ -20,6 +22,7 @@ public:
     void Start() override 
     {
         DisplayName = DisplayNames[RandomInt(DisplayNames.size() - 1)];
+        IsDone = true;
     }
 
     void Tick(const float deltaTime) override {}

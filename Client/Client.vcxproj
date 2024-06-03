@@ -258,6 +258,7 @@
     <ClCompile Include="addons\chaos\effects\disableinput.cpp" />
     <ClCompile Include="addons\chaos\effects\dvdscreensaver.cpp" />
     <ClCompile Include="addons\chaos\effects\forcestate.cpp" />
+    <ClCompile Include="addons\chaos\effects\gotomainmenu.cpp" />
     <ClCompile Include="addons\chaos\effects\jump.cpp" />
     <ClCompile Include="addons\chaos\effects\fallonback.cpp" />
     <ClCompile Include="addons\chaos\effects\forcerandomdirection.cpp" />
@@ -268,6 +269,7 @@
     <ClCompile Include="addons\chaos\effects\invertedcontrols.cpp" />
     <ClCompile Include="addons\chaos\effects\killbots.cpp" />
     <ClCompile Include="addons\chaos\effects\nothing.cpp" />
+    <ClCompile Include="addons\chaos\effects\suicide.cpp" />
     <ClCompile Include="addons\chaos\effects\timescale.cpp" />
     <ClCompile Include="addons\client.cpp" />
     <ClCompile Include="addons\dolly.cpp" />

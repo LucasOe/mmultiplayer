@@ -46,7 +46,7 @@ static void Restart()
 
 static void ChaosTab()
 {
-    if (ImGui::Checkbox("Is Enabled##Chaos-Enabled", &IsEnabled))
+    if (ImGui::Checkbox("Enabled##Chaos-Enabled", &IsEnabled))
     {
         Restart();
     }
@@ -100,7 +100,7 @@ static void ChaosTab()
 
     ImGui::Separator(2.5f);
 
-    if (ImGui::SliderFloat("Time##Chaos-MaxTime", &TimeUntilNewRandomEffect, 5.0f, 60.0f, "%.0f"))
+    if (ImGui::SliderFloat("Time Until New Effect##Chaos-MaxTime", &TimeUntilNewRandomEffect, 5.0f, 60.0f, "%.0f sec"))
     {
         TimerInSeconds = 0.0f;
     }
@@ -112,9 +112,9 @@ static void ChaosTab()
     ImGui::ColorEdit4("Timer Color##Chaos-Timer-Color", &TimerColor.x);
     ImGui::Separator(2.5f);
 
-    ImGui::SliderFloat("Short Duration Time##Chaos-ShortDurationTime", &DurationTime[0], 5.0f, 120.0f, "%.0f");
-    ImGui::SliderFloat("Normal Duration Time##Chaos-NormalDurationTime", &DurationTime[1], 5.0f, 120.0f, "%.0f");
-    ImGui::SliderFloat("Long Duration Time##Chaos-LongDurationTime", &DurationTime[2], 5.0f, 120.0f, "%.0f");
+    ImGui::SliderFloat("Short Duration Time##Chaos-ShortDurationTime", &DurationTime[0], 5.0f, 120.0f, "%.0f sec");
+    ImGui::SliderFloat("Normal Duration Time##Chaos-NormalDurationTime", &DurationTime[1], 5.0f, 120.0f, "%.0f sec");
+    ImGui::SliderFloat("Long Duration Time##Chaos-LongDurationTime", &DurationTime[2], 5.0f, 120.0f, "%.0f sec");
     ImGui::Separator(2.5f);
 
     // TODO: Show all effects and choose which to enable or disable
@@ -149,19 +149,21 @@ static void OnRender(IDirect3DDevice9* device)
     ImGui::EndRawScene();
 
     // Temp until proper UI
+    ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(285, 165), ImGuiCond_FirstUseEver);
     ImGui::Begin("Active Effects");
 
     for (auto it = ActiveEffects.rbegin(); it != ActiveEffects.rend(); ++it)
     {
         const auto& active = *it;
 
-        if (!active.ShutdownSuccessfully && active.TimeRemaining >= 0.0f)
+        if (active.Effect->IsDone)
         {
-            ImGui::Text("%s (%.1f)", active.Effect->DisplayName.c_str(), active.TimeRemaining);
+            ImGui::Text("%s", active.Effect->DisplayName.c_str());
         }
         else
         {
-            ImGui::TextDisabled("%s", active.Effect->DisplayName.c_str());
+            ImGui::Text("%s (%.1f)", active.Effect->DisplayName.c_str(), active.TimeRemaining);
         }
     }
 
