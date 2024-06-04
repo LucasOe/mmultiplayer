@@ -6,8 +6,8 @@ class FallOnBack : public Effect
 {
 private:
     float Time = 0.0f;
-    float RandomDelay = 0.0f;
-    float MaxDelay = 8.0f;
+    const float MinDelay = 3.0f;
+    const float MaxDelay = 12.0f;
 
 public:
     FallOnBack(const std::string& name)
@@ -18,30 +18,29 @@ public:
 
     void Start() override
     {
-        Time = 0.0f;
-        RandomDelay = RandomFloat(MaxDelay);
+        RandomizeDelay();
     }
 
     void Tick(const float deltaTime) override
     {
-        auto pawn = Engine::GetPlayerPawn();
+        const auto pawn = Engine::GetPlayerPawn();
 
-        Time += deltaTime;
+        Time -= deltaTime;
 
-        if (Time < RandomDelay)
+        if (Time >= 0.0f)
         {
             return;
         }
 
-        if (pawn->MovementState != Classes::EMovement::MOVE_Walking)
+        if (pawn->MovementState == Classes::EMovement::MOVE_Falling || 
+            pawn->MovementState == Classes::EMovement::MOVE_FallingUncontrolled)
         {
+            RandomizeDelay();
             return;
         }
 
         pawn->OnTdFallOnBack(nullptr);
-
-        Time = 0.0f;
-        RandomDelay = RandomFloat(MaxDelay);
+        RandomizeDelay();
     }
 
     void Render(IDirect3DDevice9* device) override {}
@@ -54,6 +53,12 @@ public:
     std::string GetType() const override
     {
         return "FallOnBack";
+    }
+
+private:
+    void RandomizeDelay()
+    {
+        Time = RandomFloat(MinDelay, MaxDelay);
     }
 };
 

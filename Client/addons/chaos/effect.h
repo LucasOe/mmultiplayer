@@ -37,7 +37,7 @@ public:
     virtual std::string GetType() const = 0;
 
 // Helper functions
-public:
+protected:
     // Min value is set to 0
     int RandomInt(const int max) const;
     int RandomInt(const int min, const int max) const;
@@ -45,6 +45,10 @@ public:
     // Min value is set to 0.0f
     float RandomFloat(const float max) const;                   
     float RandomFloat(const float min, const float max) const;
+    
+    // Gets the TdPlayerInput class without you having to do multiple nullptr checks
+    // However, please do check just incase
+    Classes::UTdPlayerInput* GetTdPlayerInput();
 
 // Seeding, you don't need to do anything in your effect with these
 public:

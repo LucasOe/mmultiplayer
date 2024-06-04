@@ -21,7 +21,8 @@ public:
 
     void Start() override 
     {
-        DisplayName = DisplayNames[RandomInt(DisplayNames.size() - 1)];
+        // For now this will just say "Do Nothing" until I have more it can pick from
+        DisplayName = DisplayNames[0];
         IsDone = true;
     }
 
