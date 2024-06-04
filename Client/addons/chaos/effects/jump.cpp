@@ -33,8 +33,8 @@ public:
 
     void Tick(const float deltaTime) override
     {
-        auto pawn = Engine::GetPlayerPawn();
-        auto controller = Engine::GetPlayerController();
+        const auto pawn = Engine::GetPlayerPawn();
+        const auto controller = Engine::GetPlayerController();
 
         if (JumpType == JumpTypeEffect::Constant)
         {
@@ -71,9 +71,12 @@ private:
 
     void ForceJump()
     {
+        const auto controller = Engine::GetPlayerController();
+        controller->bDuck = FALSE;
+        controller->PlayerInput->Jump();
+
         JumpTimeActivatedAt = static_cast<float>(GetTickCount64());
         JumpTimeDelay = RandomFloat(JumpTimeDelayMax);
-        Engine::GetPlayerController()->PlayerInput->Jump();
     }
 };
 

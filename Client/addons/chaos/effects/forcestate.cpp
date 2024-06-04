@@ -31,24 +31,21 @@ public:
 
         if (ForcedStateType == ForcedState::Walking)
         {
-            if (!controller->PlayerInput)
-            {
-                return;
-            }
-
-            auto input = static_cast<Classes::UTdPlayerInput*>(controller->PlayerInput);
+            const auto input = GetTdPlayerInput();
             if (!input)
             {
                 return;
             }
 
             input->bWalkButtonPressed = TRUE;
-            controller->bPressedJump = FALSE;
+            controller->bDuck = FALSE;
         }
         else
         {
             controller->bDuck = TRUE;
         }
+
+        controller->bPressedJump = FALSE;
     }
 
     void Render(IDirect3DDevice9* device) override {}
@@ -59,12 +56,8 @@ public:
         
         if (ForcedStateType == ForcedState::Walking)
         {
-            if (!controller->PlayerInput)
-            {
-                return false;
-            }
+            const auto input = GetTdPlayerInput();
 
-            auto input = static_cast<Classes::UTdPlayerInput*>(controller->PlayerInput);
             if (!input)
             {
                 return false;

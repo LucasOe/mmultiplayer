@@ -14,7 +14,7 @@ std::mt19937 rng;
 
 static float DurationTime[3] = { 15.0f, 45.0f, 90.0f };
 static float TimerInSeconds = 0.0f;
-static float TimeUntilNewRandomEffect = 10.0f;
+static float TimeUntilNewRandomEffect = 20.0f;
 
 static float TimerHeight = 18.0f;
 static float TimerOffsetTop = 0.0f;

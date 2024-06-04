@@ -9,7 +9,7 @@
 #include "imgui/imgui.h"
 #include "menu.h"
 
-#define MMultiplayerVersion "2.3.0-alpha.1"
+#define MMultiplayerVersion "2.3.0-alpha.2"
 
 static bool ShowMenu = false;
 static int ShowKeybind = 0;
