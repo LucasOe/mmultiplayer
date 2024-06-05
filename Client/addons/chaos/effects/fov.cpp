@@ -38,7 +38,13 @@ public:
 
         if (controller->PlayerCamera)
         {
-            controller->PlayerCamera->SetFOV(controller->PlayerCamera->DefaultFOV);
+            const float defaultFov = controller->PlayerCamera->DefaultFOV;
+            controller->PlayerCamera->SetFOV(defaultFov);
+            controller->PlayerCamera->bLockedFOV = FALSE;
+
+            controller->FOVAngle = defaultFov;
+            controller->DesiredFOV = defaultFov;
+            controller->DefaultFOV = defaultFov;
             return true;
         }
 
