@@ -271,6 +271,7 @@
     <ClCompile Include="addons\chaos\effects\nothing.cpp" />
     <ClCompile Include="addons\chaos\effects\suicide.cpp" />
     <ClCompile Include="addons\chaos\effects\timescale.cpp" />
+    <ClCompile Include="addons\chaos\effects\toomuchinfo.cpp" />
     <ClCompile Include="addons\client.cpp" />
     <ClCompile Include="addons\dolly.cpp" />
     <ClCompile Include="addons\misc.cpp" />

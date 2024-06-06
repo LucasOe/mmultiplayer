@@ -20,40 +20,63 @@ public:
 
     void Tick(const float deltaTime) override 
     {
-        auto pawn = Engine::GetPlayerPawn();
-        auto controller = Engine::GetPlayerController();
+        const auto pawn = Engine::GetPlayerPawn();
+        const auto controller = Engine::GetPlayerController();
 
-        if (controller->PlayerCamera)
+        if (!controller->PlayerCamera)
         {
-            controller->PlayerCamera->SetFOV(NewFov);
+            return;
         }
+
+        if (!pawn->MyWeapon)
+        {
+            SetFov(NewFov, TRUE);
+            return;
+        }
+
+        if (!pawn->MyWeapon->IsA(Classes::ATdWeapon_Sniper_BarretM95::StaticClass()))
+        {
+            SetFov(NewFov, TRUE);
+            return;
+        }
+
+        const auto sniper = static_cast<Classes::ATdWeapon_Sniper_BarretM95*>(pawn->MyWeapon);
+
+        if (sniper->bZoomed || sniper->bIsZooming)
+        {
+            SetFov(NewFov, FALSE);
+            return;
+        }
+
+        SetFov(NewFov, TRUE);
     }
 
     void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override 
     {
-        auto pawn = Engine::GetPlayerPawn();
-        auto controller = Engine::GetPlayerController();
+        const auto controller = Engine::GetPlayerController();
 
-        if (controller->PlayerCamera)
+        if (!controller->PlayerCamera)
         {
-            const float defaultFov = controller->PlayerCamera->DefaultFOV;
-            controller->PlayerCamera->SetFOV(defaultFov);
-            controller->PlayerCamera->bLockedFOV = FALSE;
-
-            controller->FOVAngle = defaultFov;
-            controller->DesiredFOV = defaultFov;
-            controller->DefaultFOV = defaultFov;
-            return true;
+            return false;
         }
 
-        return false;
+        SetFov(NewFov, FALSE);
+        return true;
     }
 
     std::string GetType() const override
     {
         return "Fov";
+    }
+
+private:
+    void SetFov(float newFov, unsigned long lockFov)
+    {
+        const auto controller = Engine::GetPlayerController();
+        controller->PlayerCamera->LockedFOV = newFov;
+        controller->PlayerCamera->bLockedFOV = lockFov;
     }
 };
 
