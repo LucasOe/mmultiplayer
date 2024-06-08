@@ -216,7 +216,14 @@ static void OnRender(IDirect3DDevice9* device)
         }
         else
         {
-            ImGui::Text("%s (%.1f)", active.Effect->DisplayName.c_str(), active.TimeRemaining);
+            if (active.Effect->GetType() == "GoToMainMenu")
+            {
+                ImGui::Text("%s", active.Effect->DisplayName.c_str());
+            }
+            else
+            {
+                ImGui::Text("%s (%.1f)", active.Effect->DisplayName.c_str(), active.TimeRemaining);
+            }
         }
     }
 
