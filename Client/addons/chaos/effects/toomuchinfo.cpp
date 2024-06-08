@@ -45,8 +45,15 @@ public:
     }
 
 private:
-    void WindowBegin(const char* title, const char* name, const ImVec2& pos)
+    void WindowBegin(const char* title, const char* name, ImVec2 pos)
     {
+        const auto& io = ImGui::GetIO();
+        const float scaleX = io.DisplaySize.x / 1920.0f;
+        const float scaleY = io.DisplaySize.y / 1080.0f;
+        const float scale = (scaleX < scaleY) ? scaleX : scaleY;
+
+        pos *= scale;
+
         ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0.75f));
@@ -142,13 +149,8 @@ private:
         ImGui::Text("WeaponRange: %.0f", weapon->WeaponRange);
         ImGui::Text("bCanThrow: %d", weapon->bCanThrow);
         ImGui::Text("bCanZoom: %d", weapon->bCanZoom);
-        ImGui::Text("StartReloadTime: %.3f", weapon->StartReloadTime);
-        ImGui::Text("ReloadTime: %.3f", weapon->ReloadTime);
-        ImGui::Text("EndReloadTime: %.3f", weapon->EndReloadTime);
         ImGui::Text("MaxAmmo: %d", weapon->MaxAmmo);
         ImGui::Text("AmmoCount: %d", weapon->AmmoCount);
-        ImGui::Text("BurstMax: %d", weapon->BurstMax);
-        ImGui::Text("ClipCount: %d", weapon->ClipCount);
         ImGui::Text("FallOffDistance: %.2f", weapon->FallOffDistance);
         ImGui::Text("DeathAnimType: %d", weapon->DeathAnimType);
         ImGui::Text("RecoilAmount: %.2f", weapon->RecoilAmount);
@@ -157,7 +159,7 @@ private:
         ImGui::Text("MaxRecoil: %.2f", weapon->MaxRecoil);
         ImGui::Text("KickbackAmount: %.2f", weapon->KickbackAmount);
 
-        // Only the sniper has extra stuff that could be display. Shotguns have, PulletCount but isn't used
+        // Only the sniper has extra stuff that could be display. Shotguns have "PulletCount" but isn't used
         if (weapon->IsA(Classes::ATdWeapon_Sniper_BarretM95::StaticClass()))
         {
             const auto sniper = static_cast<Classes::ATdWeapon_Sniper_BarretM95*>(weapon);
