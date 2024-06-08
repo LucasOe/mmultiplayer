@@ -6,7 +6,6 @@ class GoToMainMenu : public Effect
 {
 private:
     float TimeLeft = 5.0f;
-    bool IsActuallyDone = false;
 
 public:
     GoToMainMenu(const std::string& name)
@@ -17,20 +16,19 @@ public:
 
     void Start() override
     {
-        IsDone = true;
-        IsActuallyDone = false;
+        IsDone = false;
         TimeLeft = 5.0f;
     }
 
     void Tick(const float deltaTime) override 
     {
-        if (IsActuallyDone)
+        if (IsDone)
         {
             DisplayName = "Go To MainMenu";
             return;
         }
 
-        char buffer[0xFF];
+        char buffer[0x40];
         sprintf_s(buffer, sizeof(buffer), "Go To MainMenu In... %.1f", TimeLeft >= 0.0f ? TimeLeft : 0.0f);
         DisplayName = buffer;
 
@@ -43,11 +41,13 @@ public:
 
         if (Engine::GetPlayerController()->IsInMainMenu())
         {
-            IsActuallyDone = true;
+            IsDone = true;
         }
-
-        const auto gameInfo = static_cast<Classes::ATdGameInfo*>(Engine::GetWorld()->Game);
-        gameInfo->TdGameData->QuitToMainMenu();
+        else
+        {
+            const auto gameInfo = static_cast<Classes::ATdGameInfo*>(Engine::GetWorld()->Game);
+            gameInfo->TdGameData->QuitToMainMenu();
+        }
     }
 
     void Render(IDirect3DDevice9* device) override {}
@@ -63,5 +63,4 @@ public:
     }
 };
 
-// Removed this effect for now
-// REGISTER_EFFECT(GoToMainMenu, "Go To MainMenu");
+REGISTER_EFFECT(GoToMainMenu, "Go To MainMenu");
