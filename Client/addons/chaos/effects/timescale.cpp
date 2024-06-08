@@ -22,6 +22,9 @@ public:
     {
         const auto world = Engine::GetWorld();
         world->TimeDilation = NewTimescale;
+
+        const auto controller = Engine::GetPlayerController();
+        controller->bReactionTime = FALSE;
     }
 
     void Render(IDirect3DDevice9* device) override {}

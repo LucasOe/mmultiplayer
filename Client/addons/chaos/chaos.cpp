@@ -227,7 +227,7 @@ static void AddRandomEffect()
 {
     std::uniform_int_distribution<int> dist(0, Effects().size() - 1);
 
-    for (int attempt = 0; attempt < MaxAttemptsForNewEffect; attempt++)
+    for (int i = 0; i < MaxAttemptsForNewEffect; i++)
     {
         auto effect = Effects()[dist(rng)];
 
