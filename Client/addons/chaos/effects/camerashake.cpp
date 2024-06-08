@@ -20,7 +20,7 @@ public:
 
     void Tick(const float deltaTime) override
     {
-        auto controller = Engine::GetPlayerController();
+        const auto controller = Engine::GetPlayerController();
         controller->CurrentLookAtPoint = nullptr;
 
         controller->Rotation.Pitch += RandomInt(-Intensity, Intensity);

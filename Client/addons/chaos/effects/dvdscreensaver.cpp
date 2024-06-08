@@ -26,7 +26,7 @@ public:
     {
         Name = name;
         DisplayName = name;
-        DurationType = EffectDuration::Long;
+        DurationType = EDuration::Long;
 
         Speed = ImVec2(128.0f, 128.0f);
         Image.Filename = filename;

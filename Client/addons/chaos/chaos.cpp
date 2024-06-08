@@ -7,27 +7,47 @@
 
 static bool IsEnabled = false;
 static bool IsPaused = false;
+static bool IsChaosActive = false;
 
-static bool EffectRandomizerHasBeenSeeded = false;
-static int Seed = 0;
 std::mt19937 rng;
+static int Seed = 0;
+static bool DoRandomizeNewSeed = true;
 
-static float DurationTime[3] = { 15.0f, 45.0f, 90.0f };
+static float DurationTime[static_cast<int>(EDuration::COUNT)] = { 5.0f, 15.0f, 45.0f, 90.0f };
+static const char* DurationTimeStrings[] = { "Brief", "Short", "Normal", "Long" };
+
+static float TimeUntilNewEffect = 20.0f;
+static int MaxAttemptsForNewEffect = 100;
+
 static float TimerInSeconds = 0.0f;
-static float TimeUntilNewRandomEffect = 20.0f;
-
 static float TimerHeight = 18.0f;
-static float TimerOffsetTop = 0.0f;
-static ImVec4 BackgroundColor = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+static ImVec4 TimerBackgroundColor = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
 static ImVec4 TimerColor = ImVec4(0.0f, 0.5f, 1.0f, 1.0f);
 
 struct ActiveEffectInfo {
     float TimeRemaining;
-    bool ShutdownSuccessfully;
     Effect* Effect;
 };
 
-std::vector<ActiveEffectInfo> ActiveEffects;
+static std::vector<ActiveEffectInfo> ActiveEffects;
+
+static void SetNewSeed()
+{
+    if (DoRandomizeNewSeed)
+    {
+        std::random_device rd;
+        std::mt19937 rngEngine(rd());
+        std::uniform_int_distribution<int> dist(INT_MIN, INT_MAX);
+
+        Seed = dist(rngEngine);
+        rng.seed(Seed);
+    }
+
+    for (auto effect : Effects())
+    {
+        effect->SetSeed(Seed);
+    }
+}
 
 static void Restart()
 {
@@ -40,13 +60,12 @@ static void Restart()
     ActiveEffects.shrink_to_fit();
 
     TimerInSeconds = 0.0f;
-    IsPaused = true;
-    EffectRandomizerHasBeenSeeded = false;
+    IsChaosActive = false;
 }
 
 static void ChaosTab()
 {
-    if (ImGui::Checkbox("Enabled##Chaos-Enabled", &IsEnabled))
+    if (ImGui::Checkbox("Enabled##Chaos-EnabledCheckbox", &IsEnabled) && !IsEnabled)
     {
         Restart();
     }
@@ -56,71 +75,105 @@ static void ChaosTab()
         return;
     }
 
+    ImGui::Checkbox("Randomize Seed##Chaos-DoRandomizeNewSeed", &DoRandomizeNewSeed);
     ImGui::Separator(2.5f);
-    char buffer[0xFF];
-    sprintf_s(buffer, sizeof(buffer), "%s##Chaos-ResumeOrPauseButton", IsPaused ? "Resume" : "Pause");
 
-    if (ImGui::Button(buffer))
+    if (IsChaosActive)
     {
-        IsPaused = !IsPaused;
-    }
-    
-    ImGui::SameLine();
-    if (ImGui::Button("Restart##Chaos-RestartButton"))
-    {
-        Restart();
-    }
-
-    ImGui::SameLine();
-    if (ImGui::Button("Randomize Seed"))
-    {
-        std::random_device rd;
-        std::mt19937 rng(rd());
-
-        std::uniform_int_distribution<int> dist(INT_MIN, INT_MAX);
-        Seed = dist(rng);
-
-        EffectRandomizerHasBeenSeeded = false;
-
-        for (auto effect : Effects())
+        const char* buttonLabel = IsPaused ? "Resume##Chaos-ResumeButton" : "Pause##Chaos-PauseButton";
+        if (ImGui::Button(buttonLabel))
         {
-            effect->SetSeed(Seed);
+            IsPaused = !IsPaused;
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Restart##Chaos-RestartButton"))
+        {
+            Restart();
+        }
+    }
+    else
+    {
+        if (ImGui::Button("Start##Chaos-StartButton"))
+        {
+            SetNewSeed();
+            Restart();
+
+            IsPaused = false;
+            IsChaosActive = true;
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Start New Game##Chaos-StartNewGameButton"))
+        {
+            SetNewSeed();
+        
+            const auto world = Engine::GetWorld();
+
+            if (world)
+            {
+                const auto gameInfo = static_cast<Classes::ATdGameInfo*>(world->Game);
+                gameInfo->TdGameData->StartNewGameWithTutorial(true);
+            
+                Restart();
+                IsChaosActive = true;
+            }
         }
     }
 
-    if (ImGui::InputInt("Seed##Chaos-Seed", &Seed, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue))
+    if (ImGui::InputInt("Seed##Chaos-Seed", &Seed, 0, 0, IsChaosActive ? ImGuiInputTextFlags_ReadOnly : ImGuiInputTextFlags_EnterReturnsTrue))
     {
-        EffectRandomizerHasBeenSeeded = false;
-
-        for (auto effect : Effects())
-        {
-            effect->SetSeed(Seed);
-        }
+        DoRandomizeNewSeed = false;
+        SetNewSeed();
     }
 
     ImGui::Separator(2.5f);
 
-    if (ImGui::SliderFloat("Time Until New Effect##Chaos-MaxTime", &TimeUntilNewRandomEffect, 5.0f, 60.0f, "%.0f sec"))
+    if (ImGui::SliderFloat("Time Until New Effect##Chaos-TimeUntilNewEffect", &TimeUntilNewEffect, 5.0f, 60.0f, "%.0f sec"))
     {
         TimerInSeconds = 0.0f;
     }
 
     const auto& io = ImGui::GetIO();
 
-    ImGui::SliderFloat("Timer Height##Chaos-Timer-Height", &TimerHeight, 1.0f, 30.0f, "%.1f");
-    ImGui::ColorEdit4("Background Color##Chaos-Timer-BackgroundColor", &BackgroundColor.x);
-    ImGui::ColorEdit4("Timer Color##Chaos-Timer-Color", &TimerColor.x);
+    ImGui::SliderFloat("Timer Height##Chaos-TimerHeight", &TimerHeight, 1.0f, 30.0f, "%.1f");
+    ImGui::ColorEdit4("Background Color##Chaos-TimerBackgroundColor", &TimerBackgroundColor.x);
+    ImGui::ColorEdit4("Timer Color##Chaos-TimerColor", &TimerColor.x);
     ImGui::Separator(2.5f);
 
-    ImGui::SliderFloat("Short Duration Time##Chaos-ShortDurationTime", &DurationTime[0], 5.0f, 120.0f, "%.0f sec");
-    ImGui::SliderFloat("Normal Duration Time##Chaos-NormalDurationTime", &DurationTime[1], 5.0f, 120.0f, "%.0f sec");
-    ImGui::SliderFloat("Long Duration Time##Chaos-LongDurationTime", &DurationTime[2], 5.0f, 120.0f, "%.0f sec");
+    ImGui::Text("Duration Time");
+    for (int i = 0; i < static_cast<int>(EDuration::COUNT); i++)
+    {
+        ImGui::SliderFloat((std::string(DurationTimeStrings[i]) + "##Chaos-" + DurationTimeStrings[i] + "DurationTime").c_str(),
+            &DurationTime[i], 5.0f, 120.0f, "%.0f sec"
+        );
+    }
     ImGui::Separator(2.5f);
 
-    // TODO: Show all effects and choose which to enable or disable
-    // There should be a button to disable all of the same type of effect if there are multiple ones
+    // TODO
+    // [x] Show all effects and choose which to enable or disable 
+    // [ ] There should be a button to disable all of the same type of effect if there are multiple ones
+
     for (auto effect : Effects())
     {
+        if (!effect->IsEnabled)
+        {
+            ImGui::BeginDisabled();
+        }
+
+        int durationType = (int)effect->DurationType;
+        ImGui::SetNextItemWidth(92.0f);
+        ImGui::Combo(("##Chaos-DurationType-" + effect->Name).c_str(), &durationType, DurationTimeStrings, IM_ARRAYSIZE(DurationTimeStrings));
+
+        effect->DurationType = static_cast<EDuration>(durationType);
+        effect->DurationTime = DurationTime[(int)effect->DurationType];
+
+        if (!effect->IsEnabled)
+        {
+            ImGui::EndDisabled();
+        }
+
+        ImGui::SameLine();
         ImGui::Checkbox(effect->Name.c_str(), &effect->IsEnabled);
     }
 }
@@ -140,18 +193,18 @@ static void OnRender(IDirect3DDevice9* device)
         }
     }
 
-    const auto window = ImGui::BeginRawScene("##Chaos-Timer-Render");
+    const auto window = ImGui::BeginRawScene("##Chaos-TimeCountdownRender");
     const auto& io = ImGui::GetIO();
 
-    window->DrawList->AddRectFilled(ImVec2(), ImVec2(io.DisplaySize.x, TimerHeight), ImColor(BackgroundColor));
-    window->DrawList->AddRectFilled(ImVec2(), ImVec2(io.DisplaySize.x * TimerInSeconds / TimeUntilNewRandomEffect, TimerHeight), ImColor(TimerColor));
+    window->DrawList->AddRectFilled(ImVec2(), ImVec2(io.DisplaySize.x, TimerHeight), ImColor(TimerBackgroundColor));
+    window->DrawList->AddRectFilled(ImVec2(), ImVec2(io.DisplaySize.x * TimerInSeconds / TimeUntilNewEffect, TimerHeight), ImColor(TimerColor));
 
     ImGui::EndRawScene();
 
     // Temp until proper UI
     ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(285, 165), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Active Effects");
+    ImGui::Begin("Active Effects (Temp UI)##Chaos-ActiveEffectsTemp");
 
     for (auto it = ActiveEffects.rbegin(); it != ActiveEffects.rend(); ++it)
     {
@@ -159,7 +212,7 @@ static void OnRender(IDirect3DDevice9* device)
 
         if (active.Effect->IsDone)
         {
-            ImGui::Text("%s", active.Effect->DisplayName.c_str());
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.75f), active.Effect->DisplayName.c_str());
         }
         else
         {
@@ -172,15 +225,9 @@ static void OnRender(IDirect3DDevice9* device)
 
 static void AddRandomEffect()
 {
-    if (!EffectRandomizerHasBeenSeeded)
-    {
-        rng.seed(Seed); 
-        EffectRandomizerHasBeenSeeded = true;
-    }
-
     std::uniform_int_distribution<int> dist(0, Effects().size() - 1);
 
-    for (int attempt = 0; attempt < 100; attempt++)
+    for (int attempt = 0; attempt < MaxAttemptsForNewEffect; attempt++)
     {
         auto effect = Effects()[dist(rng)];
 
@@ -206,10 +253,9 @@ static void AddRandomEffect()
 
         ActiveEffectInfo newActiveEffectInfo;
         newActiveEffectInfo.TimeRemaining = DurationTime[(int)effect->DurationType];
-        newActiveEffectInfo.ShutdownSuccessfully = false;
         newActiveEffectInfo.Effect = effect;
 
-        effect->DurationTimeAllocated = newActiveEffectInfo.TimeRemaining;
+        effect->DurationTime = newActiveEffectInfo.TimeRemaining;
         effect->Start();
 
         ActiveEffects.push_back(newActiveEffectInfo);
@@ -219,13 +265,13 @@ static void AddRandomEffect()
 
 static void OnTick(float deltaTime) 
 {
-    if (!IsEnabled || IsPaused)
+    if (!IsEnabled || !IsChaosActive || IsPaused)
     {
         return;
     }
 
-    auto pawn = Engine::GetPlayerPawn();
-    auto controller = Engine::GetPlayerController();
+    const auto pawn = Engine::GetPlayerPawn();
+    const auto controller = Engine::GetPlayerController();
 
     if (!pawn || !controller)
     {
@@ -234,7 +280,7 @@ static void OnTick(float deltaTime)
 
     TimerInSeconds += deltaTime;
 
-    if (TimerInSeconds >= TimeUntilNewRandomEffect)
+    if (TimerInSeconds >= TimeUntilNewEffect)
     {
         AddRandomEffect();
         TimerInSeconds = 0.0f;
@@ -251,17 +297,9 @@ static void OnTick(float deltaTime)
             continue;
         }
 
-        if (!active.ShutdownSuccessfully)
+        if (active.Effect->Shutdown())
         {
-            if (!active.Effect->Shutdown())
-            {
-                printf("Chaos: The effect \"%s\" didn't shut down correctly and might persist\n", active.Effect->Name.c_str());
-            }
-            else
-            {
-                active.ShutdownSuccessfully = true;
-                ActiveEffects.erase((it + 1).base());
-            }
+            ActiveEffects.erase((it + 1).base());
         }
     }
 

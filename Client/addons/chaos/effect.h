@@ -6,11 +6,13 @@
 #include <vector>
 #include <random>
 
-enum class EffectDuration
+enum class EDuration
 {
+    Breif,
     Short,
     Normal,
     Long,
+    COUNT
 };
 
 class Effect
@@ -18,8 +20,8 @@ class Effect
 // Inherited classes should not modify these but you can use them
 public:
     bool IsEnabled = true;
-    float DurationTimeAllocated = 0.0f;
-    EffectDuration DurationType = EffectDuration::Normal;
+    float DurationTime = 0.0f;
+    EDuration DurationType = EDuration::Normal;
 
 // Varibles to use if your effect is does one thing and is done after success
 public:
@@ -38,17 +40,11 @@ public:
 
 // Helper functions
 protected:
-    // Min value is set to 0
-    int RandomInt(const int max) const;
-    int RandomInt(const int min, const int max) const;
-
-    // Min value is set to 0.0f
-    float RandomFloat(const float max) const;                   
+    int RandomInt(const int min, const int max) const;               
     float RandomFloat(const float min, const float max) const;
     
-    // Gets the TdPlayerInput class without you having to do multiple nullptr checks
-    // However, please do check just incase
     Classes::UTdPlayerInput* GetTdPlayerInput();
+    Classes::TArray<Classes::ATdAIController*> GetTdAIControllers();
 
 // Seeding, you don't need to do anything in your effect with these
 public:

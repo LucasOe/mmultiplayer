@@ -2,7 +2,7 @@
 
 #include "../effect.h"
 
-enum class ForcedState
+enum class EForcedStateType
 {
     Walking,
     Crouching
@@ -11,16 +11,16 @@ enum class ForcedState
 class ForceState : public Effect
 {
 private:
-    ForcedState ForcedStateType;
+    EForcedStateType ForcedStateType;
 
 public:
-    ForceState(const std::string& name, ForcedState forcedStateType)
+    ForceState(const std::string& name, EForcedStateType forcedState)
     {
         Name = name;
         DisplayName = name;
-        DurationType = EffectDuration::Short;
+        DurationType = EDuration::Short;
 
-        ForcedStateType = forcedStateType;
+        ForcedStateType = forcedState;
     }
 
     void Start() override {}
@@ -29,7 +29,7 @@ public:
     {
         const auto controller = Engine::GetPlayerController();
 
-        if (ForcedStateType == ForcedState::Walking)
+        if (ForcedStateType == EForcedStateType::Walking)
         {
             const auto input = GetTdPlayerInput();
             if (!input)
@@ -54,7 +54,7 @@ public:
     {
         const auto controller = Engine::GetPlayerController();
         
-        if (ForcedStateType == ForcedState::Walking)
+        if (ForcedStateType == EForcedStateType::Walking)
         {
             const auto input = GetTdPlayerInput();
 
@@ -82,5 +82,5 @@ public:
 using ForceWalking = ForceState;
 using ForceCrouching = ForceState;
 
-REGISTER_EFFECT(ForceWalking, "Force Walking", ForcedState::Walking);
-REGISTER_EFFECT(ForceCrouching, "Force Crouching", ForcedState::Crouching);
+REGISTER_EFFECT(ForceWalking, "Force Walking", EForcedStateType::Walking);
+REGISTER_EFFECT(ForceCrouching, "Force Crouching", EForcedStateType::Crouching);

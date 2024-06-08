@@ -6,16 +6,16 @@
 class CameraRotation : public Effect
 {
 private:
-    bool Rotate = false;
+    bool DoRotateCamera = false;
 
 public:
-    CameraRotation(const std::string& name, bool rotate)
+    CameraRotation(const std::string& name, bool doRotateCamera)
     {
         Name = name;
         DisplayName = name;
-        DurationType = EffectDuration::Short;
+        DurationType = EDuration::Short;
 
-        Rotate = rotate;
+        DoRotateCamera = doRotateCamera;
     }
 
     void Start() override {}
@@ -32,13 +32,13 @@ public:
         Dolly dolly;
         dolly.ForceRoll(true);
 
-        if (Rotate)
+        if (DoRotateCamera)
         {
-            float degreesPerSecond = 65536.0f / DurationTimeAllocated;
+            float degreesPerSecond = 65536.0f / DurationTime;
             float rotationIncrement = degreesPerSecond * deltaTime;
 
             int roll = static_cast<int>(controller->Rotation.Roll % 0x10000);
-            controller->Rotation.Roll = static_cast<int>(roll + rotationIncrement);
+            controller->Rotation.Roll = roll + static_cast<int>(rotationIncrement);
         }
         else
         {

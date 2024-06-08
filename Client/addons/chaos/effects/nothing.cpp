@@ -16,7 +16,7 @@ public:
     Nothing(const std::string& name)
     {
         Name = name;
-        DurationType = EffectDuration::Short;
+        DurationType = EDuration::Short;
     }
 
     void Start() override 
