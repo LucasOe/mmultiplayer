@@ -75,7 +75,7 @@ private:
     void SetFov(float newFov, unsigned long lockFov)
     {
         const auto controller = Engine::GetPlayerController();
-        controller->PlayerCamera->LockedFOV = newFov;
+        controller->PlayerCamera->LockedFOV = lockFov ? newFov : 0.0f;
         controller->PlayerCamera->bLockedFOV = lockFov;
     }
 };

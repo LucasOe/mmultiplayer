@@ -9,7 +9,7 @@ public:
     {
         Name = name;
         DisplayName = name;
-        DurationType = EffectDuration::Short;
+        DurationType = EDuration::Breif;
     }
 
     void Start() override {}

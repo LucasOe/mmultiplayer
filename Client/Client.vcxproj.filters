@@ -458,5 +458,11 @@
     <ClCompile Include="addons\chaos\effects\toomuchinfo.cpp">
       <Filter>Source Files\addons\chaos\effects</Filter>
     </ClCompile>
+    <ClCompile Include="addons\chaos\effects\teleportai.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\aimbot.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

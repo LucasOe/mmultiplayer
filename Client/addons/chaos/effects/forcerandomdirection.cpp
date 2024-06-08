@@ -7,6 +7,7 @@ class ForceRandomDirection : public Effect
 private:
     float Time = 0.0f;
     float RandomDelay = 0.0f;
+    float MinDelay = 1.0f;
     float MaxDelay = 8.0f;
 
 public:
@@ -19,7 +20,7 @@ public:
     void Start() override 
     {
         Time = 0.0f;
-        RandomDelay = RandomFloat(MaxDelay);
+        RandomDelay = RandomFloat(MinDelay, MaxDelay);
     }
 
     void Tick(const float deltaTime) override 
@@ -48,7 +49,7 @@ public:
         pawn->Velocity.X = dirX * pawn->VelocityMagnitude2D;
         pawn->Velocity.Y = dirY * pawn->VelocityMagnitude2D;
 
-        RandomDelay = RandomFloat(MaxDelay);
+        RandomDelay = RandomFloat(MinDelay, MaxDelay);
         Time = 0.0f;
     }
 

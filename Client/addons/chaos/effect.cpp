@@ -6,21 +6,9 @@ std::vector<Effect*>& Effects()
     return effects;
 }
 
-int Effect::RandomInt(const int max) const
-{
-    std::uniform_int_distribution<int> dist(0, max);
-    return dist(rng);
-}
-
 int Effect::RandomInt(const int min, const int max) const
 {
     std::uniform_int_distribution<int> dist(min, max);
-    return dist(rng);
-}
-
-float Effect::RandomFloat(const float max) const
-{
-    std::uniform_real_distribution<float> dist(0.0f, max);
     return dist(rng);
 }
 
@@ -32,9 +20,11 @@ float Effect::RandomFloat(const float min, const float max) const
 
 Classes::UTdPlayerInput* Effect::GetTdPlayerInput()
 {
-    // We don't check for nullptr for the controller since when it's called from Tick() in chaos.cpp
-    // The controller is not a nullptr
     const auto controller = Engine::GetPlayerController();
+    if (!controller)
+    {
+        return nullptr;
+    }
 
     if (!controller->PlayerInput)
     {
@@ -48,4 +38,21 @@ Classes::UTdPlayerInput* Effect::GetTdPlayerInput()
     }
 
     return input;
+}
+
+Classes::TArray<Classes::ATdAIController*> Effect::GetTdAIControllers()
+{
+    const auto world = Engine::GetWorld();
+    if (!world)
+    {
+        return Classes::TArray<Classes::ATdAIController*>();
+    }
+
+    const auto gameInfo = static_cast<Classes::ATdSPGame*>(world->Game); 
+    if (!gameInfo)
+    {
+        return Classes::TArray<Classes::ATdAIController*>();
+    }
+
+    return gameInfo->AIManager->AIControllers;
 }

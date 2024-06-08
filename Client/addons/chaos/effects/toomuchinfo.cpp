@@ -9,6 +9,7 @@ public:
     {
         Name = name;
         DisplayName = name;
+        DurationType = EDuration::Long;
     }
 
     void Start() override {}
@@ -107,10 +108,13 @@ private:
     {
         WindowBegin("ATdPlayerController", "##RenderControllerInfo", ImVec2(420, 666));
 
+        ImGui::Text("Rotation: %d %d %d", controller->Rotation.Pitch, controller->Rotation.Yaw % 65536, controller->Rotation.Roll);
         ImGui::Text("TimePressedJump: %.2f", controller->TimePressedJump);
         ImGui::Text("bIsControllerConnected: %d", controller->bIsControllerConnected);
         ImGui::Text("bIgnoreMoveInput: %d", controller->bIgnoreMoveInput);
         ImGui::Text("bIgnoreLookInput: %d", controller->bIgnoreLookInput);
+        ImGui::Text("bIgnoreButtonInput: %d", controller->bIgnoreButtonInput);
+        ImGui::Text("bCinematicMode: %d", controller->bCinematicMode);
         ImGui::Text("bDuck: %d", controller->bDuck);
         ImGui::Text("bReactionTime: %d", controller->bReactionTime);
         ImGui::Text("ReactionTimeEnergy: %.2f", controller->ReactionTimeEnergy);

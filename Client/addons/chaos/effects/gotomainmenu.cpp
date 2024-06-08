@@ -12,7 +12,7 @@ public:
     GoToMainMenu(const std::string& name)
     {
         Name = name;
-        DurationType = EffectDuration::Short;
+        DurationType = EDuration::Short;
     }
 
     void Start() override
@@ -63,4 +63,5 @@ public:
     }
 };
 
-REGISTER_EFFECT(GoToMainMenu, "Go To MainMenu");
+// Removed this effect for now
+// REGISTER_EFFECT(GoToMainMenu, "Go To MainMenu");

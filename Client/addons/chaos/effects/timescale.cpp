@@ -20,7 +20,7 @@ public:
 
     void Tick(const float deltaTime) override
     {
-        auto world = Engine::GetWorld();
+        const auto world = Engine::GetWorld();
         world->TimeDilation = NewTimescale;
     }
 
@@ -28,7 +28,7 @@ public:
 
     bool Shutdown() override
     {
-        auto world = Engine::GetWorld();
+        const auto world = Engine::GetWorld();
         world->TimeDilation = 1.0f;
 
         return true;

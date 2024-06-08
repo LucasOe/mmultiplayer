@@ -2,7 +2,7 @@
 
 #include "../effect.h"
 
-enum class ColorType
+enum class EColorScaleType
 {
     Random,
     Rainbow
@@ -14,7 +14,7 @@ private:
     float Time = 0.0f;
     int Index = 0;
     int PreviousIndex = 0;
-    ColorType ColorTypeEnum;
+    EColorScaleType ColorScaleType;
     Classes::FVector RandomColorScale;
 
     const std::vector<ImVec4> Colors = {
@@ -33,12 +33,12 @@ private:
     };
 
 public:
-    ColorScale(const std::string& name, ColorType colorType)
+    ColorScale(const std::string& name, EColorScaleType colorScaleType)
     {
         Name = name;
         DisplayName = name;
 
-        ColorTypeEnum = colorType;
+        ColorScaleType = colorScaleType;
     }
 
     void Start() override 
@@ -47,11 +47,11 @@ public:
         Index = 0;
         PreviousIndex = 0;
 
-        if (ColorTypeEnum == ColorType::Random)
+        if (ColorScaleType == EColorScaleType::Random)
         {
-            RandomColorScale.X = RandomFloat(1.0f);
-            RandomColorScale.Y = RandomFloat(1.0f);
-            RandomColorScale.Z = RandomFloat(1.0f);
+            RandomColorScale.X = RandomFloat(0.0f, 1.0f);
+            RandomColorScale.Y = RandomFloat(0.0f, 1.0f);
+            RandomColorScale.Z = RandomFloat(0.0f, 1.0f);
         }
     }
 
@@ -64,7 +64,7 @@ public:
             return;
         }
 
-        if (ColorTypeEnum == ColorType::Random)
+        if (ColorScaleType == EColorScaleType::Random)
         {
             controller->PlayerCamera->ColorScale = RandomColorScale;
         }
@@ -108,5 +108,5 @@ public:
 using RandomColorScale = ColorScale;
 using RainbowColorScale = ColorScale;
 
-REGISTER_EFFECT(RandomColorScale, "Random Color Scale", ColorType::Random);
-REGISTER_EFFECT(RainbowColorScale, "Rainbow Color Scale", ColorType::Rainbow);
+REGISTER_EFFECT(RandomColorScale, "Random Color Scale", EColorScaleType::Random);
+REGISTER_EFFECT(RainbowColorScale, "Rainbow Color Scale", EColorScaleType::Rainbow);

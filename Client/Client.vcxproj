@@ -252,6 +252,7 @@
   <ItemGroup>
     <ClCompile Include="addons\chaos\chaos.cpp" />
     <ClCompile Include="addons\chaos\effect.cpp" />
+    <ClCompile Include="addons\chaos\effects\aimbot.cpp" />
     <ClCompile Include="addons\chaos\effects\camerarotation.cpp" />
     <ClCompile Include="addons\chaos\effects\camerashake.cpp" />
     <ClCompile Include="addons\chaos\effects\colorscale.cpp" />
@@ -270,6 +271,7 @@
     <ClCompile Include="addons\chaos\effects\killbots.cpp" />
     <ClCompile Include="addons\chaos\effects\nothing.cpp" />
     <ClCompile Include="addons\chaos\effects\suicide.cpp" />
+    <ClCompile Include="addons\chaos\effects\teleportai.cpp" />
     <ClCompile Include="addons\chaos\effects\timescale.cpp" />
     <ClCompile Include="addons\chaos\effects\toomuchinfo.cpp" />
     <ClCompile Include="addons\client.cpp" />

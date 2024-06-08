@@ -22,14 +22,14 @@ public:
 
     void Start() override 
     {
-        auto engine = Engine::GetEngine();
+        const auto engine = Engine::GetEngine();
         PreviousMaxFrameRate = engine->MaxSmoothedFrameRate;
         PreviousbSmoothFrameRate = engine->bSmoothFrameRate;
     }
 
     void Tick(const float deltaTime) override
     {
-        auto engine = Engine::GetEngine();
+        const auto engine = Engine::GetEngine();
         engine->MaxSmoothedFrameRate = FrameRateToApply;
         engine->bSmoothFrameRate = bSmoothFrameRate;
     }
@@ -38,7 +38,7 @@ public:
 
     bool Shutdown() override
     {
-        auto engine = Engine::GetEngine();
+        const auto engine = Engine::GetEngine();
         engine->MaxSmoothedFrameRate = PreviousMaxFrameRate;
         engine->bSmoothFrameRate = PreviousbSmoothFrameRate;
 

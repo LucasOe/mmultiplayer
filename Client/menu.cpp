@@ -51,9 +51,6 @@ static void EngineTab()
 		return;
 	}
 
-	ImGui::TextWrapped("Thanks for trying out this build! (" MMultiplayerVersion ") c:\n\nI'm looking for feedback for this chaos addon. What effects could be added, removed, default settings changed, and etc.");
-	ImGui::Separator(5.0f);
-
 	static char command[0xFFF] = { 0 };
 
 	auto commandInputCallback = []() 

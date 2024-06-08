@@ -2,7 +2,7 @@
 
 #include "../effect.h"
 
-enum class JumpTypeEffect
+enum class EJumpType
 {
     Random,
     Constant
@@ -14,10 +14,10 @@ private:
     float JumpTimeDelayMax = 6.9f;
     float JumpTimeDelay = 1.0f;
     float JumpTimeActivatedAt = 0.0f;
-    JumpTypeEffect JumpType;
+    EJumpType JumpType;
 
 public:
-    Jump(const std::string& name, JumpTypeEffect jumpType)
+    Jump(const std::string& name, EJumpType jumpType)
     {
         Name = name;
         DisplayName = name;
@@ -27,16 +27,13 @@ public:
 
     void Start() override
     {
-        JumpTimeDelay = RandomFloat(JumpTimeDelayMax);
+        JumpTimeDelay = RandomFloat(0.0f, JumpTimeDelayMax);
         JumpTimeActivatedAt = static_cast<float>(GetTickCount64());
     }
 
     void Tick(const float deltaTime) override
     {
-        const auto pawn = Engine::GetPlayerPawn();
-        const auto controller = Engine::GetPlayerController();
-
-        if (JumpType == JumpTypeEffect::Constant)
+        if (JumpType == EJumpType::Constant)
         {
             ForceJump();
         }
@@ -76,12 +73,12 @@ private:
         controller->PlayerInput->Jump();
 
         JumpTimeActivatedAt = static_cast<float>(GetTickCount64());
-        JumpTimeDelay = RandomFloat(JumpTimeDelayMax);
+        JumpTimeDelay = RandomFloat(0.0f, JumpTimeDelayMax);
     }
 };
 
 using JumpRandomly = Jump;
 using JumpConstantly = Jump;
 
-REGISTER_EFFECT(JumpRandomly, "Jump Randomly", JumpTypeEffect::Random);
-REGISTER_EFFECT(JumpConstantly, "Jump Constantly", JumpTypeEffect::Constant);
+REGISTER_EFFECT(JumpRandomly, "Jump Randomly", EJumpType::Random);
+REGISTER_EFFECT(JumpConstantly, "Jump Constantly", EJumpType::Constant);
