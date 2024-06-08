@@ -23,7 +23,7 @@ public:
     float DurationTime = 0.0f;
     EDuration DurationType = EDuration::Normal;
 
-// Varibles to use if your effect is does one thing and is done after success
+// Variables to use if your effect is does one thing and is done after success
 public:
     bool IsDone = false;
 
