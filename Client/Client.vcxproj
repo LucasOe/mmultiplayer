@@ -255,6 +255,7 @@
     <ClCompile Include="addons\chaos\effects\aimbot.cpp" />
     <ClCompile Include="addons\chaos\effects\camerarotation.cpp" />
     <ClCompile Include="addons\chaos\effects\camerashake.cpp" />
+    <ClCompile Include="addons\chaos\effects\checkpoint.cpp" />
     <ClCompile Include="addons\chaos\effects\colorscale.cpp" />
     <ClCompile Include="addons\chaos\effects\disableinput.cpp" />
     <ClCompile Include="addons\chaos\effects\dvdscreensaver.cpp" />

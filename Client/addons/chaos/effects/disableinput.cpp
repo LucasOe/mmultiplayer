@@ -30,12 +30,7 @@ public:
         controller->bIgnoreLookInput = TRUE;
         controller->CurrentLookAtPoint = nullptr;
 
-        if (PlayedIdleAnimation)
-        {
-            return;
-        }
-
-        if (pawn->MovementState != Classes::EMovement::MOVE_Walking)
+        if (PlayedIdleAnimation || pawn->MovementState != Classes::EMovement::MOVE_Walking)
         {
             return;
         }
@@ -59,6 +54,7 @@ public:
     {
         const auto pawn = Engine::GetPlayerPawn();
         const auto controller = Engine::GetPlayerController();
+
         controller->bIgnoreButtonInput = FALSE;
         controller->bIgnoreMoveInput = FALSE;
         controller->bIgnoreLookInput = FALSE;

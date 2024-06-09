@@ -464,5 +464,8 @@
     <ClCompile Include="addons\chaos\effects\aimbot.cpp">
       <Filter>Source Files\addons\chaos\effects</Filter>
     </ClCompile>
+    <ClCompile Include="addons\chaos\effects\checkpoint.cpp">
+      <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
