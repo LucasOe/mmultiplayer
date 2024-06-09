@@ -18,12 +18,12 @@ public:
 
     void Tick(const float deltaTime) override
     {
-        const auto pawn = Engine::GetPlayerPawn();
-
         if (IsDone)
         {
             return;
         }
+
+        const auto pawn = Engine::GetPlayerPawn();
 
         if (pawn->Health <= 0)
         {
