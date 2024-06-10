@@ -121,10 +121,18 @@ static void ChaosTab()
         }
     }
 
-    if (ImGui::InputInt("Seed##Chaos-Seed", &Seed, 0, 0, IsChaosActive ? ImGuiInputTextFlags_ReadOnly : ImGuiInputTextFlags_EnterReturnsTrue))
+    if (DoRandomizeNewSeed)
     {
-        DoRandomizeNewSeed = false;
-        SetNewSeed();
+        ImGui::BeginDisabled();
+        ImGui::InputInt("Seed##Chaos-Seed", &Seed, 0, 0);
+        ImGui::EndDisabled();
+    }
+    else
+    {
+        if (ImGui::InputInt("Seed##Chaos-Seed", &Seed, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue))
+        {
+            SetNewSeed();
+        }
     }
 
     ImGui::Separator(2.5f);
@@ -137,22 +145,20 @@ static void ChaosTab()
     const auto& io = ImGui::GetIO();
 
     ImGui::SliderFloat("Timer Height##Chaos-TimerHeight", &TimerHeight, 1.0f, 30.0f, "%.1f");
-    ImGui::ColorEdit4("Background Color##Chaos-TimerBackgroundColor", &TimerBackgroundColor.x);
     ImGui::ColorEdit4("Timer Color##Chaos-TimerColor", &TimerColor.x);
+    ImGui::ColorEdit4("Background Color##Chaos-TimerBackgroundColor", &TimerBackgroundColor.x);
     ImGui::Separator(2.5f);
 
     ImGui::Text("Duration Time");
     for (int i = 0; i < static_cast<int>(EDuration::COUNT); i++)
     {
-        ImGui::SliderFloat((std::string(DurationTimeStrings[i]) + "##Chaos-" + DurationTimeStrings[i] + "DurationTime").c_str(),
+        ImGui::SliderFloat((std::string(DurationTimeStrings[i]) + "##Chaos-" + DurationTimeStrings[i] + "-DurationTime").c_str(),
             &DurationTime[i], 5.0f, 120.0f, "%.0f sec"
         );
     }
     ImGui::Separator(2.5f);
 
-    // TODO
-    // [x] Show all effects and choose which to enable or disable 
-    // [ ] There should be a button to disable all of the same type of effect if there are multiple ones
+    // TODO: Disable all of the same type of effect if there are multiple ones
 
     for (auto effect : Effects())
     {
@@ -203,8 +209,8 @@ static void OnRender(IDirect3DDevice9* device)
 
     // Temp until proper UI
     ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(285, 165), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Active Effects (Temp UI)##Chaos-ActiveEffectsTemp");
+    ImGui::SetNextWindowSize(ImVec2(300, 165), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Active Effects##Chaos-ActiveEffectsTemp");
 
     for (auto it = ActiveEffects.rbegin(); it != ActiveEffects.rend(); ++it)
     {
