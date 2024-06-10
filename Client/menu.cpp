@@ -9,8 +9,6 @@
 #include "imgui/imgui.h"
 #include "menu.h"
 
-#define MMultiplayerVersion "2.3.0-alpha.2"
-
 static bool ShowMenu = false;
 static int ShowKeybind = 0;
 static std::vector<MenuTab> Tabs;
@@ -22,25 +20,27 @@ static struct {
 
 static void RenderMenu(IDirect3DDevice9 *device) 
 {
-	if (ShowMenu)
+	if (!ShowMenu)
 	{
-		ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowSize(ImVec2(720, 420), ImGuiCond_FirstUseEver);
-		ImGui::Begin("MMultiplayer " MMultiplayerVersion, NULL, ImGuiWindowFlags_NoCollapse);
-		ImGui::BeginTabBar("");
-
-		for (auto tab : Tabs) 
-		{
-			if (ImGui::BeginTabItem(tab.Name.c_str())) 
-			{
-				tab.Callback();
-				ImGui::EndTabItem();
-			}
-		}
-
-		ImGui::EndTabBar();
-		ImGui::End();
+		return;
 	}
+
+	ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(720, 420), ImGuiCond_FirstUseEver);
+	ImGui::Begin("MMultiplayer 2.3.0-alpha.3", NULL, ImGuiWindowFlags_NoCollapse);
+	ImGui::BeginTabBar("");
+
+	for (auto tab : Tabs) 
+	{
+		if (ImGui::BeginTabItem(tab.Name.c_str())) 
+		{
+			tab.Callback();
+			ImGui::EndTabItem();
+		}
+	}
+
+	ImGui::EndTabBar();
+	ImGui::End();
 }
 
 static void EngineTab() 

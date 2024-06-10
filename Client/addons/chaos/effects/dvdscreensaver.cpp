@@ -28,21 +28,21 @@ public:
         DisplayName = name;
         DurationType = EDuration::Long;
 
-        Speed = ImVec2(128.0f, 128.0f);
         Image.Filename = filename;
-    }
-
-    void Start() override 
-    {
+        Speed = ImVec2(128.0f, 128.0f);
         Position.x = static_cast<float>(RandomInt(0, 256));
         Position.y = static_cast<float>(RandomInt(0, 256));
+
+        // Temp until proper file check
+        IsEnabled = false;
     }
+
+    void Start() override {}
 
     void Tick(const float deltaTime) override 
     {
         const auto& io = ImGui::GetIO();
 
-        // FIXME: If the player respawns and the image is about to hit a boundary, it could go out of bounds or get stuck  
         Position += Speed * deltaTime;
 
         if (Position.x <= 0.0f || Position.x + Image.Width >= io.DisplaySize.x)
@@ -98,4 +98,4 @@ public:
 
 using DvdScreenSaverEffect = DvdScreenSaver;
 
-//REGISTER_EFFECT(DvdScreenSaverEffect, "Dvd ScreenSaver", "dvd.png");
+REGISTER_EFFECT(DvdScreenSaverEffect, "Dvd ScreenSaver", "dvd.png");
