@@ -168,7 +168,7 @@ static void ChaosTab()
         }
 
         int durationType = (int)effect->DurationType;
-        ImGui::SetNextItemWidth(92.0f);
+        ImGui::SetNextItemWidth(100.0f);
         ImGui::Combo(("##Chaos-DurationType-" + effect->Name).c_str(), &durationType, DurationTimeStrings, IM_ARRAYSIZE(DurationTimeStrings));
 
         effect->DurationType = static_cast<EDuration>(durationType);
@@ -181,15 +181,6 @@ static void ChaosTab()
 
         ImGui::SameLine();
         ImGui::Checkbox(effect->Name.c_str(), &effect->IsEnabled);
-
-        if (!effect->IsEnabled && effect->GetType() == "DvdScreenSaver")
-        {
-            ImGui::HelpMarker(
-                "This effect is disabled at start for now. To use this effect, you need a \"dvd.png\" located where your MirrorsEdge.exe is. "
-                "I recommend a 256x256 or something close to it. The file need to be correctly formatted as a PNG. Simply changing the exitension "
-                "from another file type to a PNG may result it not loading correctly. Once you have set it up correctly, you can enable this effect."
-            );
-        }
     }
 }
 
