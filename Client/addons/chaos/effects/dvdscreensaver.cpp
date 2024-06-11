@@ -53,6 +53,7 @@ public:
         {
             Position = ImVec2(0.0f, 0.0f);
             Speed = ImVec2(128.0f, 128.0f);
+            DefaultDisplaySize = io.DisplaySize;
         }
 
         Size.x = io.DisplaySize.x * ScaleFactor;
