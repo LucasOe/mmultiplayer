@@ -1,43 +1,31 @@
 #pragma once
 
 #include "../effect.h"
-#include <d3dx9tex.h>
-#pragma comment(lib, "d3d9")
-#pragma comment(lib, "d3dx9")
-
-struct Image 
-{
-    int Width = 0;
-    int Height = 0;
-    PDIRECT3DTEXTURE9 Texture = NULL;
-    std::string Filename;
-    bool HasLoadedFromFile = false;
-};
 
 class DvdScreenSaver : public Effect
 {
 private:
     ImVec2 Position;
     ImVec2 Speed;
-    Image Image;
+    ImVec2 Size;
+    float ScaleFactor;
+    ImVec2 DefaultDisplaySize;
 
 public:
-    DvdScreenSaver(const std::string& name, const std::string& filename)
+    DvdScreenSaver(const std::string& name)
     {
         Name = name;
         DisplayName = name;
-        DurationType = EDuration::Long;
 
-        Image.Filename = filename;
         Speed = ImVec2(128.0f, 128.0f);
-        Position.x = static_cast<float>(RandomInt(0, 256));
-        Position.y = static_cast<float>(RandomInt(0, 256));
-
-        // Temp until proper file check
-        IsEnabled = false;
+        ScaleFactor = 0.3f;
     }
 
-    void Start() override {}
+    void Start() override 
+    {
+        const auto& io = ImGui::GetIO();
+        DefaultDisplaySize = io.DisplaySize;
+    }
 
     void Tick(const float deltaTime) override 
     {
@@ -45,12 +33,12 @@ public:
 
         Position += Speed * deltaTime;
 
-        if (Position.x <= 0.0f || Position.x + Image.Width >= io.DisplaySize.x)
+        if (Position.x <= 0.0f || Position.x + Size.x >= io.DisplaySize.x)
         {
             Speed.x = -Speed.x;
         }
 
-        if (Position.y <= 0.0f || Position.y + Image.Height >= io.DisplaySize.y)
+        if (Position.y <= 0.0f || Position.y + Size.y >= io.DisplaySize.y)
         {
             Speed.y = -Speed.y;
         }
@@ -58,30 +46,26 @@ public:
 
     void Render(IDirect3DDevice9* device) override
     {
-        if (Image.HasLoadedFromFile == false)
+        const auto window = ImGui::BeginRawScene("##DvdScreenSaver");
+        const auto& io = ImGui::GetIO();
+
+        if (DefaultDisplaySize != io.DisplaySize)
         {
-            IDirect3DTexture9* texture;
-            HRESULT hr = D3DXCreateTextureFromFileA(device, Image.Filename.c_str(), &texture);
-            if (hr != S_OK)
-            {
-                printf("Chaos DvdScreenSaver: Failed to create texture!\n");
-                return;
-            }
-
-            D3DSURFACE_DESC image_desc;
-            texture->GetLevelDesc(0, &image_desc);
-            Image.Texture = texture;
-            Image.Width = image_desc.Width;
-            Image.Height = image_desc.Height;
-            Image.HasLoadedFromFile = true;
-
-            printf("Chaos DvdScreenSaver: Image loaded successfully\n");
+            Position = ImVec2(0.0f, 0.0f);
+            Speed = ImVec2(128.0f, 128.0f);
         }
 
-        auto window = ImGui::BeginRawScene("##DvdScreenSaver");
+        Size.x = io.DisplaySize.x * ScaleFactor;
+        Size.y = io.DisplaySize.y * ScaleFactor;
 
-        ImGui::SetWindowPos(window, Position, ImGuiCond_Always);
-        ImGui::Image((void*)Image.Texture, ImVec2(static_cast<float>(Image.Width), static_cast<float>(Image.Height)));
+        ImVec2 dvdTopLeft = Position;
+        ImVec2 dvdBottomRight = { Position.x + Size.x, Position.y + Size.y };
+
+        window->DrawList->AddRectFilled({ 0, 0 }, { dvdTopLeft.x + Size.x, dvdTopLeft.y }, ImColor(0, 0, 0));
+        window->DrawList->AddRectFilled({ dvdBottomRight.x, 0 }, { io.DisplaySize.x, dvdTopLeft.y + Size.y }, ImColor(0, 0, 0));
+        window->DrawList->AddRectFilled({ dvdBottomRight.x - Size.x, dvdBottomRight.y }, io.DisplaySize, ImColor(0, 0, 0));
+        window->DrawList->AddRectFilled({ 0, dvdBottomRight.y - Size.y }, { dvdTopLeft.x, io.DisplaySize.y }, ImColor(0, 0, 0));
+
         ImGui::EndRawScene();
     }
 
@@ -96,6 +80,4 @@ public:
     }
 };
 
-using DvdScreenSaverEffect = DvdScreenSaver;
-
-REGISTER_EFFECT(DvdScreenSaverEffect, "Dvd ScreenSaver", "dvd.png");
+REGISTER_EFFECT(DvdScreenSaver, "Dvd ScreenSaver");
