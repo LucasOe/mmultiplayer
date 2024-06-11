@@ -5,12 +5,20 @@
 
 namespace ImGui 
 {
-    ImGuiWindow *BeginRawScene(const char *name)  
+    ImGuiWindow *BeginRawScene(const char *name, bool saveSettings)  
     { 
         PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
         PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
-        Begin(name, nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus);
+
+        ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
+
+        if (!saveSettings)
+        {
+            windowFlags |= ImGuiWindowFlags_NoSavedSettings;
+        }
+
+        Begin(name, nullptr, windowFlags);
 
         SetWindowPos(ImVec2(0, 0), ImGuiCond_Always);
         SetWindowSize(ImVec2(GetIO().DisplaySize), ImGuiCond_Always);
