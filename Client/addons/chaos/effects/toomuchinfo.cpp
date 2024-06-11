@@ -57,7 +57,7 @@ private:
         ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0.75f));
-        ImGui::Begin(name, nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
+        ImGui::Begin(name, nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings);
         ImGui::Text(title);
         ImGui::Separator(1.0f);
     }
@@ -195,7 +195,7 @@ private:
     
     void RenderPlayerInputInfo(Classes::UTdPlayerInput* input)
     {
-        WindowBegin("UTdPlayerInput", "##RenderPlayerInputInfo", ImVec2(1200, 800));
+        WindowBegin("UTdPlayerInput", "##RenderPlayerInputInfo", ImVec2(1200, 700));
 
         if (!input)
         {
@@ -204,13 +204,18 @@ private:
             return;
         }
 
-        ImGui::Text("CurrentDeltaTime: %f", input->CurrentDeltaTime);
         ImGui::Text("bEnableMouseSmoothing: %d", input->bEnableMouseSmoothing);
         ImGui::Text("bInvertMouse: %d", input->bInvertMouse);
         ImGui::Text("MaxSensitivityMultiplier: %.2f", input->MaxSensitivityMultiplier);
         ImGui::Text("MinSensitivityMultiplier: %.2f", input->MinSensitivityMultiplier);
         ImGui::Text("SensitivityMultiplier: %.2f", input->SensitivityMultiplier);
         ImGui::Text("MouseSensitivity: %.2f", input->MouseSensitivity);
+        ImGui::Text("PressedKeys.Num(): %d", input->PressedKeys.Num());
+
+        for (size_t i = 0; i < input->PressedKeys.Num(); i++)
+        {
+            ImGui::Text("[%d] %s", i, input->PressedKeys[i].GetName().c_str());
+        }
 
         WindowEnd();
     }
