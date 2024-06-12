@@ -4,6 +4,7 @@
 
 namespace ImGui 
 {
+	bool BeginWindow(const char* name, bool* p_open = NULL, ImGuiWindowFlags flags = 0);
 	ImGuiWindow* BeginRawScene(const char* name, bool saveSettings = false);
 	void EndRawScene();
 	bool Hotkey(const char* label, int* k, const ImVec2& size_arg = ImVec2(0, 0));

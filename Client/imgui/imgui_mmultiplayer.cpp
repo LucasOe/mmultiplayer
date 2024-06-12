@@ -5,7 +5,36 @@
 
 namespace ImGui 
 {
-    ImGuiWindow *BeginRawScene(const char *name, bool saveSettings)  
+    bool BeginWindow(const char* name, bool* p_open, ImGuiWindowFlags flags)
+    {
+        bool status = Begin(name, p_open, flags);
+        ImGuiWindow* window = GetCurrentWindow();
+
+        if (!window)
+        {
+            return status;
+        }
+
+        ImGuiWindowSettings* settings = FindWindowSettingsByID(window->ID);
+
+        if (!settings)
+        {
+            return status;
+        }
+
+        if ((window->Pos.x == 60 || window->Pos.x == 141) && window->Pos.y == 9)
+        {
+            SetWindowPos(window, ImVec2(settings->Pos.x, settings->Pos.y), ImGuiCond_Always);
+        }
+        else
+        {
+            SetWindowPos(window, window->Pos, ImGuiCond_Always);
+        }
+
+        return status;
+    }
+
+    ImGuiWindow *BeginRawScene(const char *name, bool saveSettings)
     { 
         PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
         PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
