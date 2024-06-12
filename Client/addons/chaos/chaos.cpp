@@ -210,7 +210,7 @@ static void OnRender(IDirect3DDevice9* device)
     // Temp until proper UI
     ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(300, 165), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Active Effects##Chaos-ActiveEffectsTemp");
+    ImGui::BeginWindow("Active Effects##Chaos-ActiveEffectsTemp");
 
     for (auto it = ActiveEffects.rbegin(); it != ActiveEffects.rend(); ++it)
     {

@@ -27,7 +27,7 @@ static void RenderMenu(IDirect3DDevice9 *device)
 
 	ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ImVec2(720, 420), ImGuiCond_FirstUseEver);
-	ImGui::Begin("MMultiplayer 2.3.0-alpha.4", NULL, ImGuiWindowFlags_NoCollapse);
+	ImGui::BeginWindow("MMultiplayer 2.3.0-alpha.4", NULL, ImGuiWindowFlags_NoCollapse);
 	ImGui::BeginTabBar("");
 
 	for (auto tab : Tabs) 
