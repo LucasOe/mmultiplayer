@@ -65,6 +65,7 @@ public:
                 if (ai->myPawn->Health <= 0) continue;
                 if (!CanTeleport(ai)) continue;
 
+                ai->bMoveJustFinished = TRUE;
                 ai->myPawn->Velocity = { 0.0f, 0.0f, 0.0f };
                 ai->myPawn->Location = pawn->Location;
 
@@ -88,29 +89,23 @@ public:
 private:
     bool CanTeleport(Classes::ATdAIController* ai)
     {
-        if (ai->IsA(Classes::ATdAI_PatrolCop::StaticClass()))
+        static const std::vector<std::string> validAINames = {
+            "TdAI_PatrolCop",
+            "TdAI_Assault",
+            "TdAI_Pursuit",
+            "TdAI_Sniper",
+            "TdAI_Support",
+            "TdAI_Riot",
+        };
+
+        const std::string name = GetObjectName(ai);
+
+        for (const auto& validName : validAINames)
         {
-            return true;
-        }
-        if (ai->IsA(Classes::ATdAI_Assault::StaticClass()))
-        {
-            return true;
-        }
-        if (ai->IsA(Classes::ATdAI_Pursuit::StaticClass()))
-        {
-            return true;
-        }
-        if (ai->IsA(Classes::ATdAI_Sniper::StaticClass()))
-        {
-            return true;
-        }
-        if (ai->IsA(Classes::ATdAI_Support::StaticClass()))
-        {
-            return true;
-        }
-        if (ai->IsA(Classes::ATdAI_Riot::StaticClass()))
-        {
-            return true;
+            if (name == validName)
+            {
+                return true;
+            }
         }
 
         return false;

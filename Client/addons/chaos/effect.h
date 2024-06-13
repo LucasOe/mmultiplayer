@@ -42,7 +42,10 @@ public:
 protected:
     int RandomInt(const int min, const int max) const;               
     float RandomFloat(const float min, const float max) const;
-    
+    bool RandomBool(const float probability = 0.5f) const;
+
+    std::string GetObjectName(Classes::UObject* object);
+
     Classes::UTdPlayerInput* GetTdPlayerInput();
     Classes::TArray<Classes::ATdAIController*> GetTdAIControllers();
 

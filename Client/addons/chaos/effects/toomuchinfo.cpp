@@ -117,7 +117,6 @@ private:
 
         ImGui::Text("Rotation: %d %d %d", controller->Rotation.Pitch, controller->Rotation.Yaw % 65536, controller->Rotation.Roll);
         ImGui::Text("TimePressedJump: %.2f", controller->TimePressedJump);
-        ImGui::Text("bIsControllerConnected: %d", controller->bIsControllerConnected);
         ImGui::Text("bIgnoreMoveInput: %d", controller->bIgnoreMoveInput);
         ImGui::Text("bIgnoreLookInput: %d", controller->bIgnoreLookInput);
         ImGui::Text("bIgnoreButtonInput: %d", controller->bIgnoreButtonInput);
@@ -160,7 +159,7 @@ private:
         ImGui::Text("KickbackAmount: %.2f", weapon->KickbackAmount);
 
         // Only the sniper has extra stuff that could be display. Shotguns have "PulletCount" but isn't used
-        if (weapon->IsA(Classes::ATdWeapon_Sniper_BarretM95::StaticClass()))
+        if (GetObjectName(weapon) == "TdWeapon_Sniper_BarretM95")
         {
             const auto sniper = static_cast<Classes::ATdWeapon_Sniper_BarretM95*>(weapon);
             ImGui::Text("bZoomed: %d", sniper->bZoomed);
@@ -168,7 +167,10 @@ private:
             ImGui::Text("ZoomFOV: %.2f", sniper->ZoomFOV);
             ImGui::Text("ZoomRate: %.2f", sniper->ZoomRate);
             ImGui::Text("ZoomDelay: %.2f", sniper->ZoomDelay);
+            ImGui::Text("AdditionalUnzoomedSpread: %.2f", sniper->AdditionalUnzoomedSpread);
         }
+
+        ImGui::Text("Spread[0]: %f", weapon->Spread[0]);
 
         WindowEnd();
     }
@@ -204,8 +206,9 @@ private:
             return;
         }
 
-        ImGui::Text("bEnableMouseSmoothing: %d", input->bEnableMouseSmoothing);
+        ImGui::Text("bUsingGamepad: %d", input->bUsingGamepad);
         ImGui::Text("bInvertMouse: %d", input->bInvertMouse);
+        ImGui::Text("bEnableMouseSmoothing: %d", input->bEnableMouseSmoothing);
         ImGui::Text("MaxSensitivityMultiplier: %.2f", input->MaxSensitivityMultiplier);
         ImGui::Text("MinSensitivityMultiplier: %.2f", input->MinSensitivityMultiplier);
         ImGui::Text("SensitivityMultiplier: %.2f", input->SensitivityMultiplier);
