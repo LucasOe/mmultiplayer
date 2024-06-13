@@ -21,7 +21,10 @@ public:
     void Tick(const float deltaTime) override
     {
         const auto world = Engine::GetWorld();
-        world->TimeDilation = NewTimescale;
+        if (world)
+        {
+            world->TimeDilation = NewTimescale;
+        }
 
         const auto controller = Engine::GetPlayerController();
         controller->bReactionTime = FALSE;
@@ -32,9 +35,13 @@ public:
     bool Shutdown() override
     {
         const auto world = Engine::GetWorld();
-        world->TimeDilation = 1.0f;
-
-        return true;
+        if (world)
+        {
+            world->TimeDilation = 1.0f;
+            return true;
+        }
+        
+        return false;
     }
 
     std::string GetType() const override
