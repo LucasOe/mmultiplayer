@@ -18,6 +18,25 @@ float Effect::RandomFloat(const float min, const float max) const
     return dist(rng);
 }
 
+bool Effect::RandomBool(const float probability) const
+{
+    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+    return dist(rng) < ImClamp(probability, 0.0f, 1.0f);
+}
+
+std::string Effect::GetObjectName(Classes::UObject* object)
+{
+    std::string name = object->Name.GetName();
+    size_t pos = name.find_last_of('_');
+
+    if (pos != std::string::npos) 
+    {
+        return name.substr(0, pos);
+    }
+
+    return name;
+}
+
 Classes::UTdPlayerInput* Effect::GetTdPlayerInput()
 {
     const auto controller = Engine::GetPlayerController();
