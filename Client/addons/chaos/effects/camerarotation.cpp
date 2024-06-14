@@ -7,6 +7,7 @@ class CameraRotation : public Effect
 {
 private:
     bool DoRotateCamera = false;
+    bool DoRotateClockwise = true;
 
 public:
     CameraRotation(const std::string& name, bool doRotateCamera)
@@ -18,16 +19,14 @@ public:
         DoRotateCamera = doRotateCamera;
     }
 
-    void Start() override {}
+    void Start() override 
+    {
+        DoRotateClockwise = RandomBool();
+    }
 
     void Tick(const float deltaTime) override
     {
         const auto controller = Engine::GetPlayerController();
-
-        if (!controller->PlayerCamera)
-        {
-            return;
-        }
 
         Dolly dolly;
         dolly.ForceRoll(true);
@@ -38,7 +37,15 @@ public:
             float rotationIncrement = degreesPerSecond * deltaTime;
 
             int roll = static_cast<int>(controller->Rotation.Roll % 0x10000);
-            controller->Rotation.Roll = roll + static_cast<int>(rotationIncrement);
+
+            if (DoRotateClockwise)
+            {
+                controller->Rotation.Roll = roll + static_cast<int>(rotationIncrement);
+            }
+            else
+            {
+                controller->Rotation.Roll = roll - static_cast<int>(rotationIncrement);
+            }
         }
         else
         {
@@ -51,12 +58,6 @@ public:
     bool Shutdown() override
     {
         const auto controller = Engine::GetPlayerController();
-
-        if (!controller->PlayerCamera)
-        {
-            return false;
-        }
-
         controller->Rotation.Roll = 0;
 
         Dolly dolly;
