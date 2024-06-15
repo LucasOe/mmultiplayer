@@ -39,11 +39,19 @@ public:
 
 	inline std::string GetName() const
 	{
+		return Name.GetName();
+	}
+
+	inline std::string GetObjectName()
+	{
 		std::string name = Name.GetName();
-		if (Name.Number > 0)
+		size_t pos = name.find_last_of('_');
+
+		if (pos != std::string::npos)
 		{
-			name += '_' + std::to_string(Name.Number);
+			return name.substr(0, pos);
 		}
+
 		return name;
 	}
 
