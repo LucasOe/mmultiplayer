@@ -27,10 +27,14 @@ public:
 
     void Tick(const float deltaTime) override
     {
-        const auto world = Engine::GetWorld();
+        auto world = Engine::GetWorld();
+        if (!world)
+        {
+            return;
+        }
         world->WorldGravityZ = world->DefaultGravityZ * GravityModifier;
         
-        const auto pawn = Engine::GetPlayerPawn();
+        auto pawn = Engine::GetPlayerPawn();
         pawn->AccelRate = NewAccelRate;
     }
 
@@ -38,10 +42,14 @@ public:
 
     bool Shutdown() override
     {
-        const auto world = Engine::GetWorld();
+        auto world = Engine::GetWorld();
+        if (!world)
+        {
+            return false;
+        }
         world->WorldGravityZ = world->DefaultGravityZ;
 
-        const auto pawn = Engine::GetPlayerPawn();
+        auto pawn = Engine::GetPlayerPawn();
         pawn->AccelRate = PreviousAccelRate;
 
         return true;

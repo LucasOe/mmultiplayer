@@ -72,9 +72,9 @@ private:
     {
         WindowBegin("ATdPlayerPawn", "##RenderPlayerInfo", ImVec2(420, 256));
 
-        ImGui::Text("Location: %.2f %.2f %.2f", pawn->Location.X, pawn->Location.Y, pawn->Location.Z);
-        ImGui::Text("Velocity: %.2f %.2f %.2f", pawn->Velocity.X, pawn->Velocity.Y, pawn->Velocity.Z);
-        ImGui::Text("Acceleration: %.2f %.2f %.2f", pawn->Acceleration.X, pawn->Acceleration.Y, pawn->Acceleration.Z);
+        ImGui::Text("Location: %.0f %.0f %.0f", pawn->Location.X, pawn->Location.Y, pawn->Location.Z);
+        ImGui::Text("Velocity: %.0f %.0f %.0f", pawn->Velocity.X, pawn->Velocity.Y, pawn->Velocity.Z);
+        ImGui::Text("Acceleration: %.0f %.0f %.0f", pawn->Acceleration.X, pawn->Acceleration.Y, pawn->Acceleration.Z);
         ImGui::Text("bIsFemale: %d", pawn->bIsFemale);
         ImGui::Text("bCanUse: %d", pawn->bCanUse);
         ImGui::Text("Health: %d", pawn->Health);
@@ -84,7 +84,7 @@ private:
         ImGui::Text("VelocityMagnitude: %.2f", pawn->VelocityMagnitude);
         ImGui::Text("VelocityDir: %.2f %.2f %.2f", pawn->VelocityDir.X, pawn->VelocityDir.Y, pawn->VelocityDir.Z);
         ImGui::Text("LastDamageTaken: %d", pawn->LastDamageTaken);
-        ImGui::Text("LastJumpLocation: %.2f %.2f %.2f", pawn->LastJumpLocation.X, pawn->LastJumpLocation.Y, pawn->LastJumpLocation.Z);
+        ImGui::Text("LastJumpLocation: %.0f %.0f %.0f", pawn->LastJumpLocation.X, pawn->LastJumpLocation.Y, pawn->LastJumpLocation.Z);
 
         WindowEnd();
     }
@@ -159,7 +159,7 @@ private:
         ImGui::Text("KickbackAmount: %.2f", weapon->KickbackAmount);
 
         // Only the sniper has extra stuff that could be display. Shotguns have "PulletCount" but isn't used
-        if (GetObjectName(weapon) == "TdWeapon_Sniper_BarretM95")
+        if (weapon->GetObjectName() == "TdWeapon_Sniper_BarretM95")
         {
             const auto sniper = static_cast<Classes::ATdWeapon_Sniper_BarretM95*>(weapon);
             ImGui::Text("bZoomed: %d", sniper->bZoomed);

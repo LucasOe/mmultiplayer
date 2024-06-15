@@ -5,8 +5,8 @@
 class InvertedControls : public Effect
 {
 private:
-    unsigned long PreviousbInvertMouse = 0;
-    unsigned long PreviousbInvertTurn = 0;
+    bool PreviousbInvertMouse = 0;
+    bool PreviousbInvertTurn = 0;
 
 public:
     InvertedControls(const std::string& name)
@@ -30,12 +30,12 @@ public:
 
     void Tick(const float deltaTime) override
     {
-        const auto controller = Engine::GetPlayerController();
+        auto controller = Engine::GetPlayerController();
 
         if (controller->PlayerInput)
         {
-            controller->PlayerInput->bInvertMouse = PreviousbInvertMouse == TRUE ? FALSE : TRUE;
-            controller->PlayerInput->bInvertTurn = PreviousbInvertTurn == TRUE ? FALSE : TRUE;
+            controller->PlayerInput->bInvertMouse = !PreviousbInvertMouse;
+            controller->PlayerInput->bInvertTurn = !PreviousbInvertTurn;
         }
     }
 
@@ -43,13 +43,15 @@ public:
 
     bool Shutdown() override
     {
-        const auto controller = Engine::GetPlayerController();
+        auto controller = Engine::GetPlayerController();
 
-        if (controller->PlayerInput)
+        if (!controller->PlayerInput)
         {
-            controller->PlayerInput->bInvertMouse = PreviousbInvertMouse;
-            controller->PlayerInput->bInvertTurn = PreviousbInvertTurn;
+            return false;
         }
+
+        controller->PlayerInput->bInvertMouse = PreviousbInvertMouse;
+        controller->PlayerInput->bInvertTurn = PreviousbInvertTurn;
 
         return true;
     }

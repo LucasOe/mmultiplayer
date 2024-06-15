@@ -15,20 +15,30 @@ enum class EDuration
     COUNT
 };
 
+// Work in progress to replace std::string GetType()
+enum class EGroup
+{
+    EGroup_None             = 0,
+    EGroup_Input            = 1 << 0,
+    EGroup_Camera           = 1 << 1,
+    EGroup_GameSpeed        = 1 << 2,
+    EGroup_Hud              = 1 << 3,
+    EGroup_Commands         = 1 << 4,
+    EGroup_Teleport         = 1 << 5,
+    EGroup_All              = 0x7FFFFFFF
+};
+
 class Effect
 {
 // Inherited classes should not modify these but you can use them
 public:
-    bool IsEnabled = true;
     float DurationTime = 0.0f;
     EDuration DurationType = EDuration::Normal;
 
-// Variables to use if your effect is does one thing and is done after success
+// Variables to use and functions to override
 public:
+    bool IsEnabled = true;
     bool IsDone = false;
-
-// Variables and functions to override
-public:
     std::string Name = "";
     std::string DisplayName = "";
 
@@ -43,8 +53,6 @@ protected:
     int RandomInt(const int min, const int max) const;               
     float RandomFloat(const float min, const float max) const;
     bool RandomBool(const float probability = 0.5f) const;
-
-    std::string GetObjectName(Classes::UObject* object);
 
     Classes::UTdPlayerInput* GetTdPlayerInput();
     Classes::TArray<Classes::ATdAIController*> GetTdAIControllers();
@@ -72,4 +80,4 @@ struct EFFECT_CLASS##_Register                                          \
         Effects().push_back(Create##EFFECT_CLASS());                    \
     }                                                                   \
 };                                                                      \
-static EFFECT_CLASS##_Register global_##EFFECT_CLASS##_register;
+static EFFECT_CLASS##_Register Global_##EFFECT_CLASS##_Register;

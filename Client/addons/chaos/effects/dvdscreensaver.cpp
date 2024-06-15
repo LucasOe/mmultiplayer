@@ -59,8 +59,8 @@ public:
         Size.x = io.DisplaySize.x * ScaleFactor;
         Size.y = io.DisplaySize.y * ScaleFactor;
 
-        ImVec2 dvdTopLeft = Position;
-        ImVec2 dvdBottomRight = { Position.x + Size.x, Position.y + Size.y };
+        const ImVec2 dvdTopLeft = Position;
+        const ImVec2 dvdBottomRight = { Position.x + Size.x, Position.y + Size.y };
 
         window->DrawList->AddRectFilled({ 0, 0 }, { dvdTopLeft.x + Size.x, dvdTopLeft.y }, ImColor(0, 0, 0));
         window->DrawList->AddRectFilled({ dvdBottomRight.x, 0 }, { io.DisplaySize.x, dvdTopLeft.y + Size.y }, ImColor(0, 0, 0));

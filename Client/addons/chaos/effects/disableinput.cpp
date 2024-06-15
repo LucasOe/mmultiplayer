@@ -23,7 +23,7 @@ public:
     void Tick(const float deltaTime) override
     {
         const auto pawn = Engine::GetPlayerPawn();
-        const auto controller = Engine::GetPlayerController();
+        auto controller = Engine::GetPlayerController();
 
         controller->bIgnoreButtonInput = TRUE;
         controller->bIgnoreMoveInput = TRUE;
@@ -35,7 +35,7 @@ public:
             return;
         }
 
-        const auto walking = static_cast<Classes::UTdMove_Walking*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_Walking)]);
+        auto walking = static_cast<Classes::UTdMove_Walking*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_Walking)]);
         if (!walking)
         {
             return;
@@ -45,7 +45,7 @@ public:
         walking->TriggerIdleAnimMaxTime = 0.5f;
         walking->PlayIdle();
 
-        PlayedIdleAnimation = walking->bIsPlayingIdleAnim ? true : false;
+        PlayedIdleAnimation = walking->bIsPlayingIdleAnim;
     }
 
     void Render(IDirect3DDevice9* device) override {}
@@ -53,13 +53,13 @@ public:
     bool Shutdown() override
     {
         const auto pawn = Engine::GetPlayerPawn();
-        const auto controller = Engine::GetPlayerController();
+        auto controller = Engine::GetPlayerController();
 
         controller->bIgnoreButtonInput = FALSE;
         controller->bIgnoreMoveInput = FALSE;
         controller->bIgnoreLookInput = FALSE;
 
-        const auto walking = static_cast<Classes::UTdMove_Walking*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_Walking)]);
+        auto walking = static_cast<Classes::UTdMove_Walking*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_Walking)]);
         if (!walking)
         {
             return false;

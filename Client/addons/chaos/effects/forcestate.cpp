@@ -2,7 +2,7 @@
 
 #include "../effect.h"
 
-enum class EForcedStateType
+enum class EForcedState
 {
     Walking,
     Crouching
@@ -11,66 +11,95 @@ enum class EForcedStateType
 class ForceState : public Effect
 {
 private:
-    EForcedStateType ForcedStateType;
+    EForcedState ForcedState;
 
 public:
-    ForceState(const std::string& name, EForcedStateType forcedState)
+    ForceState(const std::string& name, EForcedState forcedState)
     {
         Name = name;
         DisplayName = name;
         DurationType = EDuration::Short;
 
-        ForcedStateType = forcedState;
+        ForcedState = forcedState;
     }
 
     void Start() override {}
 
     void Tick(const float deltaTime) override
     {
-        const auto controller = Engine::GetPlayerController();
+        const auto pawn = Engine::GetPlayerPawn();
 
-        if (ForcedStateType == EForcedStateType::Walking)
+        if (pawn->MovementState != Classes::EMovement::MOVE_Walking && pawn->MovementState != Classes::EMovement::MOVE_Crouch)
         {
-            const auto input = GetTdPlayerInput();
+            return;
+        }
+
+        auto turn180 = static_cast<Classes::UTdMove_Walking*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_180Turn)]);
+        if (turn180)
+        {
+            turn180->LastStopMoveTime = -1.0f;
+        }
+
+        auto crouchMelee = static_cast<Classes::UTdMove_Walking*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_MeleeCrouch)]);
+        if (crouchMelee)
+        {
+            crouchMelee->LastStopMoveTime = -1.0f;
+        }
+
+        auto controller = Engine::GetPlayerController();
+
+        if (ForcedState == EForcedState::Walking)
+        {
+            auto input = GetTdPlayerInput();
             if (!input)
             {
                 return;
             }
 
-            input->bWalkButtonPressed = TRUE;
-            controller->bDuck = FALSE;
+            input->bWalkButtonPressed = true;
+            controller->bDuck = false;
         }
         else
         {
-            controller->bDuck = TRUE;
+            controller->bDuck = true;
         }
 
-        controller->bPressedJump = FALSE;
+        controller->bPressedJump = false;
     }
 
     void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override
     {
-        const auto controller = Engine::GetPlayerController();
-        
-        if (ForcedStateType == EForcedStateType::Walking)
+        const auto pawn = Engine::GetPlayerPawn();
+        auto turn180 = static_cast<Classes::UTdMove_Walking*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_180Turn)]);
+        if (turn180)
         {
-            const auto input = GetTdPlayerInput();
+            turn180->LastStopMoveTime = 0.1f;
+        }
+
+        auto crouchMelee = static_cast<Classes::UTdMove_Walking*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_MeleeCrouch)]);
+        if (crouchMelee)
+        {
+            crouchMelee->LastStopMoveTime = 0.1f;
+        }
+
+        auto controller = Engine::GetPlayerController();
+        if (ForcedState == EForcedState::Walking)
+        {
+            auto input = GetTdPlayerInput();
 
             if (!input)
             {
                 return false;
             }
 
-            input->bWalkButtonPressed = FALSE;
+            input->bWalkButtonPressed = false;
             return true;
         }
-        else
-        {
-            controller->bDuck = FALSE;
-            return true;
-        }
+
+        controller->bDuck = false;
+        return true;
     }
 
     std::string GetType() const override
@@ -82,5 +111,5 @@ public:
 using ForceWalking = ForceState;
 using ForceCrouching = ForceState;
 
-REGISTER_EFFECT(ForceWalking, "Force Walking", EForcedStateType::Walking);
-REGISTER_EFFECT(ForceCrouching, "Force Crouching", EForcedStateType::Crouching);
+REGISTER_EFFECT(ForceWalking, "Force Walking", EForcedState::Walking);
+REGISTER_EFFECT(ForceCrouching, "Force Crouching", EForcedState::Crouching);

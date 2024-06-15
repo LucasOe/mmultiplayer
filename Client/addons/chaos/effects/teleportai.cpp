@@ -34,14 +34,14 @@ public:
             return;
         }
 
-        const auto pawn = Engine::GetPlayerPawn();
-        const auto aicontrollers = GetTdAIControllers();
+        auto pawn = Engine::GetPlayerPawn();
+        auto aicontrollers = GetTdAIControllers();
 
         if (TeleportType == ETeleportType::PlayerToRandomAI)
         {
             for (size_t i = 0; i < aicontrollers.Num(); i++)
             {
-                const auto ai = aicontrollers[RandomInt(0, aicontrollers.Num())];
+                auto ai = aicontrollers[RandomInt(0, aicontrollers.Num())];
 
                 if (!ai) continue;
                 if (!ai->myPawn) continue;
@@ -58,14 +58,14 @@ public:
         {
             for (size_t i = 0; i < aicontrollers.Num(); i++)
             {
-                const auto ai = aicontrollers[i];
+                auto ai = aicontrollers[i];
 
                 if (!ai) continue;
                 if (!ai->myPawn) continue;
                 if (ai->myPawn->Health <= 0) continue;
                 if (!CanTeleport(ai)) continue;
 
-                ai->bMoveJustFinished = TRUE;
+                ai->bMoveJustFinished = true;
                 ai->myPawn->Velocity = { 0.0f, 0.0f, 0.0f };
                 ai->myPawn->Location = pawn->Location;
 
@@ -98,7 +98,7 @@ private:
             "TdAI_Riot",
         };
 
-        const std::string name = GetObjectName(ai);
+        const auto name = ai->GetObjectName();
 
         for (const auto& validName : validAINames)
         {

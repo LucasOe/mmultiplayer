@@ -23,11 +23,15 @@ public:
 
     void Tick(const float deltaTime) override
     {
-        const auto pawn = Engine::GetPlayerPawn();
-
         Time -= deltaTime;
 
         if (Time >= 0.0f)
+        {
+            return;
+        }
+
+        const auto pawn = Engine::GetPlayerPawn();
+        if (!pawn)
         {
             return;
         }
