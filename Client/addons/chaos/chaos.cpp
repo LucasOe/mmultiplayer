@@ -139,6 +139,11 @@ static void ChaosTab()
 
     if (ImGui::SliderFloat("Time Until New Effect##Chaos-TimeUntilNewEffect", &TimeUntilNewEffect, 5.0f, 60.0f, "%.0f sec"))
     {
+        if (TimeUntilNewEffect <= 0.0f)
+        {
+            TimeUntilNewEffect = 5.0f;
+        }
+
         TimerInSeconds = 0.0f;
     }
 
@@ -154,7 +159,12 @@ static void ChaosTab()
     {
         ImGui::SliderFloat((std::string(DurationTimeStrings[i]) + "##Chaos-" + DurationTimeStrings[i] + "-DurationTime").c_str(),
             &DurationTime[i], 5.0f, 120.0f, "%.0f sec"
-        );
+        ); 
+        
+        if (DurationTime[i] <= 0.0f)
+        {
+            DurationTime[i] = 5.0f;
+        }
     }
     ImGui::Separator(2.5f);
 
