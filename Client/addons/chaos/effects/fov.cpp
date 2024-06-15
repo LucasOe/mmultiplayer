@@ -30,25 +30,18 @@ public:
 
         if (!pawn->MyWeapon)
         {
-            SetFov(NewFov, TRUE);
+            SetLockedFov(true);
             return;
         }
 
-        if (!pawn->MyWeapon->IsA(Classes::ATdWeapon_Sniper_BarretM95::StaticClass()))
+        if (pawn->MyWeapon->GetObjectName() != "TdWeapon_Sniper_BarretM95")
         {
-            SetFov(NewFov, TRUE);
+            SetLockedFov(true);
             return;
         }
 
         const auto sniper = static_cast<Classes::ATdWeapon_Sniper_BarretM95*>(pawn->MyWeapon);
-
-        if (sniper->bZoomed || sniper->bIsZooming)
-        {
-            SetFov(NewFov, FALSE);
-            return;
-        }
-
-        SetFov(NewFov, TRUE);
+        SetLockedFov(!(sniper->bZoomed || sniper->bIsZooming));
     }
 
     void Render(IDirect3DDevice9* device) override {}
@@ -62,7 +55,7 @@ public:
             return false;
         }
 
-        SetFov(NewFov, FALSE);
+        SetLockedFov(false);
         return true;
     }
 
@@ -72,10 +65,10 @@ public:
     }
 
 private:
-    void SetFov(float newFov, unsigned long lockFov)
+    void SetLockedFov(bool lockFov)
     {
-        const auto controller = Engine::GetPlayerController();
-        controller->PlayerCamera->LockedFOV = lockFov ? newFov : 0.0f;
+        auto controller = Engine::GetPlayerController();
+        controller->PlayerCamera->LockedFOV = lockFov ? NewFov : 0.0f;
         controller->PlayerCamera->bLockedFOV = lockFov;
     }
 };

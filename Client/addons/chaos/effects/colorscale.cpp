@@ -57,7 +57,7 @@ public:
 
     void Tick(const float deltaTime) override
     {
-        const auto controller = Engine::GetPlayerController();
+        auto controller = Engine::GetPlayerController();
 
         if (!controller->PlayerCamera)
         {
@@ -73,7 +73,7 @@ public:
             Time += deltaTime;
             Time = ImClamp(Time, 0.0f, 1.0f);
 
-            auto currentColor = ImLerp(Colors[PreviousIndex], Colors[Index], Time);
+            const auto currentColor = ImLerp(Colors[PreviousIndex], Colors[Index], Time);
             controller->PlayerCamera->ColorScale = { currentColor.x, currentColor.y, currentColor.z };
 
             if (Time >= 1.0f)
@@ -89,7 +89,7 @@ public:
 
     bool Shutdown() override
     {
-        const auto controller = Engine::GetPlayerController();
+        auto controller = Engine::GetPlayerController();
         if (controller->PlayerCamera)
         {
             controller->PlayerCamera->ColorScale = { 1.0f, 1.0f, 1.0f };

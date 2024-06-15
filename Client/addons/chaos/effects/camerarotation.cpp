@@ -26,17 +26,17 @@ public:
 
     void Tick(const float deltaTime) override
     {
-        const auto controller = Engine::GetPlayerController();
+        auto controller = Engine::GetPlayerController();
 
         Dolly dolly;
         dolly.ForceRoll(true);
 
         if (DoRotateCamera)
         {
-            float degreesPerSecond = 65536.0f / DurationTime;
-            float rotationIncrement = degreesPerSecond * deltaTime;
+            const float degreesPerSecond = 65536.0f / DurationTime;
+            const float rotationIncrement = degreesPerSecond * deltaTime;
 
-            int roll = static_cast<int>(controller->Rotation.Roll % 0x10000);
+            const int roll = static_cast<int>(controller->Rotation.Roll % 0x10000);
 
             if (DoRotateClockwise)
             {
@@ -57,7 +57,7 @@ public:
 
     bool Shutdown() override
     {
-        const auto controller = Engine::GetPlayerController();
+        auto controller = Engine::GetPlayerController();
         controller->Rotation.Roll = 0;
 
         Dolly dolly;

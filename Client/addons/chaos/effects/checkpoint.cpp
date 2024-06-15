@@ -15,30 +15,30 @@ public:
 
     void Tick(const float deltaTime) override
     {
-        const auto world = Engine::GetWorld();
-        const auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
+        auto world = Engine::GetWorld();
+        auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
 
         if (!tdgame)
         {
             return;
         }
 
-        tdgame->bShouldSaveCheckpointProgress = FALSE;
+        tdgame->bShouldSaveCheckpointProgress = false;
     }
 
     void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override
     {
-        const auto world = Engine::GetWorld();
-        const auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
+        auto world = Engine::GetWorld();
+        auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
 
         if (!tdgame)
         {
             return false;
         }
 
-        tdgame->bShouldSaveCheckpointProgress = TRUE;
+        tdgame->bShouldSaveCheckpointProgress = true;
         return true;
     }
 

@@ -27,12 +27,9 @@ public:
     {
         auto pawn = Engine::GetPlayerPawn();
         auto controller = Engine::GetPlayerController();
+        controller->CurrentLookAtPoint = nullptr;
 
         Time += deltaTime;
-
-        // While this effect is active, you could hold down the lookat binding and avoid this effect.
-        // To fix this, we set this variable to null and it fixes it. Basically, it does the same as "exec function LookAtRelease()" in TdPlayerController.uc
-        controller->CurrentLookAtPoint = nullptr;
 
         if (Time < RandomDelay)
         {
@@ -42,7 +39,7 @@ public:
         const int newYawValue = RandomInt(0, 65536);
         controller->Rotation.Yaw = newYawValue;
 
-        const float yawInRadians = (newYawValue / 65536.0f) * 2.0f * CONST_Pi;
+        const float yawInRadians = (newYawValue / 65536.0f) * CONST_Tau;
         const float dirX = cos(yawInRadians);
         const float dirY = sin(yawInRadians);
 

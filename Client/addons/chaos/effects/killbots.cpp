@@ -18,7 +18,6 @@ public:
         const auto world = Engine::GetWorld();
         const auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
 
-        // Null check here since I'm not 100% sure if it could be null at some point
         if (!tdgame)
         {
             return;

@@ -36,16 +36,15 @@ public:
         if (JumpType == EJumpType::Constant)
         {
             ForceJump();
+            return;
         }
-        else
-        {
-            if (!CanJump())
-            {
-                return;
-            }
 
-            ForceJump();
+        if (!CanJump())
+        {
+            return;
         }
+
+        ForceJump();
     }
 
     void Render(IDirect3DDevice9* device) override {}
@@ -68,8 +67,8 @@ private:
 
     void ForceJump()
     {
-        const auto controller = Engine::GetPlayerController();
-        controller->bDuck = FALSE;
+        auto controller = Engine::GetPlayerController();
+        controller->bDuck = false;
         controller->PlayerInput->Jump();
 
         JumpTimeActivatedAt = static_cast<float>(GetTickCount64());

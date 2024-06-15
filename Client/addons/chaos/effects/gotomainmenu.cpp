@@ -24,7 +24,6 @@ public:
     {
         if (IsDone)
         {
-            DisplayName = "Go To MainMenu";
             return;
         }
 
@@ -41,11 +40,18 @@ public:
 
         if (Engine::GetPlayerController()->IsInMainMenu())
         {
+            DisplayName = "Go To MainMenu";
             IsDone = true;
         }
         else
         {
             const auto gameInfo = static_cast<Classes::ATdGameInfo*>(Engine::GetWorld()->Game);
+
+            if (!gameInfo->TdGameData)
+            {
+                return;
+            }
+
             gameInfo->TdGameData->QuitToMainMenu();
         }
     }

@@ -20,21 +20,21 @@ public:
 
     void Tick(const float deltaTime) override
     {
-        const auto world = Engine::GetWorld();
+        auto world = Engine::GetWorld();
         if (world)
         {
             world->TimeDilation = NewTimescale;
         }
 
-        const auto controller = Engine::GetPlayerController();
-        controller->bReactionTime = FALSE;
+        auto controller = Engine::GetPlayerController();
+        controller->bReactionTime = false;
     }
 
     void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override
     {
-        const auto world = Engine::GetWorld();
+        auto world = Engine::GetWorld();
         if (world)
         {
             world->TimeDilation = 1.0f;
