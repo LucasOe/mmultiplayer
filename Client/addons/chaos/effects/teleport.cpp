@@ -5,16 +5,20 @@
 enum class ETeleportType
 {
     PlayerToRandomAI,
-    AllAIToPlayer
+    AllAIToPlayer,
+    LastJumpLocation
 };
 
-class TeleportAI : public Effect
+class Teleport : public Effect
 {
 private:
+    float Time = 0.0f;
+    float MinDelay = 2.0f;
+    float MaxDelay = 12.0f;
     ETeleportType TeleportType;
 
 public:
-    TeleportAI(const std::string& name, ETeleportType teleportType)
+    Teleport(const std::string& name, ETeleportType teleportType)
     {
         Name = name;
         DisplayName = name;
@@ -25,6 +29,7 @@ public:
     void Start() override
     {
         IsDone = false;
+        Time = RandomFloat(MinDelay, MaxDelay);
     }
 
     void Tick(const float deltaTime) override
@@ -72,6 +77,22 @@ public:
                 IsDone = true;
             }
         }
+        else if (TeleportType == ETeleportType::LastJumpLocation)
+        {
+            if (pawn->LastJumpLocation.X == 0.0f && pawn->LastJumpLocation.Y == 0.0f && pawn->LastJumpLocation.Z == 0.0f)
+            {
+                return;
+            }
+
+            Time -= deltaTime;
+            if (Time >= 0.0f || pawn->Health <= 0)
+            {
+                return;
+            }
+
+            Time = RandomFloat(MinDelay, MaxDelay);
+            pawn->Location = pawn->LastJumpLocation;
+        }
     }
 
     void Render(IDirect3DDevice9* device) override {}
@@ -83,7 +104,7 @@ public:
 
     std::string GetType() const override
     {
-        return "AI";
+        return "Teleport";
     }
 
 private:
@@ -112,8 +133,10 @@ private:
     }
 };
 
-using TeleportToAI = TeleportAI;
-using TeleportAllAIToPlayer = TeleportAI;
+using TeleportToRandomAI = Teleport;
+using TeleportAllAIToPlayer = Teleport;
+using TeleportLastJumpLocation = Teleport;
 
-REGISTER_EFFECT(TeleportToAI, "Teleport To Random AI", ETeleportType::PlayerToRandomAI);
+REGISTER_EFFECT(TeleportToRandomAI, "Teleport To Random AI", ETeleportType::PlayerToRandomAI);
 REGISTER_EFFECT(TeleportAllAIToPlayer, "Teleport All AI To Player", ETeleportType::AllAIToPlayer);
+REGISTER_EFFECT(TeleportLastJumpLocation, "Teleport To LastJumpLocation Randomly", ETeleportType::LastJumpLocation);
