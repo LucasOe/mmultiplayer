@@ -271,7 +271,6 @@
     <ClCompile Include="addons\chaos\effects\invertedcontrols.cpp" />
     <ClCompile Include="addons\chaos\effects\killbots.cpp" />
     <ClCompile Include="addons\chaos\effects\nothing.cpp" />
-    <ClCompile Include="addons\chaos\effects\suicide.cpp" />
     <ClCompile Include="addons\chaos\effects\teleportai.cpp" />
     <ClCompile Include="addons\chaos\effects\timescale.cpp" />
     <ClCompile Include="addons\chaos\effects\toomuchinfo.cpp" />
