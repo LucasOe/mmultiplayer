@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../effect.h"
+#include <map>
 
 class TooMuchInfo : public Effect
 {
@@ -32,6 +33,7 @@ public:
         RenderWeaponInfo(pawn->MyWeapon);
         RenderWorldInfo(pawn->WorldInfo);
         RenderPlayerInputInfo(GetTdPlayerInput());
+        RenderProfileSettings();
     }
 
     bool Shutdown() override
@@ -70,7 +72,7 @@ private:
 
     void RenderPlayerInfo(Classes::ATdPawn* pawn)
     {
-        WindowBegin("ATdPlayerPawn", "##RenderPlayerInfo", ImVec2(420, 256));
+        WindowBegin("ATdPlayerPawn", "##RenderPlayerInfo", ImVec2(420, 100));
 
         ImGui::Text("Location: %.0f %.0f %.0f", pawn->Location.X, pawn->Location.Y, pawn->Location.Z);
         ImGui::Text("Velocity: %.0f %.0f %.0f", pawn->Velocity.X, pawn->Velocity.Y, pawn->Velocity.Z);
@@ -83,6 +85,10 @@ private:
         ImGui::Text("bCharacterInhaling: %d", pawn->bCharacterInhaling);
         ImGui::Text("VelocityMagnitude: %.2f", pawn->VelocityMagnitude);
         ImGui::Text("VelocityDir: %.2f %.2f %.2f", pawn->VelocityDir.X, pawn->VelocityDir.Y, pawn->VelocityDir.Z);
+        ImGui::Text("MovementState: %d", pawn->MovementState);
+        ImGui::Text("AverageSpeed: %.2f", pawn->AverageSpeed);
+        ImGui::Text("TimeSinceLastDamage: %.2f", pawn->TimeSinceLastDamage);
+        ImGui::Text("TimeSinceLastTaserDamage: %.2f", pawn->TimeSinceLastTaserDamage);
         ImGui::Text("LastDamageTaken: %d", pawn->LastDamageTaken);
         ImGui::Text("LastJumpLocation: %.0f %.0f %.0f", pawn->LastJumpLocation.X, pawn->LastJumpLocation.Y, pawn->LastJumpLocation.Z);
 
@@ -101,6 +107,9 @@ private:
         }
 
         const auto controller = Engine::GetPlayerController();
+        const auto cameraStyle = camera->CameraStyle.GetName();
+
+        ImGui::Text("CameraStyle: %s", cameraStyle.empty() ? "n/a" : cameraStyle.c_str());
         ImGui::Text("bLockedFOV: %d", camera->bLockedFOV);
         ImGui::Text("LockedFOV: %.2f", camera->LockedFOV);
         ImGui::Text("FOVAngle: %.2f", controller->FOVAngle);
@@ -117,6 +126,7 @@ private:
 
         ImGui::Text("Rotation: %d %d %d", controller->Rotation.Pitch, controller->Rotation.Yaw % 65536, controller->Rotation.Roll);
         ImGui::Text("TimePressedJump: %.2f", controller->TimePressedJump);
+        ImGui::Text("InfiniteAmmo: %d", controller->InfiniteAmmo);
         ImGui::Text("bIgnoreMoveInput: %d", controller->bIgnoreMoveInput);
         ImGui::Text("bIgnoreLookInput: %d", controller->bIgnoreLookInput);
         ImGui::Text("bIgnoreButtonInput: %d", controller->bIgnoreButtonInput);
@@ -222,6 +232,52 @@ private:
 
         WindowEnd();
     }
+
+    void RenderProfileSettings()
+    {
+        WindowBegin("UTdProfileSettings", "##RenderTdProfileSettings", ImVec2(1000, 100));
+
+        const auto controller = Engine::GetPlayerController();
+
+        if (!controller || !controller->OnlinePlayerData ||
+            !controller->OnlinePlayerData->ProfileProvider ||
+            !controller->OnlinePlayerData->ProfileProvider->Profile)
+        {
+            ImGui::Text("nullptr");
+            WindowEnd();
+            return;
+        }
+
+        const auto profile = static_cast<Classes::UTdProfileSettings*>(controller->OnlinePlayerData->ProfileProvider->Profile);
+
+        if (!profile)
+        {
+            ImGui::Text("nullptr");
+            WindowEnd();
+            return;
+        }
+
+        static const std::map<std::string, int> stats = {
+            { "Level_NumHeavyLangings",     CONST_TDPID_Level_NumHeavyLangings },
+            { "Level_NumTakeBulletDamage",  CONST_TDPID_Level_NumTakeBulletDamage },
+            { "Level_NumBulletsFired",      CONST_TDPID_Level_NumBulletsFired },
+            { "Game_NumGiveBulletDamage",   CONST_TDPID_Game_NumGiveBulletDamage },
+            { "Game_NumDisarms",            CONST_TDPID_Game_NumDisarms },
+            { "Game_NumMeleeKills",         CONST_TDPID_Game_NumMeleeKills },
+            { "Game_NumAirMeleeKills",      CONST_TDPID_Game_NumAirMeleeKills },
+        };
+
+        int value;
+        for (const auto& stat : stats)
+        {
+            if (profile->GetProfileSettingValueInt(stat.second, &value))
+            {
+                ImGui::Text("%s: %d", stat.first.c_str(), value);
+            }
+        }
+
+        WindowEnd();
+    }
 };
 
-REGISTER_EFFECT(TooMuchInfo, "Too Much Info");
+//REGISTER_EFFECT(TooMuchInfo, "Too Much Info");
