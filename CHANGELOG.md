@@ -13,10 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - The file mmultiplayer.settings are no longer stored in temp folder and now persists where the game's exe is
-- The size and position of of the menu is now properly setup when you play on new version for the first time
+- The size and position of the menu is now properly setup when you play on new version for the first time
 
 ### Changed
 - Renamed mmultiplayer.settings to mmultiplayer-settings.json
+- Multiplayer menu now shows at startup which can be turned off
 
 ## [2.2.0] - 2024-03-25
 

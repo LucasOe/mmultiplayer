@@ -10,6 +10,7 @@
 #include "menu.h"
 
 static bool ShowMenu = false;
+static bool ShowMenuAtStartup = true;
 static int ShowKeybind = 0;
 static std::vector<MenuTab> Tabs;
 static std::wstring LevelName;
@@ -20,6 +21,14 @@ static struct {
 
 static void RenderMenu(IDirect3DDevice9 *device) 
 {
+	static bool menuShownAtStart = false;
+
+	if (ShowMenuAtStartup && !menuShownAtStart)
+	{
+		menuShownAtStart = true;
+		Engine::BlockInput(ShowMenu = true);
+	}
+
 	if (!ShowMenu)
 	{
 		return;
@@ -27,7 +36,7 @@ static void RenderMenu(IDirect3DDevice9 *device)
 
 	ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ImVec2(720, 420), ImGuiCond_FirstUseEver);
-	ImGui::BeginWindow("MMultiplayer 2.3.0-alpha.4", NULL, ImGuiWindowFlags_NoCollapse);
+	ImGui::BeginWindow("MMultiplayer 2.3.0-alpha.5", NULL, ImGuiWindowFlags_NoCollapse);
 	ImGui::BeginTabBar("");
 
 	for (auto tab : Tabs) 
@@ -93,6 +102,11 @@ static void EngineTab()
 
 	ImGui::Separator(5.0f);
 
+	if (ImGui::Checkbox("Show Menu At Startup##menu-show-at-startup", &ShowMenuAtStartup))
+	{
+		Settings::SetSetting({ "Menu", "ShowMenuAtStartup" }, ShowMenuAtStartup);
+	}
+
 	if (ImGui::Hotkey("Menu Keybind##menu-show", &ShowKeybind)) 
 	{
 		Settings::SetSetting({ "Menu", "ShowKeybind" }, ShowKeybind);
@@ -100,12 +114,12 @@ static void EngineTab()
 
 	ImGui::SameLine();
 
-	if (ImGui::Button("Reset##showKeybind")) 
+	if (ImGui::Button("Reset##menu-show-keybind")) 
 	{
 		Settings::SetSetting({ "Menu", "ShowKeybind" }, ShowKeybind = VK_INSERT);
 	}
 
-	ImGui::SameLine();
+	ImGui::Separator(5.0f);
 
 	if (ImGui::Button("Debug Console##client-show-console")) 
 	{
@@ -194,6 +208,7 @@ void Menu::OnVisibilityChange(MenuCallback callback)
 bool Menu::Initialize() 
 {
 	ShowKeybind = Settings::GetSetting({ "Menu", "ShowKeybind" }, VK_INSERT);
+	ShowMenuAtStartup = Settings::GetSetting({ "Menu", "ShowMenuAtStartup" }, true);
 
 	Engine::OnRenderScene(RenderMenu);
 
