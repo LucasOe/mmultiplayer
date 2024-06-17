@@ -11,10 +11,10 @@ enum class EJumpType
 class Jump : public Effect
 {
 private:
-    float JumpTimeDelayMax = 6.9f;
-    float JumpTimeDelay = 1.0f;
-    float JumpTimeActivatedAt = 0.0f;
     EJumpType JumpType;
+    float TimeDelay = 1.0f;
+    float TimeActivatedAt = 0.0f;
+    const float TimeDelayMax = 6.0f;
 
 public:
     Jump(const std::string& name, EJumpType jumpType)
@@ -27,8 +27,13 @@ public:
 
     void Start() override
     {
-        JumpTimeDelay = RandomFloat(0.0f, JumpTimeDelayMax);
-        JumpTimeActivatedAt = static_cast<float>(GetTickCount64());
+        if (JumpType == EJumpType::Constant)
+        {
+            return;
+        }
+
+        TimeDelay = RandomFloat(0.0f, TimeDelayMax);
+        TimeActivatedAt = static_cast<float>(GetTickCount64());
     }
 
     void Tick(const float deltaTime) override
@@ -62,7 +67,7 @@ public:
 private:
     bool CanJump()
     {
-        return (static_cast<float>(GetTickCount64()) - JumpTimeActivatedAt) / 1000 > JumpTimeDelay;
+        return (static_cast<float>(GetTickCount64()) - TimeActivatedAt) / 1000 > TimeDelay;
     }
 
     void ForceJump()
@@ -71,8 +76,13 @@ private:
         controller->bDuck = false;
         controller->PlayerInput->Jump();
 
-        JumpTimeActivatedAt = static_cast<float>(GetTickCount64());
-        JumpTimeDelay = RandomFloat(0.0f, JumpTimeDelayMax);
+        if (JumpType == EJumpType::Constant)
+        {
+            return;
+        }
+
+        TimeActivatedAt = static_cast<float>(GetTickCount64());
+        TimeDelay = RandomFloat(0.0f, TimeDelayMax);
     }
 };
 
