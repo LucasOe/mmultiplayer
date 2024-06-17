@@ -11,12 +11,13 @@ static bool IsChaosActive = false;
 
 std::mt19937 rng;
 static int Seed = 0;
-static bool DoRandomizeNewSeed = true;
+static bool RandomizeNewSeed = true;
 
 static float DurationTime[static_cast<int>(EDuration::COUNT)] = { 5.0f, 15.0f, 45.0f, 90.0f };
 static const char* DurationTimeStrings[] = { "Brief", "Short", "Normal", "Long" };
 
 static float TimeUntilNewEffect = 20.0f;
+static float TimeShownInHistory = 40.0f;
 static int MaxAttemptsForNewEffect = 100;
 
 static float TimerInSeconds = 0.0f;
@@ -26,6 +27,8 @@ static ImVec4 TimerColor = ImVec4(0.0f, 0.5f, 1.0f, 1.0f);
 
 struct ActiveEffectInfo {
     float TimeRemaining;
+    float HistoryDuration;
+    bool ShutdownCorrectly;
     Effect* Effect;
 };
 
@@ -33,7 +36,7 @@ static std::vector<ActiveEffectInfo> ActiveEffects;
 
 static void SetNewSeed()
 {
-    if (DoRandomizeNewSeed)
+    if (RandomizeNewSeed)
     {
         std::random_device rd;
         std::mt19937 rngEngine(rd());
@@ -75,7 +78,7 @@ static void ChaosTab()
         return;
     }
 
-    ImGui::Checkbox("Randomize Seed##Chaos-DoRandomizeNewSeed", &DoRandomizeNewSeed);
+    ImGui::Checkbox("Randomize Seed##Chaos-RandomizeNewSeed", &RandomizeNewSeed);
     ImGui::Separator(2.5f);
 
     if (IsChaosActive)
@@ -121,7 +124,7 @@ static void ChaosTab()
         }
     }
 
-    if (DoRandomizeNewSeed)
+    if (RandomizeNewSeed)
     {
         ImGui::BeginDisabled();
         ImGui::InputInt("Seed##Chaos-Seed", &Seed, 0, 0);
@@ -147,8 +150,7 @@ static void ChaosTab()
         TimerInSeconds = 0.0f;
     }
 
-    const auto& io = ImGui::GetIO();
-
+    ImGui::SliderFloat("Time Shown In History##Chaos-TimeShownInHistory", &TimeShownInHistory, 5.0f, 60.0f, "%.0f sec");
     ImGui::SliderFloat("Timer Height##Chaos-TimerHeight", &TimerHeight, 1.0f, 30.0f, "%.1f");
     ImGui::ColorEdit4("Timer Color##Chaos-TimerColor", &TimerColor.x);
     ImGui::ColorEdit4("Background Color##Chaos-TimerBackgroundColor", &TimerBackgroundColor.x);
@@ -169,6 +171,31 @@ static void ChaosTab()
     ImGui::Separator(2.5f);
 
     // TODO: Disable all of the same type of effect if there are multiple ones
+
+    bool clicked = false;
+    bool newState = false;
+    if (ImGui::Button("Enable All Effects##Chaos-EnableAllEffects"))
+    {
+        clicked = true;
+        newState = true;
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Disable All Effects##Chaos-DisableAllEffects"))
+    {
+        clicked = true;
+        newState = false;
+    }
+    
+    if (clicked)
+    {
+        for (auto effect : Effects())
+        {
+            effect->IsEnabled = newState;
+        }
+    }
+
+    ImGui::Separator(2.5f);
 
     for (auto effect : Effects())
     {
@@ -203,7 +230,7 @@ static void OnRender(IDirect3DDevice9* device)
 
     for (auto active : ActiveEffects)
     {
-        if (active.TimeRemaining >= 0.0f)
+        if (active.TimeRemaining >= 0.0f && !active.Effect->IsDone)
         {
             active.Effect->Render(device);
         }
@@ -220,26 +247,25 @@ static void OnRender(IDirect3DDevice9* device)
     // Temp until proper UI
     ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(300, 165), ImGuiCond_FirstUseEver);
-    ImGui::BeginWindow("Active Effects##Chaos-ActiveEffectsTemp");
+    ImGui::BeginWindow("Effects##Chaos-EffectsTempUI");
 
-    for (auto it = ActiveEffects.rbegin(); it != ActiveEffects.rend(); ++it)
+    for (auto it = ActiveEffects.rbegin(); it != ActiveEffects.rend(); it++)
     {
         const auto& active = *it;
 
-        if (active.Effect->IsDone)
+        if (active.Effect->IsDone || active.TimeRemaining <= 0.0f)
         {
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.75f), active.Effect->DisplayName.c_str());
+            continue;
+        }
+
+        if (active.Effect->GetType() == "GoToMainMenu")
+        {
+            ImGui::Text("%s", active.Effect->DisplayName.c_str());
         }
         else
         {
-            if (active.Effect->GetType() == "GoToMainMenu")
-            {
-                ImGui::Text("%s", active.Effect->DisplayName.c_str());
-            }
-            else
-            {
-                ImGui::Text("%s (%.1f)", active.Effect->DisplayName.c_str(), active.TimeRemaining);
-            }
+            ImGui::Text("%s (%.1f)", active.Effect->DisplayName.c_str(), active.TimeRemaining);
         }
     }
 
@@ -276,6 +302,7 @@ static void AddRandomEffect()
 
         ActiveEffectInfo newActiveEffectInfo;
         newActiveEffectInfo.TimeRemaining = DurationTime[(int)effect->DurationType];
+        newActiveEffectInfo.HistoryDuration = TimeShownInHistory;
         newActiveEffectInfo.Effect = effect;
 
         effect->DurationTime = newActiveEffectInfo.TimeRemaining;
@@ -320,24 +347,35 @@ static void OnTick(float deltaTime)
         TimerInSeconds = 0.0f;
     }
 
-    for (auto it = ActiveEffects.rbegin(); it != ActiveEffects.rend(); ++it)
+    for (auto it = ActiveEffects.rbegin(); it != ActiveEffects.rend(); it++)
     {
         auto& active = *it;
         active.TimeRemaining -= deltaTime;
 
-        if (active.TimeRemaining >= 0.0f)
+        if (active.TimeRemaining >= 0.0f && !active.Effect->IsDone)
         {
             active.Effect->Tick(deltaTime);
             continue;
         }
 
-        if (active.Effect->Shutdown())
+        if (!active.ShutdownCorrectly)
         {
-            ActiveEffects.erase((it + 1).base());
+            active.ShutdownCorrectly = active.Effect->Shutdown();
+            if (!active.ShutdownCorrectly)
+            {
+                printf("The effect \"%s\" didn't shutdown correctly!\n", active.Effect->Name.c_str());
+                continue;
+            }
         }
-    }
 
-    ActiveEffects.shrink_to_fit();
+        active.HistoryDuration -= deltaTime;
+        if (active.HistoryDuration >= 0.0f)
+        {
+            continue;
+        }
+
+        ActiveEffects.erase((it + 1).base());
+    }
 }
 
 bool Chaos::Initialize() 
