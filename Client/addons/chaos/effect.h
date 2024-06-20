@@ -1,5 +1,6 @@
 #pragma once
 
+#include "group.h"
 #include "../../sdk.h"
 #include "../../engine.h"
 #include "../../imgui/imgui_mmultiplayer.h"
@@ -15,19 +16,6 @@ enum class EDuration
     COUNT
 };
 
-// Work in progress to replace std::string GetType()
-enum class EGroup
-{
-    EGroup_None             = 0,
-    EGroup_Input            = 1 << 0,
-    EGroup_Camera           = 1 << 1,
-    EGroup_GameSpeed        = 1 << 2,
-    EGroup_Hud              = 1 << 3,
-    EGroup_Commands         = 1 << 4,
-    EGroup_Teleport         = 1 << 5,
-    EGroup_All              = 0x7FFFFFFF
-};
-
 class Effect
 {
 // Inherited classes should not modify these but you can use them
@@ -37,8 +25,8 @@ public:
 
 // Variables to use and functions to override
 public:
-    bool IsEnabled = true;
-    bool IsDone = false;
+    bool Enabled = true;
+    bool Done = false;
     std::string Name = "";
     std::string DisplayName = "";
 
@@ -47,6 +35,9 @@ public:
     virtual void Render(IDirect3DDevice9* device) = 0;
     virtual bool Shutdown() = 0;
     virtual std::string GetType() const = 0;
+
+    virtual EGroup GetGroup() = 0;
+    virtual EGroup GetIncompatibleGroup() = 0;
 
 // Helper functions
 protected:
