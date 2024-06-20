@@ -75,6 +75,16 @@ public:
     {
         return "DisableInput";
     }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_Disable | EGroup_Input | EGroup_Mouse;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_Input | EGroup_Mouse;
+    }
 };
 
 REGISTER_EFFECT(DisableInput, "Input Disabled");

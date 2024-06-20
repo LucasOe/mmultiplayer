@@ -52,6 +52,16 @@ public:
         return "FallOnBack";
     }
 
+    EGroup GetGroup() override
+    {
+        return EGroup_Player;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_Disable | EGroup_Input;
+    }
+
 private:
     void RandomizeDelay()
     {

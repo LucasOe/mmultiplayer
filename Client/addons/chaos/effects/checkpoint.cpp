@@ -46,6 +46,16 @@ public:
     {
         return "Checkpoint";
     }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_Disable | EGroup_Checkpoint;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
 };
 
 REGISTER_EFFECT(Checkpoint, "Disable Saving Checkpoint Progress");

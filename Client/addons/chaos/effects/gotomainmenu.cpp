@@ -16,13 +16,13 @@ public:
 
     void Start() override
     {
-        IsDone = false;
+        Done = false;
         TimeLeft = 5.0f;
     }
 
     void Tick(const float deltaTime) override 
     {
-        if (IsDone)
+        if (Done)
         {
             return;
         }
@@ -41,7 +41,7 @@ public:
         if (Engine::GetPlayerController()->IsInMainMenu())
         {
             DisplayName = "Go To MainMenu";
-            IsDone = true;
+            Done = true;
         }
         else
         {
@@ -66,6 +66,16 @@ public:
     std::string GetType() const override
     {
         return "GoToMainMenu";
+    }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_None;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
     }
 };
 

@@ -25,12 +25,12 @@ public:
 
     void Start() override 
     {
-        IsDone = false;
+        Done = false;
     }
 
     void Tick(const float deltaTime) override
     {
-        if (IsDone)
+        if (Done)
         {
             return;
         }
@@ -40,7 +40,7 @@ public:
         {
             if (pawn->Health <= 0)
             {
-                IsDone = true;
+                Done = true;
                 return;
             }
 
@@ -69,6 +69,16 @@ public:
     std::string GetType() const override
     {
         return "Health";
+    }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_Player;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
     }
 };
 

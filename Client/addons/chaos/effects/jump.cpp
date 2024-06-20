@@ -64,6 +64,16 @@ public:
         return "Jump";
     }
 
+    EGroup GetGroup() override
+    {
+        return EGroup_Input | EGroup_Player;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_Disable;
+    }
+
 private:
     bool CanJump()
     {
