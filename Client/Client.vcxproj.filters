@@ -279,6 +279,9 @@
     <ClInclude Include="addons\chaos\effect.h">
       <Filter>Header Files\addons\chaos</Filter>
     </ClInclude>
+    <ClInclude Include="addons\chaos\group.h">
+      <Filter>Header Files\addons\chaos</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

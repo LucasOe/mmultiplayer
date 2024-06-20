@@ -177,6 +177,7 @@
     <ClInclude Include="addons\trainer.h" />
     <ClInclude Include="addons\chaos\chaos.h" />
     <ClInclude Include="addons\chaos\effect.h" />
+    <ClInclude Include="addons\chaos\group.h" />
     <ClInclude Include="engine.h" />
     <ClInclude Include="addon.h" />
     <ClInclude Include="hook.h" />
