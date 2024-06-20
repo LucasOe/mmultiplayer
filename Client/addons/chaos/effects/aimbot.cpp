@@ -65,6 +65,21 @@ public:
         return "Aimbot";
     }
 
+    EGroup GetGroup() override
+    {
+        if (PlayerHasAimbot)
+        {
+            return EGroup_Camera | EGroup_Weapon | EGroup_Player;
+        }
+
+        return EGroup_Camera | EGroup_Weapon | EGroup_AI;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
+
 private:
     Weapon GetDefaults(Classes::ATdWeapon* weapon)
     {

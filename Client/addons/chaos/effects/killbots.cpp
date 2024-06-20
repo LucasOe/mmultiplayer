@@ -37,6 +37,16 @@ public:
     {
         return "KillBots";
     }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_None;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
 };
 
 REGISTER_EFFECT(KillBots, "KillBots");

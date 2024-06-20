@@ -64,6 +64,16 @@ public:
         return "Fov";
     }
 
+    EGroup GetGroup() override
+    {
+        return EGroup_None;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
+
 private:
     void SetLockedFov(bool lockFov)
     {

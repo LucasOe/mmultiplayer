@@ -61,6 +61,16 @@ public:
     {
         return "ForceRandomDirection";
     }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_Camera | EGroup_Player;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
 };
 
 REGISTER_EFFECT(ForceRandomDirection, "Force Random Direction");

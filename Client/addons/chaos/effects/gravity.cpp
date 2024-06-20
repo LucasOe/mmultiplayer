@@ -59,6 +59,16 @@ public:
     {
         return "Gravity";
     }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_Gravity;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
 };
 
 using MoonGravity = Gravity;

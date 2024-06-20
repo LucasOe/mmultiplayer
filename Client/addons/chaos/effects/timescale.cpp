@@ -48,6 +48,16 @@ public:
     {
         return "Timescale";
     }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_GameSpeed;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
 };
 
 using TimescaleQuarter = Timescale;

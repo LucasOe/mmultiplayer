@@ -28,13 +28,13 @@ public:
 
     void Start() override
     {
-        IsDone = false;
+        Done = false;
         Time = RandomFloat(MinDelay, MaxDelay);
     }
 
     void Tick(const float deltaTime) override
     {
-        if (IsDone)
+        if (Done)
         {
             return;
         }
@@ -55,7 +55,7 @@ public:
                 pawn->Velocity = { 0.0f, 0.0f, 0.0f };
                 pawn->Location = ai->myPawn->Location;
 
-                IsDone = true;
+                Done = true;
                 return;
             }
         }
@@ -74,7 +74,7 @@ public:
                 ai->myPawn->Velocity = { 0.0f, 0.0f, 0.0f };
                 ai->myPawn->Location = pawn->Location;
 
-                IsDone = true;
+                Done = true;
             }
         }
         else if (TeleportType == ETeleportType::LastJumpLocation)
@@ -105,6 +105,21 @@ public:
     std::string GetType() const override
     {
         return "Teleport";
+    }
+
+    EGroup GetGroup() override
+    {
+        if (TeleportType == ETeleportType::LastJumpLocation)
+        {
+            return EGroup_Teleport | EGroup_Player;
+        }
+
+        return EGroup_Teleport | EGroup_Player | EGroup_AI;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
     }
 
 private:

@@ -64,6 +64,16 @@ public:
     { 
         return "Framerate"; 
     }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_None;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
 };
 
 using ConsoleFramerate = Framerate;

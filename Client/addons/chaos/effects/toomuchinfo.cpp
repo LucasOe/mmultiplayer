@@ -46,6 +46,16 @@ public:
         return "UI";
     }
 
+    EGroup GetGroup() override
+    {
+        return EGroup_Hud;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
+
 private:
     void WindowBegin(const char* title, const char* name, ImVec2 pos)
     {

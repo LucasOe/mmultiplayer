@@ -70,6 +70,16 @@ public:
     {
         return "CameraRotation";
     }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_Camera;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
 };
 
 using CameraRotateOnce = CameraRotation;

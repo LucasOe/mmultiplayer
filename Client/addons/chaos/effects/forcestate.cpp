@@ -94,6 +94,16 @@ public:
     {
         return "ForceState";
     }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_Player | EGroup_Input;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
 };
 
 using ForceWalking = ForceState;

@@ -60,6 +60,16 @@ public:
     {
         return "InvertedControls";
     }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_Camera;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
 };
 
 REGISTER_EFFECT(InvertedControls, "Inverted Mouse");

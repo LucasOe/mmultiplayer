@@ -79,6 +79,16 @@ public:
     {
         return "DvdScreenSaver";
     }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_Hud;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
 };
 
 REGISTER_EFFECT(DvdScreenSaver, "Dvd ScreenSaver");

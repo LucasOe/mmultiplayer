@@ -38,6 +38,16 @@ public:
     {
         return "CameraShake";
     }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_Camera;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
+    }
 };
 
 using CameraShakeEffect = CameraShake;

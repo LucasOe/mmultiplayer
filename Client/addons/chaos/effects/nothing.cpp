@@ -23,7 +23,7 @@ public:
     {
         // For now this will just say "Do Nothing" until I have more it can pick from
         DisplayName = DisplayNames[0];
-        IsDone = true;
+        Done = true;
     }
 
     void Tick(const float deltaTime) override {}
@@ -38,6 +38,16 @@ public:
     std::string GetType() const override
     {
         return "Nothing";
+    }
+
+    EGroup GetGroup() override
+    {
+        return EGroup_None;
+    }
+
+    EGroup GetIncompatibleGroup() override
+    {
+        return EGroup_None;
     }
 };
 
