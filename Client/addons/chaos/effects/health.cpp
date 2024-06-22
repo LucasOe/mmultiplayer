@@ -113,10 +113,10 @@ public:
     {
         if (HealthType == EHealth::MaxHealthAI)
         {
-            return EGroup_AI;
+            return EGroup_AI | EGroup_Health;
         }
 
-        return EGroup_Player;
+        return EGroup_Player | EGroup_Health;
     }
 
     EGroup GetIncompatibleGroup() override
