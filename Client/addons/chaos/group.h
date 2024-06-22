@@ -22,6 +22,7 @@ enum EGroup_
     EGroup_Checkpoint       = 1 << 11,  // Effect involves checkpoint
     EGroup_Weapon           = 1 << 12,  // Effect modifies weapon
     EGroup_Force            = 1 << 13,  // Effect forces something. The displayname should make it clear
+    EGroup_Health           = 1 << 14,  // Effect modifies health
 };
 
 static const char* GroupNames[] = {
@@ -39,4 +40,5 @@ static const char* GroupNames[] = {
     "Checkpoint",
     "Weapon",
     "Force",
+    "Health",
 };
