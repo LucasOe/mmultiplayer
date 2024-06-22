@@ -41,7 +41,7 @@ public:
             auto turn180 = static_cast<Classes::UTdMove_Walking*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_180Turn)]);
             if (turn180)
             {
-                turn180->LastStopMoveTime = -1.0f;
+                turn180->LastStopMoveTime = FLT_MAX;
             }
 
             auto input = GetTdPlayerInput();
@@ -55,6 +55,15 @@ public:
         }
         else
         {
+            auto meleeCrouch = static_cast<Classes::UTdMove_MeleeCrouch*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_Crouch)]); 
+            if (meleeCrouch)
+            {
+                if (meleeCrouch->MeleeState.GetValue() > Classes::EMeleeState::MS_MeleeAttackFinishing)
+                {
+                    meleeCrouch->MeleeState = Classes::EMeleeState::MS_MeleeAttackNormal;
+                }
+            }
+
             controller->bDuck = true;
         }
 
