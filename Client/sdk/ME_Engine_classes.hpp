@@ -3485,7 +3485,8 @@ public:
 class ULevelBase : public UObject
 {
 public:
-	unsigned char                                      UnknownData00[0x54];                                      // 0x003C(0x0054) MISSED OFFSET
+	TTransArray<class AActor*>                         Actors;                                                   // 0x0000(0x0000) NOT AUTO-GENERATED PROPERTY
+	struct FURL                                        URL;                                                      // 0x0000(0x0000) NOT AUTO-GENERATED PROPERTY
 
 	static UClass* StaticClass()
 	{
@@ -5599,7 +5600,10 @@ public:
 class ULevel : public ULevelBase
 {
 public:
-	unsigned char                                      UnknownData00[0x1A0];                                     // 0x0090(0x01A0) MISSED OFFSET
+	class UModel*                                      Model;                                                    // 0x0000(0x0000) NOT AUTO-GENERATED PROPERTY
+	TArray<class UModelComponent*>                     ModelComponents;                                          // 0x0000(0x0000) NOT AUTO-GENERATED PROPERTY
+	TArray<class USequence*>                           GameSequences;                                            // 0x0000(0x0000) NOT AUTO-GENERATED PROPERTY
+	unsigned char                                      UnknownData00[0x18C];                                     // 0x0090(0x01A0) MISSED OFFSET
 
 	static UClass* StaticClass()
 	{
