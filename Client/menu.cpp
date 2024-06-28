@@ -36,7 +36,7 @@ static void RenderMenu(IDirect3DDevice9 *device)
 
 	ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ImVec2(720, 420), ImGuiCond_FirstUseEver);
-	ImGui::BeginWindow("MMultiplayer 2.3.0-alpha.5", NULL, ImGuiWindowFlags_NoCollapse);
+	ImGui::BeginWindow("MMultiplayer 2.3.0", NULL, ImGuiWindowFlags_NoCollapse);
 	ImGui::BeginTabBar("");
 
 	for (auto tab : Tabs) 
@@ -123,10 +123,8 @@ static void EngineTab()
 
 	if (ImGui::Button("Debug Console##client-show-console")) 
 	{
-		Debug::CreateConsole();
+		Debug::ToggleConsole();
 	}
-	
-	ImGui::HelpMarker("Creates a console window that will display debug info from printf(). If you close the debug console, it will close Mirror's Edge too");
 }
 
 static void WorldTab() 
