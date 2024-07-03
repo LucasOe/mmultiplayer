@@ -17,7 +17,12 @@ public:
         DisplayName = name;
     }
 
-    void Start() override 
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override 
     {
         Time = 0.0f;
         RandomDelay = RandomFloat(MinDelay, MaxDelay);
@@ -57,19 +62,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "ForceRandomDirection";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_Camera | EGroup_Player;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "ForceRandomDirection";
     }
 };
 

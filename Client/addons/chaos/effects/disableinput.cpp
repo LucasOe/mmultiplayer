@@ -15,7 +15,12 @@ public:
         DurationType = EDuration::Breif;
     }
 
-    void Start() override 
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override 
     {
         PlayedIdleAnimation = false;
     }
@@ -71,19 +76,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "DisableInput";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_Disable | EGroup_Input | EGroup_Mouse;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_Input | EGroup_Mouse;
+        return "DisableInput";
     }
 };
 

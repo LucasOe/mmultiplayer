@@ -16,7 +16,12 @@ public:
         NewTimescale = timescale;
     }
 
-    void Start() override {}
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override {}
 
     void Tick(const float deltaTime) override
     {
@@ -44,19 +49,14 @@ public:
         return false;
     }
 
-    std::string GetType() const override
-    {
-        return "Timescale";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_GameSpeed;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "Timescale";
     }
 };
 

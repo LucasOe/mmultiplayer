@@ -25,7 +25,12 @@ public:
         JumpType = jumpType;
     }
 
-    void Start() override
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override 
     {
         if (JumpType == EJumpType::Constant)
         {
@@ -59,19 +64,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "Jump";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_Input | EGroup_Player;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_Disable;
+        return "Jump";
     }
 
 private:

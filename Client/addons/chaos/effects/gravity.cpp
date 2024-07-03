@@ -18,7 +18,12 @@ public:
         GravityModifier = gravityModifier;
     }
 
-    void Start() override 
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override 
     {
         const auto pawn = Engine::GetPlayerPawn();
         PreviousAccelRate = pawn->AccelRate;
@@ -36,6 +41,12 @@ public:
         
         auto pawn = Engine::GetPlayerPawn();
         pawn->AccelRate = NewAccelRate;
+
+        // TODO? 
+        // Change stuff that is affected by gravity such as the wallrunning, swingjumps, and etc.
+        // 
+        // This would make it harder or easier but not sure if it's worth doing
+        // Changing the gravity and the accelrate is good enough
     }
 
     void Render(IDirect3DDevice9* device) override {}
@@ -55,19 +66,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "Gravity";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_Gravity;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "Gravity";
     }
 };
 
@@ -75,6 +81,10 @@ using MoonGravity = Gravity;
 using MarsGravity = Gravity;
 using JupiterGravity = Gravity;
 using PlutoGravity = Gravity;
+
+// If it wasn't for the meme category of "Any% WITH SPACEBOOTS"
+// These would be like the timescale values like half gravity, double gravity, and etc
+// Other planets are not used since they were too similar to other ones
  
 // Source for the float values, thank you Dave :)
 // https://nssdc.gsfc.nasa.gov/planetary/factsheet/planet_table_ratio.html

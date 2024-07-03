@@ -46,6 +46,9 @@
     <Filter Include="Source Files\addons\chaos\effects">
       <UniqueIdentifier>{2ed84692-e577-44e1-b357-cd51cc7c68bb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\addons\chaos\effects\level">
+      <UniqueIdentifier>{b7cd8630-f227-4507-9962-d382a89b6c4c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SDK\ME_ALAudio_classes.hpp">
@@ -466,6 +469,9 @@
     </ClCompile>
     <ClCompile Include="addons\chaos\effects\checkpoint.cpp">
       <Filter>Source Files\addons\chaos\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="addons\chaos\effects\level\train.cpp">
+      <Filter>Source Files\addons\chaos\effects\level</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

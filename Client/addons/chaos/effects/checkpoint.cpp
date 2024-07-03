@@ -11,7 +11,20 @@ public:
         DisplayName = name;
     }
 
-    void Start() override {}
+    bool CanActivate() override
+    {
+        const auto world = Engine::GetWorld();
+        const auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
+
+        if (!tdgame)
+        {
+            return false;
+        }
+
+        return tdgame->bShouldSaveCheckpointProgress;
+    }
+
+    void Initialize() override {}
 
     void Tick(const float deltaTime) override
     {
@@ -42,19 +55,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "Checkpoint";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_Disable | EGroup_Checkpoint;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "Checkpoint";
     }
 };
 

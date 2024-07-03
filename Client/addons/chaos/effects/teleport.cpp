@@ -26,7 +26,12 @@ public:
         TeleportType = teleportType;
     }
 
-    void Start() override
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override 
     {
         Done = false;
         Time = RandomFloat(MinDelay, MaxDelay);
@@ -102,11 +107,6 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "Teleport";
-    }
-
     EGroup GetGroup() override
     {
         if (TeleportType == ETeleportType::LastJumpLocation)
@@ -117,9 +117,9 @@ public:
         return EGroup_Teleport | EGroup_Player | EGroup_AI;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "Teleport";
     }
 
 private:

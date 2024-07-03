@@ -20,7 +20,12 @@ public:
         bSmoothFrameRate = smoothFramerate;
     }
 
-    void Start() override 
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override 
     {
         auto engine = Engine::GetEngine();
         if (!engine)
@@ -60,24 +65,19 @@ public:
         return true;
     }
 
-    std::string GetType() const override 
-    { 
-        return "Framerate"; 
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_None;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "Framerate";
     }
 };
 
 using ConsoleFramerate = Framerate;
 using UncappedFramerate = Framerate;
 
-REGISTER_EFFECT(ConsoleFramerate, "Console Experience", 30.0f, TRUE);
-REGISTER_EFFECT(UncappedFramerate, "No Framerate Cap", 0.0f, FALSE);
+REGISTER_EFFECT(ConsoleFramerate, "Console Experience", 30.0f, true);
+REGISTER_EFFECT(UncappedFramerate, "No Framerate Cap", 0.0f, false);

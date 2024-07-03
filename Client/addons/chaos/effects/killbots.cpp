@@ -11,7 +11,12 @@ public:
         DisplayName = name;
     }
 
-    void Start() override {}
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override {}
 
     void Tick(const float deltaTime) override 
     {
@@ -33,19 +38,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "KillBots";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_None;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "KillBots";
     }
 };
 

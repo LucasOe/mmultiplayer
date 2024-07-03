@@ -16,9 +16,14 @@ public:
         DisplayName = name;
     }
 
-    void Start() override
+    bool CanActivate() override
     {
-        RandomizeDelay();
+        return true;
+    }
+
+    void Initialize() override 
+    {
+        Time = RandomFloat(MinDelay, MaxDelay);
     }
 
     void Tick(const float deltaTime) override
@@ -36,7 +41,7 @@ public:
             return;
         }
 
-        RandomizeDelay();
+        Time = RandomFloat(MinDelay, MaxDelay);
         pawn->OnTdFallOnBack(nullptr);
     }
 
@@ -47,25 +52,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "FallOnBack";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_Player;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_Disable | EGroup_Input;
-    }
-
-private:
-    void RandomizeDelay()
-    {
-        Time = RandomFloat(MinDelay, MaxDelay);
+        return "FallOnBack";
     }
 };
 

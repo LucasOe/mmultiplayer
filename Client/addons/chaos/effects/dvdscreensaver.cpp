@@ -21,7 +21,12 @@ public:
         ScaleFactor = 0.3f;
     }
 
-    void Start() override 
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override 
     {
         const auto& io = ImGui::GetIO();
         DefaultDisplaySize = io.DisplaySize;
@@ -75,19 +80,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "DvdScreenSaver";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_Hud;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "DvdScreenSaver";
     }
 };
 

@@ -13,7 +13,13 @@ public:
         DurationType = EDuration::Long;
     }
 
-    void Start() override {}
+
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override {}
 
     void Tick(const float deltaTime) override {}
 
@@ -41,19 +47,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "UI";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_Hud;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "TooMuchInfo";
     }
 
 private:
@@ -290,4 +291,5 @@ private:
     }
 };
 
-//REGISTER_EFFECT(TooMuchInfo, "Too Much Info");
+// This effects needs to be better supported on smaller screens
+// REGISTER_EFFECT(TooMuchInfo, "Too Much Info");
