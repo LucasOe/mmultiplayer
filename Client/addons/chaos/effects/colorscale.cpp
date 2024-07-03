@@ -41,7 +41,12 @@ public:
         ColorScaleType = colorScaleType;
     }
 
-    void Start() override 
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override 
     {
         Time = 0.0f;
         Index = 0;
@@ -67,21 +72,20 @@ public:
         if (ColorScaleType == EColorScaleType::Random)
         {
             controller->PlayerCamera->ColorScale = RandomColorScale;
+            return;
         }
-        else
+        
+        Time += deltaTime;
+        Time = ImClamp(Time, 0.0f, 1.0f);
+
+        const auto currentColor = ImLerp(Colors[PreviousIndex], Colors[Index], Time);
+        controller->PlayerCamera->ColorScale = { currentColor.x, currentColor.y, currentColor.z };
+
+        if (Time >= 1.0f)
         {
-            Time += deltaTime;
-            Time = ImClamp(Time, 0.0f, 1.0f);
-
-            const auto currentColor = ImLerp(Colors[PreviousIndex], Colors[Index], Time);
-            controller->PlayerCamera->ColorScale = { currentColor.x, currentColor.y, currentColor.z };
-
-            if (Time >= 1.0f)
-            {
-                PreviousIndex = Index;
-                Index = (Index + 1) % Colors.size();
-                Time = 0.0f;
-            }
+            PreviousIndex = Index;
+            Index = (Index + 1) % Colors.size();
+            Time = 0.0f;
         }
     }
 
@@ -99,19 +103,14 @@ public:
         return false;
     }
 
-    std::string GetType() const override
-    {
-        return "ColorScale";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_Camera;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "ColorScale";
     }
 };
 

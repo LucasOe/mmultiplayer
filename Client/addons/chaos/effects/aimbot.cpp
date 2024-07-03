@@ -33,7 +33,12 @@ public:
         PlayerHasAimbot = playerHasAimbot;
     }
 
-    void Start() override {}
+    bool CanActivate() override 
+    {
+        return true;
+    }
+
+    void Initialize() override {}
 
     void Tick(const float deltaTime) override
     {
@@ -60,11 +65,6 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "Aimbot";
-    }
-
     EGroup GetGroup() override
     {
         if (PlayerHasAimbot)
@@ -75,9 +75,9 @@ public:
         return EGroup_Camera | EGroup_Weapon | EGroup_AI;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override 
     {
-        return EGroup_None;
+        return "Aimbot";
     }
 
 private:

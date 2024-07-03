@@ -25,7 +25,12 @@ public:
         HealthType = healthType;
     }
 
-    void Start() override 
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override 
     {
         Done = false;
     }
@@ -104,11 +109,6 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "Health";
-    }
-
     EGroup GetGroup() override
     {
         if (HealthType == EHealth::MaxHealthAI)
@@ -119,9 +119,9 @@ public:
         return EGroup_Player | EGroup_Health;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "Health";
     }
 };
 

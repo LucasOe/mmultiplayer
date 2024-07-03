@@ -16,7 +16,12 @@ public:
         NewFov = newFov;
     }
 
-    void Start() override {}
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override {}
 
     void Tick(const float deltaTime) override 
     {
@@ -59,19 +64,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "Fov";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_None;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "Fov";
     }
 
 private:

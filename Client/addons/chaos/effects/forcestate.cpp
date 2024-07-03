@@ -23,7 +23,12 @@ public:
         ForcedState = forcedState;
     }
 
-    void Start() override {}
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override {}
 
     void Tick(const float deltaTime) override
     {
@@ -38,7 +43,7 @@ public:
 
         if (ForcedState == EForcedState::Walking)
         {
-            auto turn180 = static_cast<Classes::UTdMove_Walking*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_180Turn)]);
+            auto turn180 = static_cast<Classes::UTdMove_180Turn*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_180Turn)]);
             if (turn180)
             {
                 turn180->LastStopMoveTime = FLT_MAX;
@@ -80,7 +85,7 @@ public:
         {
             auto pawn = Engine::GetPlayerPawn();
 
-            auto turn180 = static_cast<Classes::UTdMove_Walking*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_180Turn)]);
+            auto turn180 = static_cast<Classes::UTdMove_180Turn*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_180Turn)]);
             if (turn180)
             {
                 turn180->LastStopMoveTime = pawn->WorldInfo->TimeSeconds;
@@ -99,19 +104,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "ForceState";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_Player | EGroup_Input;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "ForceState";
     }
 };
 

@@ -1,6 +1,7 @@
 #include "chaos.h"
 #include "group.h"
 
+#include <codecvt>
 #include "../chaos/effect.h"
 #include "../../menu.h"
 #include "../../settings.h"
@@ -11,6 +12,7 @@
 static bool Enabled = false;
 static bool Paused = false;
 static bool ChaosActive = false;
+static std::string LevelName;
 
 std::mt19937 rng;
 static int Seed = 0;
@@ -48,7 +50,7 @@ static void SetNewSeed()
         Seed = dist(rngEngine);
         rng.seed(Seed);
 
-        Settings::SetSetting({ "Chaos", "Settings", "Seed" }, Seed);
+        Settings::SetSetting({ "Chaos", "Seed" }, Seed);
     }
 
     for (auto effect : Effects())
@@ -184,9 +186,6 @@ static void ChaosTab()
 
     ImGui::Text("Timer");
     {
-        //ImGui::HelpMarker("");
-        ImGui::Dummy(ImVec2(0.0f, 2.5f));
-
         if (ImGui::SliderFloat("Time Until New Effect##Chaos-TimeUntilNewEffect", &TimeUntilNewEffect, 5.0f, 60.0f, "%.0f sec", ImGuiSliderFlags_AlwaysClamp))
         {
             Settings::SetSetting({ "Chaos", "Timer", "TimeUntilNewEffect" }, TimeUntilNewEffect);
@@ -209,9 +208,6 @@ static void ChaosTab()
 
     ImGui::Text("Duration Time");
     {
-        //ImGui::HelpMarker("");
-        ImGui::Dummy(ImVec2(0.0f, 2.5f));
-
         for (int i = 0; i < static_cast<int>(EDuration::COUNT); i++)
         {
             const auto label = std::string(DurationTimeStrings[i]) + "##Chaos-" + DurationTimeStrings[i] + "-DurationTime";
@@ -225,24 +221,12 @@ static void ChaosTab()
         ImGui::Separator(2.5f); 
     }
 
+    /* TODO: Make UI for group settings
     ImGui::Text("Group Settings");
     {
         //ImGui::HelpMarker("Select a group to toggle the enabled state. You can also enable or disable all effects");
         ImGui::Dummy(ImVec2(0.0f, 2.5f));
         static int selectedGroup = 0;
-
-        ImGui::SetNextItemWidth(128.0f);
-        if (ImGui::Combo("##Chaos-ToggleGroup", &selectedGroup, GroupNames, IM_ARRAYSIZE(GroupNames)))
-        {
-            for (auto effect : Effects())
-            {
-                if (effect->GetGroup() & 1 << selectedGroup)
-                {
-                    effect->Enabled = !effect->Enabled;
-                    Settings::SetSetting({ "Chaos", "Effect", effect->Name, "Enabled" }, effect->Enabled);
-                }
-            }
-        }
 
         bool clicked = false;
         bool newState = false;
@@ -268,12 +252,32 @@ static void ChaosTab()
             }
         }
 
+        ImGui::Dummy(ImVec2(0.0f, 2.5f));
+        if (ImGui::TreeNode("Toggle Group"))
+        {
+            for (auto effect : Effects())
+            {
+                ImGui::Selectable()
+                if (effect->GetGroup() & 1 << selectedGroup)
+                {
+                    effect->Enabled = !effect->Enabled;
+                    Settings::SetSetting({ "Chaos", "Effect", effect->Name, "Enabled" }, effect->Enabled);
+                }
+            }
+
+            ImGui::TreePop();
+        }
+
         ImGui::Separator(2.5f);
     }
+    */
 
     ImGui::Text("Effect Settings");
     {
-        //ImGui::HelpMarker("Change the duration type and toggle the enabled state. The text below is what group it's in.");
+        ImGui::HelpMarker(
+            "Change the duration type and toggle the enabled state. The text below is what group it's in. "
+            "You can change these settings while chaos is activated. However, it won't change the setting of active effects"
+        );
         ImGui::Dummy(ImVec2(0.0f, 2.5f));
 
         for (auto effect : Effects())
@@ -343,10 +347,9 @@ static void OnRender(IDirect3DDevice9* device)
 
     ImGui::EndRawScene();
 
-    // Temp until proper UI
     ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(300, 165), ImGuiCond_FirstUseEver);
-    ImGui::BeginWindow("Effects##Chaos-EffectsTempUI");
+    ImGui::SetNextWindowSize(ImVec2(350, 165), ImGuiCond_FirstUseEver);
+    ImGui::BeginWindow("Effects##Chaos-EffectsUI");
 
     for (auto it = ActiveEffects.rbegin(); it != ActiveEffects.rend(); it++)
     {
@@ -358,7 +361,8 @@ static void OnRender(IDirect3DDevice9* device)
             continue;
         }
 
-        if (active.Effect->GetType() == "GoToMainMenu")
+        // Don't show the countdown on this effect
+        if (active.Effect->GetClass() == "GoToMainMenu")
         {
             ImGui::Text("%s", active.Effect->DisplayName.c_str());
         }
@@ -371,58 +375,16 @@ static void OnRender(IDirect3DDevice9* device)
     ImGui::End();
 }
 
-static void AddRandomEffect()
-{
-    std::uniform_int_distribution<int> dist(0, Effects().size() - 1);
-
-    for (int i = 0; i < MaxAttemptsForNewEffect; i++)
-    {
-        auto effect = Effects()[dist(rng)];
-
-        if (!effect->Enabled)
-        {
-            continue;
-        }
-
-        bool isDuplicate = false;
-        for (const auto& active : ActiveEffects)
-        {
-            if (effect->GetType() == active.Effect->GetType())
-            {
-                isDuplicate = true;
-                break;
-            }
-        }
-
-        if (isDuplicate)
-        {
-            continue;
-        }
-
-        ActiveEffectInfo newActiveEffectInfo;
-        newActiveEffectInfo.TimeRemaining = DurationTime[(int)effect->DurationType];
-        newActiveEffectInfo.HistoryDuration = TimeShownInHistory;
-        newActiveEffectInfo.Effect = effect;
-
-        effect->DurationTime = newActiveEffectInfo.TimeRemaining;
-        effect->Start();
-
-        ActiveEffects.push_back(newActiveEffectInfo);
-        break;
-    }
-}
-
 static void OnTick(float deltaTime) 
 {
-    if (!Enabled || !ChaosActive || Paused)
+    if (!Enabled || !ChaosActive || Paused || LevelName == Map_MainMenu)
     {
         return;
     }
 
     const auto pawn = Engine::GetPlayerPawn();
-    const auto controller = Engine::GetPlayerController();
 
-    if (!pawn || !controller)
+    if (!pawn)
     {
         return;
     }
@@ -442,7 +404,45 @@ static void OnTick(float deltaTime)
 
     if (TimerInSeconds >= TimeUntilNewEffect)
     {
-        AddRandomEffect();
+        // TODO: Only randomly select effects from a list that holds enabled effects
+        std::uniform_int_distribution<int> dist(0, Effects().size() - 1);
+
+        for (int i = 0; i < MaxAttemptsForNewEffect; i++)
+        {
+            auto effect = Effects()[dist(rng)];
+
+            if (!effect->Enabled)
+            {
+                continue;
+            }
+
+            bool isDuplicate = false;
+            for (const auto& active : ActiveEffects)
+            {
+                if (effect->GetClass() == active.Effect->GetClass())
+                {
+                    isDuplicate = true;
+                    break;
+                }
+            }
+
+            if (isDuplicate || !effect->CanActivate())
+            {
+                continue;
+            }
+
+            ActiveEffectInfo newActiveEffectInfo;
+            newActiveEffectInfo.TimeRemaining = DurationTime[(int)effect->DurationType];
+            newActiveEffectInfo.HistoryDuration = TimeShownInHistory;
+            newActiveEffectInfo.Effect = effect;
+
+            effect->DurationTime = newActiveEffectInfo.TimeRemaining;
+            effect->Initialize();
+
+            ActiveEffects.push_back(newActiveEffectInfo);
+            break;
+        }
+
         TimerInSeconds = 0.0f;
     }
 
@@ -480,6 +480,9 @@ static void OnTick(float deltaTime)
 bool Chaos::Initialize() 
 {
     Enabled = Settings::GetSetting({ "Chaos", "Enabled" }, false);
+    Seed = Settings::GetSetting({ "Chaos", "Seed" }, 0);
+    RandomizeNewSeed = Settings::GetSetting({ "Chaos", "RandomizeNewSeed" }, true);
+
     TimeUntilNewEffect = Settings::GetSetting({ "Chaos", "Timer", "TimeUntilNewEffect" }, 20.0f);
     TimeShownInHistory = Settings::GetSetting({ "Chaos", "Timer", "TimeShownInHistory" }, 40.0f);
     TimerHeight = Settings::GetSetting({ "Chaos", "Timer", "TimerHeight" }, 18.0f);

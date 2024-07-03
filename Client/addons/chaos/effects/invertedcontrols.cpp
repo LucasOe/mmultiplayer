@@ -15,7 +15,12 @@ public:
         DisplayName = name;
     }
 
-    void Start() override 
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override 
     {
         const auto controller = Engine::GetPlayerController();
 
@@ -56,19 +61,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "InvertedControls";
-    }
-
     EGroup GetGroup() override
     {
-        return EGroup_Camera;
+        return EGroup_Mouse;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "InvertedControls";
     }
 };
 

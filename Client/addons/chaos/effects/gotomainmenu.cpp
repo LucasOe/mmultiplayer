@@ -14,7 +14,12 @@ public:
         DurationType = EDuration::Short;
     }
 
-    void Start() override
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override 
     {
         Done = false;
         TimeLeft = 5.0f;
@@ -63,19 +68,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "GoToMainMenu";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_None;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "GoToMainMenu";
     }
 };
 

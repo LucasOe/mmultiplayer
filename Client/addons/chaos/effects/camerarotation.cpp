@@ -19,7 +19,12 @@ public:
         DoRotateCamera = doRotateCamera;
     }
 
-    void Start() override 
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override 
     {
         DoRotateClockwise = RandomBool();
     }
@@ -66,24 +71,20 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "CameraRotation";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_Camera;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "CameraRotation";
     }
 };
 
 using CameraRotateOnce = CameraRotation;
 using CameraUpsideDown = CameraRotation;
 
-REGISTER_EFFECT(CameraRotateOnce, "Camera Rotate Once", true);
-REGISTER_EFFECT(CameraUpsideDown, "Camera Upside Down", false);
+// These effect might be too much...
+// REGISTER_EFFECT(CameraRotateOnce, "Camera Rotate Once", true);
+// REGISTER_EFFECT(CameraUpsideDown, "Camera Upside Down", false);

@@ -16,7 +16,12 @@ public:
         Intensity = intensity;
     }
 
-    void Start() override {}
+    bool CanActivate() override
+    {
+        return true;
+    }
+
+    void Initialize() override {}
 
     void Tick(const float deltaTime) override
     {
@@ -34,19 +39,14 @@ public:
         return true;
     }
 
-    std::string GetType() const override
-    {
-        return "CameraShake";
-    }
-
     EGroup GetGroup() override
     {
         return EGroup_Camera;
     }
 
-    EGroup GetIncompatibleGroup() override
+    std::string GetClass() const override
     {
-        return EGroup_None;
+        return "CameraShake";
     }
 };
 
