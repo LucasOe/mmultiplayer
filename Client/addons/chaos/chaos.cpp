@@ -12,7 +12,7 @@
 static bool Enabled = false;
 static bool Paused = false;
 static bool ChaosActive = false;
-static std::string LevelName;
+static std::string LevelName = "";
 
 std::mt19937 rng;
 static int Seed = 0;
@@ -23,7 +23,6 @@ static const char* DurationTimeStrings[] = { "Brief", "Short", "Normal", "Long" 
 
 static float TimeUntilNewEffect = 20.0f;
 static float TimeShownInHistory = 40.0f;
-static int MaxAttemptsForNewEffect = 100;
 
 static float TimerInSeconds = 0.0f;
 static float TimerHeight = 18.0f;
@@ -31,13 +30,28 @@ static ImVec4 TimerBackgroundColor = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
 static ImVec4 TimerColor = ImVec4(0.0f, 0.5f, 1.0f, 1.0f);
 
 struct ActiveEffectInfo {
-    float TimeRemaining;
-    float HistoryDuration;
-    bool ShutdownCorrectly;
-    Effect* Effect;
+    float TimeRemaining = 20.0f;
+    float HistoryDuration = 40.0f;
+    bool ShutdownCorrectly = false;
+    Effect* Effect = nullptr;
 };
 
 static std::vector<ActiveEffectInfo> ActiveEffects;
+static std::vector<Effect*> EnabledEffects;
+
+// Removes effect from the list if it found one. Otherwise, add it
+static void ToggleEnabledEffect(Effect* effect)
+{
+    const auto it = std::find(EnabledEffects.begin(), EnabledEffects.end(), effect);
+    if (it != EnabledEffects.end())
+    {
+        EnabledEffects.erase(it);
+    }
+    else
+    {
+        EnabledEffects.push_back(effect);
+    }
+}
 
 static void SetNewSeed()
 {
@@ -63,13 +77,21 @@ static void Restart()
 {
     for (auto active : ActiveEffects)
     {
-        active.Effect->Shutdown();
+        if (!active.Effect->Shutdown())
+        {
+            printf("Chaos: \"%s\" didn't shutdown correctly!\n", active.Effect->Name.c_str());
+        }
     }
 
     ActiveEffects.clear();
-
     TimerInSeconds = 0.0f;
     ChaosActive = false;
+
+    rng.seed(Seed);
+    for (auto effect : Effects())
+    {
+        effect->SetSeed(Seed);
+    }
 }
 
 static std::string GetGroupNames(EGroup_ group)
@@ -306,6 +328,7 @@ static void ChaosTab()
             if (ImGui::Checkbox(effect->Name.c_str(), &effect->Enabled))
             {
                 Settings::SetSetting({ "Chaos", "Effect", effect->Name, "Enabled" }, effect->Enabled);
+                ToggleEnabledEffect(effect);
             }
 
             if (!effect->Enabled)
@@ -404,30 +427,39 @@ static void OnTick(float deltaTime)
 
     if (TimerInSeconds >= TimeUntilNewEffect)
     {
-        // TODO: Only randomly select effects from a list that holds enabled effects
-        std::uniform_int_distribution<int> dist(0, Effects().size() - 1);
-
-        for (int i = 0; i < MaxAttemptsForNewEffect; i++)
+        std::vector<std::string> activeEffectClasses;
+        for (const auto& activeEffect : ActiveEffects)
         {
-            auto effect = Effects()[dist(rng)];
+            activeEffectClasses.push_back(activeEffect.Effect->GetClass());
+        }
 
-            if (!effect->Enabled)
-            {
-                continue;
-            }
+        std::vector<Effect*> effectPool;
+        for (const auto enabledEffect : EnabledEffects)
+        {
+            bool canBeAddedToPool = true;
 
-            bool isDuplicate = false;
-            for (const auto& active : ActiveEffects)
+            for (size_t i = 0; i < activeEffectClasses.size(); i++)
             {
-                if (effect->GetClass() == active.Effect->GetClass())
+                if (enabledEffect->GetClass() == activeEffectClasses[i])
                 {
-                    isDuplicate = true;
+                    canBeAddedToPool = false;
                     break;
                 }
             }
 
-            if (isDuplicate || !effect->CanActivate())
+            if (canBeAddedToPool)
             {
+                effectPool.push_back(enabledEffect);
+            }
+        }
+
+        std::shuffle(effectPool.begin(), effectPool.end(), rng);
+
+        for (auto effect : effectPool)
+        {
+            if (!effect->CanActivate())
+            {
+                printf("Chaos: \"%s\" can't be activated\n", effect->Name.c_str());
                 continue;
             }
 
@@ -462,7 +494,7 @@ static void OnTick(float deltaTime)
             active.ShutdownCorrectly = active.Effect->Shutdown();
             if (!active.ShutdownCorrectly)
             {
-                printf("The effect \"%s\" didn't shutdown correctly!\n", active.Effect->Name.c_str());
+                printf("Chaos: \"%s\" didn't shutdown correctly!\n", active.Effect->Name.c_str());
                 continue;
             }
         }
@@ -503,6 +535,11 @@ bool Chaos::Initialize()
         // Clamp it between 0 and Count - 1. If not clamped, it would not get the durationtime
         effect->DurationType = static_cast<EDuration>(ImClamp(static_cast<int>(effect->DurationType), 0, static_cast<int>(EDuration::COUNT) - 1));
         effect->DurationTime = DurationTime[(int)effect->DurationType];
+
+        if (effect->Enabled)
+        {
+            EnabledEffects.push_back(effect);
+        }
     }
 
     Menu::AddTab("Chaos", ChaosTab);
