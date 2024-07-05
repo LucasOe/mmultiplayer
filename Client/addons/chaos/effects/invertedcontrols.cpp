@@ -5,8 +5,7 @@
 class InvertedControls : public Effect
 {
 private:
-    bool PreviousbInvertMouse = 0;
-    bool PreviousbInvertTurn = 0;
+    bool PreviousbInvertMouse = false;
 
 public:
     InvertedControls(const std::string& name)
@@ -27,10 +26,7 @@ public:
         if (controller->PlayerInput)
         {
             PreviousbInvertMouse = controller->PlayerInput->bInvertMouse;
-            PreviousbInvertTurn = controller->PlayerInput->bInvertTurn;
         }
-
-        // TODO: Find a way if it's possible to invert to controls. W -> S, A -> D etc
     }
 
     void Tick(const float deltaTime) override
@@ -40,7 +36,6 @@ public:
         if (controller->PlayerInput)
         {
             controller->PlayerInput->bInvertMouse = !PreviousbInvertMouse;
-            controller->PlayerInput->bInvertTurn = !PreviousbInvertTurn;
         }
     }
 
@@ -56,7 +51,6 @@ public:
         }
 
         controller->PlayerInput->bInvertMouse = PreviousbInvertMouse;
-        controller->PlayerInput->bInvertTurn = PreviousbInvertTurn;
 
         return true;
     }
