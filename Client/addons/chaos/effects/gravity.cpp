@@ -6,8 +6,6 @@ class Gravity : public Effect
 {
 private:
     float GravityModifier = 0.0f;
-    float NewAccelRate = 0.0f;
-    float PreviousAccelRate = 6144.0f;
 
 public:
     Gravity(const std::string& name, float gravityModifier)
@@ -23,12 +21,7 @@ public:
         return true;
     }
 
-    void Initialize() override 
-    {
-        const auto pawn = Engine::GetPlayerPawn();
-        PreviousAccelRate = pawn->AccelRate;
-        NewAccelRate = pawn->AccelRate * GravityModifier;
-    }
+    void Initialize() override {}
 
     void Tick(const float deltaTime) override
     {
@@ -37,16 +30,8 @@ public:
         {
             return;
         }
-        world->WorldGravityZ = world->DefaultGravityZ * GravityModifier;
-        
-        auto pawn = Engine::GetPlayerPawn();
-        pawn->AccelRate = NewAccelRate;
 
-        // TODO? 
-        // Change stuff that is affected by gravity such as the wallrunning, swingjumps, and etc.
-        // 
-        // This would make it harder or easier but not sure if it's worth doing
-        // Changing the gravity and the accelrate is good enough
+        world->WorldGravityZ = world->DefaultGravityZ * GravityModifier;
     }
 
     void Render(IDirect3DDevice9* device) override {}
@@ -58,10 +43,8 @@ public:
         {
             return false;
         }
-        world->WorldGravityZ = world->DefaultGravityZ;
 
-        auto pawn = Engine::GetPlayerPawn();
-        pawn->AccelRate = PreviousAccelRate;
+        world->WorldGravityZ = world->DefaultGravityZ;
 
         return true;
     }
