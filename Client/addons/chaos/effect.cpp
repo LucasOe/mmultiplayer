@@ -132,9 +132,11 @@ std::vector<Classes::USequenceObject*> Effect::GetKismetSequenceObjects(const st
 
     // Search in persistent level since some original levels have some kismet in the persistent level
     // and a lot of modded maps uses persistent level for their kismet
-    const auto persistentSequenceObjects = FindSequenceObjects(world->GetGameSequence(), pos);
+    if (sequenceObjects.empty())
+    {
+        return FindSequenceObjects(world->GetGameSequence(), pos);
+    }
 
-    sequenceObjects.insert(sequenceObjects.end(), persistentSequenceObjects.begin(), persistentSequenceObjects.end());
     return sequenceObjects;
 }
 
