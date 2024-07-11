@@ -16,13 +16,6 @@ public:
         NewFov = newFov;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
-    void Initialize() override {}
-
     void Tick(const float deltaTime) override 
     {
         const auto pawn = Engine::GetPlayerPawn();
@@ -48,8 +41,6 @@ public:
         const auto sniper = static_cast<Classes::ATdWeapon_Sniper_BarretM95*>(pawn->MyWeapon);
         SetLockedFov(!(sniper->bZoomed || sniper->bIsZooming));
     }
-
-    void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override 
     {

@@ -26,11 +26,6 @@ public:
         TeleportType = teleportType;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
     void Initialize() override 
     {
         Done = false;
@@ -98,13 +93,6 @@ public:
             Time = RandomFloat(MinDelay, MaxDelay);
             pawn->Location = pawn->LastJumpLocation;
         }
-    }
-
-    void Render(IDirect3DDevice9* device) override {}
-
-    bool Shutdown() override
-    {
-        return true;
     }
 
     EGroup GetGroup() override

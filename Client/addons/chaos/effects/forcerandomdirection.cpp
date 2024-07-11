@@ -17,11 +17,6 @@ public:
         DisplayName = name;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
     void Initialize() override 
     {
         Time = 0.0f;
@@ -53,13 +48,6 @@ public:
 
         RandomDelay = RandomFloat(MinDelay, MaxDelay);
         Time = 0.0f;
-    }
-
-    void Render(IDirect3DDevice9* device) override {}
-
-    bool Shutdown() override
-    {
-        return true;
     }
 
     EGroup GetGroup() override

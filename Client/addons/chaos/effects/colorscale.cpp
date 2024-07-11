@@ -41,11 +41,6 @@ public:
         ColorScaleType = colorScaleType;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
     void Initialize() override 
     {
         Time = 0.0f;
@@ -88,8 +83,6 @@ public:
             Time = 0.0f;
         }
     }
-
-    void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override
     {

@@ -13,16 +13,6 @@ public:
         DurationType = EDuration::Long;
     }
 
-
-    bool CanActivate() override
-    {
-        return true;
-    }
-
-    void Initialize() override {}
-
-    void Tick(const float deltaTime) override {}
-
     void Render(IDirect3DDevice9* device) override 
     {
         const auto pawn = Engine::GetPlayerPawn();
@@ -40,11 +30,6 @@ public:
         RenderWorldInfo(pawn->WorldInfo);
         RenderPlayerInputInfo(GetTdPlayerInput());
         RenderProfileSettings();
-    }
-
-    bool Shutdown() override
-    {
-        return true;
     }
 
     EGroup GetGroup() override

@@ -15,11 +15,6 @@ public:
         DurationType = EDuration::Breif;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
     void Initialize() override 
     {
         PlayedIdleAnimation = false;
@@ -52,8 +47,6 @@ public:
 
         PlayedIdleAnimation = walking->bIsPlayingIdleAnim;
     }
-
-    void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override
     {

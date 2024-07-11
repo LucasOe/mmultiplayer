@@ -11,13 +11,6 @@ public:
         DisplayName = name;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
-    void Initialize() override {}
-
     void Tick(const float deltaTime) override 
     {
         const auto world = Engine::GetWorld();
@@ -29,13 +22,6 @@ public:
         }
         
         tdgame->KillBots();
-    }
-
-    void Render(IDirect3DDevice9* device) override {}
-
-    bool Shutdown() override
-    {
-        return true;
     }
 
     EGroup GetGroup() override

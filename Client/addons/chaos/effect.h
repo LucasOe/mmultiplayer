@@ -32,31 +32,28 @@ public:
 
 // Functions to override
 public:
-    // Return if the effect can be activated. Mainly used for level effects, if your effect isn't a level effect, return true
-    // Example: If the current levelname is equal to convoy_p and the right sublevel is loaded
-    //
-    // This also makes the seeding useless but there's no 
-    virtual bool CanActivate() = 0;
+    // Return true if the effect can be activated. Mainly used for level effects
+    virtual bool CanActivate() { return true; }
 
-    // Initialize variables that use RandomX() functions
-    virtual void Initialize() = 0;
+    // Initialize variables that use RandomX() functions or base effect variables
+    virtual void Initialize() {}
 
     // Called on every tick if the pawn and controller exists
-    // Check chaos.cpp Tick() function to see when this effect's Tick() get called 
-    virtual void Tick(const float deltaTime) = 0;
+    // Check chaos.cpp Tick() function to see when this effect's Tick() gets called 
+    virtual void Tick(const float deltaTime) {}
 
     // Called on every tick even if pawn or controller doesn't exits
     // Used for rendering ImGui. Check imgui_demo.cpp on how to use it
-    virtual void Render(IDirect3DDevice9* device) = 0;
+    virtual void Render(IDirect3DDevice9* device) {}
 
     // Restore what you modified to the original/default state and return if it did restore correctly
-    virtual bool Shutdown() = 0;
+    virtual bool Shutdown() { return true; }
 
     // Displayed in the UI which group the effect belongs in
     virtual EGroup GetGroup() = 0;
 
     // Returns the classname, this is done so no duplicate effects can happend
-    // Example: 0.25x Timescale would not activate if 2x Timescale is active
+    // Example: "0.25x Game Speed" would not activate if "2x Game Speed" is active
     virtual std::string GetClass() const = 0;
 
 // Helper functions

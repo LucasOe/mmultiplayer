@@ -21,11 +21,6 @@ public:
         ScaleFactor = 0.3f;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
     void Initialize() override 
     {
         const auto& io = ImGui::GetIO();
@@ -73,11 +68,6 @@ public:
         window->DrawList->AddRectFilled({ 0, dvdBottomRight.y - Size.y }, { dvdTopLeft.x, io.DisplaySize.y }, ImColor(0, 0, 0));
 
         ImGui::EndRawScene();
-    }
-
-    bool Shutdown() override 
-    {
-        return true;
     }
 
     EGroup GetGroup() override

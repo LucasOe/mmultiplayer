@@ -23,13 +23,6 @@ public:
         ForcedState = forcedState;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
-    void Initialize() override {}
-
     void Tick(const float deltaTime) override
     {
         const auto pawn = Engine::GetPlayerPawn();
@@ -74,8 +67,6 @@ public:
 
         controller->bPressedJump = false;
     }
-
-    void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override
     {

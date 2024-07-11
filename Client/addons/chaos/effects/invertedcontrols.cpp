@@ -14,11 +14,6 @@ public:
         DisplayName = name;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
     void Initialize() override 
     {
         const auto controller = Engine::GetPlayerController();
@@ -38,8 +33,6 @@ public:
             controller->PlayerInput->bInvertMouse = !PreviousbInvertMouse;
         }
     }
-
-    void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override
     {

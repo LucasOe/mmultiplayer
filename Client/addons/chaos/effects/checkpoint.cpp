@@ -24,8 +24,6 @@ public:
         return tdgame->bShouldSaveCheckpointProgress;
     }
 
-    void Initialize() override {}
-
     void Tick(const float deltaTime) override
     {
         auto world = Engine::GetWorld();
@@ -38,8 +36,6 @@ public:
 
         tdgame->bShouldSaveCheckpointProgress = false;
     }
-
-    void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override
     {
