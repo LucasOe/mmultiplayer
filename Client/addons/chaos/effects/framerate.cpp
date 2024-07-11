@@ -20,11 +20,6 @@ public:
         bSmoothFrameRate = smoothFramerate;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
     void Initialize() override 
     {
         auto engine = Engine::GetEngine();
@@ -48,8 +43,6 @@ public:
         engine->MaxSmoothedFrameRate = FrameRateToApply;
         engine->bSmoothFrameRate = bSmoothFrameRate;
     }
-
-    void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override
     {

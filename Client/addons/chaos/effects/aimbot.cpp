@@ -33,13 +33,6 @@ public:
         PlayerHasAimbot = playerHasAimbot;
     }
 
-    bool CanActivate() override 
-    {
-        return true;
-    }
-
-    void Initialize() override {}
-
     void Tick(const float deltaTime) override
     {
         if (PlayerHasAimbot)
@@ -50,8 +43,6 @@ public:
         
         SetAIAimbot(true);
     }
-
-    void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override
     {

@@ -25,11 +25,6 @@ public:
         HealthType = healthType;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
     void Initialize() override 
     {
         Done = false;
@@ -89,8 +84,6 @@ public:
             }
         }
     }
-
-    void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override
     {

@@ -14,11 +14,6 @@ public:
         DurationType = EDuration::Short;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
     void Initialize() override 
     {
         Done = false;
@@ -59,13 +54,6 @@ public:
 
             gameInfo->TdGameData->QuitToMainMenu();
         }
-    }
-
-    void Render(IDirect3DDevice9* device) override {}
-
-    bool Shutdown() override
-    {
-        return true;
     }
 
     EGroup GetGroup() override

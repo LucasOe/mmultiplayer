@@ -24,6 +24,8 @@ static const char* DurationTimeStrings[] = { "Brief", "Short", "Normal", "Long" 
 static float TimeUntilNewEffect = 20.0f;
 static float TimeShownInHistory = 40.0f;
 
+static bool DisplayEffectWindow = true;
+static bool DisplayTimerWindow = true;
 static float TimerInSeconds = 0.0f;
 static float TimerHeight = 18.0f;
 static ImVec4 TimerBackgroundColor = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -38,20 +40,6 @@ struct ActiveEffectInfo {
 
 static std::vector<ActiveEffectInfo> ActiveEffects;
 static std::vector<Effect*> EnabledEffects;
-
-// Removes effect from the list if it found one. Otherwise, add it
-static void ToggleEnabledEffect(Effect* effect)
-{
-    const auto it = std::find(EnabledEffects.begin(), EnabledEffects.end(), effect);
-    if (it != EnabledEffects.end())
-    {
-        EnabledEffects.erase(it);
-    }
-    else
-    {
-        EnabledEffects.push_back(effect);
-    }
-}
 
 static void SetNewSeed()
 {
@@ -138,7 +126,7 @@ static void ChaosTab()
 
     if (!Enabled)
     {
-        return;
+        ImGui::BeginDisabled();
     }
 
     if (ImGui::Checkbox("Randomize Seed##Chaos-RandomizeNewSeed", &RandomizeNewSeed))
@@ -328,7 +316,16 @@ static void ChaosTab()
             if (ImGui::Checkbox(effect->Name.c_str(), &effect->Enabled))
             {
                 Settings::SetSetting({ "Chaos", "Effect", effect->Name, "Enabled" }, effect->Enabled);
-                ToggleEnabledEffect(effect);
+
+                const auto it = std::find(EnabledEffects.begin(), EnabledEffects.end(), effect);
+                if (it != EnabledEffects.end())
+                {
+                    EnabledEffects.erase(it);
+                }
+                else
+                {
+                    EnabledEffects.push_back(effect);
+                }
             }
 
             if (!effect->Enabled)
@@ -344,6 +341,11 @@ static void ChaosTab()
 
             ImGui::Dummy(ImVec2(0.0f, 2.5f));
         }
+    }
+
+    if (!Enabled)
+    {
+        ImGui::EndDisabled();
     }
 }
 
@@ -362,40 +364,46 @@ static void OnRender(IDirect3DDevice9* device)
         }
     }
 
-    const auto window = ImGui::BeginRawScene("##Chaos-TimeCountdownRender");
-    const auto& io = ImGui::GetIO();
-
-    window->DrawList->AddRectFilled(ImVec2(), ImVec2(io.DisplaySize.x, TimerHeight), ImColor(TimerBackgroundColor));
-    window->DrawList->AddRectFilled(ImVec2(), ImVec2(io.DisplaySize.x * TimerInSeconds / TimeUntilNewEffect, TimerHeight), ImColor(TimerColor));
-
-    ImGui::EndRawScene();
-
-    ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(350, 165), ImGuiCond_FirstUseEver);
-    ImGui::BeginWindow("Effects##Chaos-EffectsUI");
-
-    for (auto it = ActiveEffects.rbegin(); it != ActiveEffects.rend(); it++)
+    if (DisplayTimerWindow)
     {
-        const auto& active = *it;
+        const auto window = ImGui::BeginRawScene("##Chaos-TimeCountdownRender");
+        const auto& io = ImGui::GetIO();
 
-        if (active.Effect->Done || active.TimeRemaining <= 0.0f)
-        {
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.75f), active.Effect->DisplayName.c_str());
-            continue;
-        }
+        window->DrawList->AddRectFilled(ImVec2(), ImVec2(io.DisplaySize.x, TimerHeight), ImColor(TimerBackgroundColor));
+        window->DrawList->AddRectFilled(ImVec2(), ImVec2(io.DisplaySize.x * TimerInSeconds / TimeUntilNewEffect, TimerHeight), ImColor(TimerColor));
 
-        // Don't show the countdown on this effect
-        if (active.Effect->GetClass() == "GoToMainMenu")
-        {
-            ImGui::Text("%s", active.Effect->DisplayName.c_str());
-        }
-        else
-        {
-            ImGui::Text("%s (%.1f)", active.Effect->DisplayName.c_str(), active.TimeRemaining);
-        }
+        ImGui::EndRawScene();
     }
 
-    ImGui::End();
+    if (DisplayEffectWindow)
+    {
+        ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(350, 165), ImGuiCond_FirstUseEver);
+        ImGui::BeginWindow("Effects##Chaos-EffectsUI");
+
+        for (auto it = ActiveEffects.rbegin(); it != ActiveEffects.rend(); it++)
+        {
+            const auto& active = *it;
+
+            if (active.Effect->Done || active.TimeRemaining <= 0.0f)
+            {
+                ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.75f), active.Effect->DisplayName.c_str());
+                continue;
+            }
+
+            // Don't show the countdown on this effect
+            if (active.Effect->GetClass() == "GoToMainMenu")
+            {
+                ImGui::Text("%s", active.Effect->DisplayName.c_str());
+            }
+            else
+            {
+                ImGui::Text("%s (%.1f)", active.Effect->DisplayName.c_str(), active.TimeRemaining);
+            }
+        }
+
+        ImGui::End();
+    }
 }
 
 static void OnTick(float deltaTime) 
@@ -434,20 +442,20 @@ static void OnTick(float deltaTime)
         }
 
         std::vector<Effect*> effectPool;
-        for (const auto enabledEffect : EnabledEffects)
+        for (const auto& enabledEffect : EnabledEffects)
         {
-            bool canBeAddedToPool = true;
+            bool addToPool = true;
 
             for (size_t i = 0; i < activeEffectClasses.size(); i++)
             {
                 if (enabledEffect->GetClass() == activeEffectClasses[i])
                 {
-                    canBeAddedToPool = false;
+                    addToPool = false;
                     break;
                 }
             }
 
-            if (canBeAddedToPool)
+            if (addToPool)
             {
                 effectPool.push_back(enabledEffect);
             }
@@ -546,6 +554,15 @@ bool Chaos::Initialize()
 
     Engine::OnTick(OnTick);
     Engine::OnRenderScene(OnRender);
+
+    Engine::OnPostLevelLoad([](const wchar_t* newLevelName)
+    {
+        LevelName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(newLevelName);
+        std::transform(LevelName.begin(), LevelName.end(), LevelName.begin(), [](char c)
+        {
+            return tolower(c);
+        });
+    });
 
     return true;
 }

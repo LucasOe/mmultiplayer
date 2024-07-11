@@ -25,11 +25,6 @@ public:
         JumpType = jumpType;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
     void Initialize() override 
     {
         if (JumpType == EJumpType::Constant)
@@ -55,13 +50,6 @@ public:
         }
 
         ForceJump();
-    }
-
-    void Render(IDirect3DDevice9* device) override {}
-
-    bool Shutdown() override 
-    {
-        return true;
     }
 
     EGroup GetGroup() override

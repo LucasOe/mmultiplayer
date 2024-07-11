@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../effect.h"
+#include <unordered_map>
 
 enum class TrainEffect
 {
@@ -14,15 +15,18 @@ struct TrainDetail
 {
     float NewPlayRate = 1.0f;
     float DefaultPlayRate = 1.5f;
+    std::string SubLevelName;
     std::vector<Classes::USequenceObject*> SequenceObjects;
 };
 
 class Train : public Effect
 {
 private:
+    bool SubLevelUnloaded = false;
     float PlayerSpawnedTime = -1.0f;
     float TimeSinceLastChecked = 0.0f;
     TrainEffect TrainEffectType = TrainEffect::None;
+    std::unordered_map<std::string, std::vector<TrainDetail>> TrainDetailsMap;
 
 public:
     Train(const std::string& name, TrainEffect trainEffect)
@@ -32,23 +36,44 @@ public:
         DurationType = EDuration::Long;
         LevelEffect = true;
 
-        TrainEffectType = trainEffect;
+        TrainEffectType = trainEffect; 
     }
 
     bool CanActivate() override
     {
-        return GetTrains().size() > 0;
+        InitializeTrains();
+        const auto& trains = GetTrains();
+
+        for (const auto& train : trains)
+        {
+            if (!train.SequenceObjects.empty())
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     void Initialize() override
     {
-        PlayerSpawnedTime = -1.0f;
+        SubLevelUnloaded = false;
         TimeSinceLastChecked = 0.0f;
+
+        const auto pawn = Engine::GetPlayerPawn();
+        
+        if (!pawn)
+        {
+            PlayerSpawnedTime = 0.0f;
+            return;
+        }
+
+        PlayerSpawnedTime = pawn->SpawnTime; 
     }
 
     void Tick(const float deltaTime) override
     {
-        auto pawn = Engine::GetPlayerPawn();
+        const auto pawn = Engine::GetPlayerPawn();
 
         if (!pawn)
         {
@@ -62,6 +87,8 @@ public:
         {
             PlayerSpawnedTime = pawn->SpawnTime;
             TimeSinceLastChecked = 0.0f;
+
+            InitializeTrains();
             ModifyTrains(true);
         }
 
@@ -69,16 +96,20 @@ public:
         if (TimeSinceLastChecked >= 1.0f)
         {
             TimeSinceLastChecked = 0.0f;
+
+            if (SubLevelUnloaded)
+            {
+                InitializeTrains();
+                SubLevelUnloaded = false;
+            }
+
             ModifyTrains(true);
         }
     }
 
-    void Render(IDirect3DDevice9* device) override {}
-
     bool Shutdown() override
     {
         ModifyTrains(false);
-
         return true;
     }
 
@@ -97,15 +128,17 @@ private:
     {
         if (TrainEffectType == TrainEffect::Strange)
         {
-            return RandomFloat(defaultPlayRate * -2.0f, defaultPlayRate * 2.0f);
+            return RandomFloat(defaultPlayRate * -1.618f, defaultPlayRate * 3.145f);
         }
 
         switch (TrainEffectType)
         {
             case TrainEffect::Slow:
-                return RandomFloat(defaultPlayRate / 4.0f, defaultPlayRate / 2.0f);
+                return RandomFloat(defaultPlayRate / 6.0f, defaultPlayRate / 2.0f);
+
             case TrainEffect::Fast:
-                return RandomFloat(defaultPlayRate * 2.0f, defaultPlayRate * 4.0f);
+                return RandomFloat(defaultPlayRate * 4.0f, defaultPlayRate * 6.0f);
+
             case TrainEffect::None:
             default:
                 return defaultPlayRate;
@@ -115,20 +148,38 @@ private:
     void FindTrain(std::vector<TrainDetail>& trains, const std::string& levelName, const ImVec2& pos, float defaultPlayRate)
     {
         TrainDetail train;
+        train.NewPlayRate = RandomizePlayRate(defaultPlayRate);
         train.DefaultPlayRate = defaultPlayRate;
+        train.SubLevelName = levelName;
         train.SequenceObjects = GetKismetSequenceObjects(levelName, pos);
 
         trains.push_back(train);
     }
 
-    std::vector<TrainDetail> GetTrains()
+    const std::vector<TrainDetail>& GetTrains()
     {
-        std::vector<TrainDetail> trains;
         const auto levelName = GetLevelName();
+        if (levelName.empty())
+        {
+            return std::vector<TrainDetail>();
+        }
+
+        return TrainDetailsMap[levelName];
+    }
+
+    void InitializeTrains()
+    {
+        const auto levelName = GetLevelName();
+        if (levelName.empty())
+        {
+            return;
+        }
+
+        TrainDetailsMap.clear();
+        auto& trains = TrainDetailsMap[levelName];
 
         if (levelName == "escape_p")
         {
-            // These trains have no collision and is just for shows
             FindTrain(trains, "Escape_Plaza_Spt", ImVec2(-936, 3320), 1.25f);
             FindTrain(trains, "Escape_Plaza_Spt", ImVec2(-936, 4520), 1.25f);
         }
@@ -149,49 +200,78 @@ private:
             // This is a float variable which sets the matinee's playrate so we need to change this instead
             FindTrain(trains, "Factory_Pursu_Spt", ImVec2(-264, 792), 0.6f);
         }
+    }
 
-        return trains;
+    bool IsSubLevelLoaded(const std::string& levelName)
+    {
+        const auto world = Engine::GetWorld();
+        if (!world)
+        {
+            return false;
+        }
+
+        for (size_t i = 0; i < world->StreamingLevels.Num(); i++)
+        {
+            const auto level = world->StreamingLevels[i];
+            if (!level || !level->LoadedLevel)
+            {
+                continue;
+            }
+
+            if (level->PackageName.GetName() == levelName)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     void ModifyTrains(const bool applyNewPlayRate)
     {
-        auto trains = GetTrains();
-
-        for (size_t i = 0; i < trains.size(); i++)
+        const auto levelName = GetLevelName();
+        if (levelName.empty())
         {
-            if (!applyNewPlayRate)
+            return;
+        }
+
+        auto& trains = TrainDetailsMap[levelName];
+
+        for (auto& train : trains)
+        {
+            if (!IsSubLevelLoaded(train.SubLevelName) && train.SequenceObjects.size() > 0)
             {
-                trains[i].NewPlayRate = 1.0f;
+                SubLevelUnloaded = true;
+                return;
             }
 
-            for (size_t j = 0; j < trains[i].SequenceObjects.size(); j++)
+            for (auto& sequenceObject : train.SequenceObjects)
             {
-                const auto objName = trains[i].SequenceObjects[j]->ObjName.ToString();
-
-                if (trains[i].NewPlayRate == 1.0f || TrainEffectType == TrainEffect::Strange)
+                if (TrainEffectType == TrainEffect::Strange)
                 {
-                    trains[i].NewPlayRate = RandomizePlayRate(trains[i].DefaultPlayRate);
+                    train.NewPlayRate = RandomizePlayRate(train.DefaultPlayRate);
                 }
 
+                const auto objName = sequenceObject->ObjName.ToString();
                 if (objName == "Matinee")
                 {
-                    auto train = static_cast<Classes::USeqAct_Interp*>(trains[i].SequenceObjects[j]);
-                    if (!train)
+                    auto matinee = static_cast<Classes::USeqAct_Interp*>(sequenceObject);
+                    if (!matinee)
                     {
                         continue;
                     }
 
-                    train->PlayRate = applyNewPlayRate ? trains[i].NewPlayRate : trains[i].DefaultPlayRate;
+                    matinee->PlayRate = applyNewPlayRate ? train.NewPlayRate : train.DefaultPlayRate;
                 }
                 else if (objName == "Float")
                 {
-                    auto variable = static_cast<Classes::USeqVar_Float*>(trains[i].SequenceObjects[j]);
+                    auto variable = static_cast<Classes::USeqVar_Float*>(sequenceObject);
                     if (!variable)
                     {
                         continue;
                     }
 
-                    variable->FloatValue = applyNewPlayRate ? trains[i].NewPlayRate : trains[i].DefaultPlayRate;
+                    variable->FloatValue = applyNewPlayRate ? train.NewPlayRate : train.DefaultPlayRate;
                 }
             }
         }

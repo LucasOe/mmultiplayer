@@ -16,11 +16,6 @@ public:
         DisplayName = name;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
     void Initialize() override 
     {
         Time = RandomFloat(MinDelay, MaxDelay);
@@ -43,13 +38,6 @@ public:
 
         Time = RandomFloat(MinDelay, MaxDelay);
         pawn->OnTdFallOnBack(nullptr);
-    }
-
-    void Render(IDirect3DDevice9* device) override {}
-
-    bool Shutdown() override
-    {
-        return true;
     }
 
     EGroup GetGroup() override

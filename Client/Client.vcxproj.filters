@@ -422,7 +422,7 @@
     <ClCompile Include="addons\chaos\effects\framerate.cpp">
       <Filter>Source Files\addons\chaos\effects</Filter>
     </ClCompile>
-    <ClCompile Include="addons\chaos\effects\timescale.cpp">
+    <ClCompile Include="addons\chaos\effects\gamespeed.cpp">
       <Filter>Source Files\addons\chaos\effects</Filter>
     </ClCompile>
     <ClCompile Include="addons\chaos\effects\gravity.cpp">

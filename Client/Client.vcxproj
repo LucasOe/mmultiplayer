@@ -274,7 +274,7 @@
     <ClCompile Include="addons\chaos\effects\level\train.cpp" />
     <ClCompile Include="addons\chaos\effects\nothing.cpp" />
     <ClCompile Include="addons\chaos\effects\teleport.cpp" />
-    <ClCompile Include="addons\chaos\effects\timescale.cpp" />
+    <ClCompile Include="addons\chaos\effects\gamespeed.cpp" />
     <ClCompile Include="addons\chaos\effects\toomuchinfo.cpp" />
     <ClCompile Include="addons\client.cpp" />
     <ClCompile Include="addons\dolly.cpp" />

@@ -19,11 +19,6 @@ public:
         DoRotateCamera = doRotateCamera;
     }
 
-    bool CanActivate() override
-    {
-        return true;
-    }
-
     void Initialize() override 
     {
         DoRotateClockwise = RandomBool();
@@ -57,8 +52,6 @@ public:
             controller->Rotation.Roll = 0x8000;
         }
     }
-
-    void Render(IDirect3DDevice9* device) override {}
 
     bool Shutdown() override
     {
