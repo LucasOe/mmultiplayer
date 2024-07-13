@@ -4,20 +4,17 @@
 
 class GoToMainMenu : public Effect
 {
-private:
-    float TimeLeft = 5.0f;
-
 public:
     GoToMainMenu(const std::string& name)
     {
         Name = name;
+        DisplayName = name;
         DurationType = EDuration::Short;
     }
 
     void Initialize() override 
     {
         Done = false;
-        TimeLeft = 5.0f;
     }
 
     void Tick(const float deltaTime) override 
@@ -27,33 +24,14 @@ public:
             return;
         }
 
-        char buffer[0x40];
-        sprintf_s(buffer, sizeof(buffer), "Go To MainMenu In... %.1f", TimeLeft >= 0.0f ? TimeLeft : 0.0f);
-        DisplayName = buffer;
-
-        TimeLeft -= deltaTime;
-
-        if (TimeLeft >= 0.0f)
+        const auto gameInfo = static_cast<Classes::ATdGameInfo*>(Engine::GetWorld()->Game);
+        if (!gameInfo->TdGameData)
         {
             return;
         }
 
-        if (Engine::GetPlayerController()->IsInMainMenu())
-        {
-            DisplayName = "Go To MainMenu";
-            Done = true;
-        }
-        else
-        {
-            const auto gameInfo = static_cast<Classes::ATdGameInfo*>(Engine::GetWorld()->Game);
-
-            if (!gameInfo->TdGameData)
-            {
-                return;
-            }
-
-            gameInfo->TdGameData->QuitToMainMenu();
-        }
+        gameInfo->TdGameData->QuitToMainMenu();
+        Done = true;
     }
 
     EGroup GetGroup() override

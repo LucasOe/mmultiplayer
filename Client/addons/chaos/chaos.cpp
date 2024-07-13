@@ -12,7 +12,9 @@
 static bool Enabled = false;
 static bool Paused = false;
 static bool ChaosActive = false;
-static std::string LevelName = "";
+
+// Global variable, used for effects to get the level name
+std::string LevelName = "";
 
 std::mt19937 rng;
 static int Seed = 0;
@@ -391,19 +393,47 @@ static void OnRender(IDirect3DDevice9* device)
                 continue;
             }
 
-            // Don't show the countdown on this effect
-            if (active.Effect->GetClass() == "GoToMainMenu")
-            {
-                ImGui::Text("%s", active.Effect->DisplayName.c_str());
-            }
-            else
-            {
-                ImGui::Text("%s (%.1f)", active.Effect->DisplayName.c_str(), active.TimeRemaining);
-            }
+            ImGui::Text("%s (%.1f)", active.Effect->DisplayName.c_str(), active.TimeRemaining);
         }
 
         ImGui::End();
     }
+}
+
+static bool IsUISceneOpened(const std::vector<std::string>& names)
+{
+    const auto viewport = Engine::GetViewportClient();
+    if (!viewport || !viewport->UIController)
+    {
+        return false;
+    }
+
+    const auto scene = viewport->UIController->SceneClient;
+    if (!scene)
+    {
+        return false;
+    }
+
+    for (size_t i = 0; i < scene->ActiveScenes.Num(); i++)
+    {
+        const auto currentScene = scene->ActiveScenes[i];
+        if (!currentScene)
+        {
+            continue;
+        }
+
+        const auto currentSceneName = currentScene->GetObjectName();
+
+        for (size_t j = 0; j < names.size(); j++)
+        {
+            if (currentSceneName == names[j])
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 static void OnTick(float deltaTime) 
@@ -413,8 +443,18 @@ static void OnTick(float deltaTime)
         return;
     }
 
-    const auto pawn = Engine::GetPlayerPawn();
+    if (IsUISceneOpened({ "TdGameObjectives", "TdSPPause", "TdTimeTrialPause", "SpLevelRacePause" }))
+    {
+        return;
+    }
 
+    const auto controller = Engine::GetPlayerController();
+    if (!controller || controller->bCinematicMode || controller->bDisableSkipCutscenes)
+    {
+        return;
+    }
+
+    const auto pawn = Engine::GetPlayerPawn();
     if (!pawn)
     {
         return;
@@ -431,61 +471,6 @@ static void OnTick(float deltaTime)
         return;
     }
 
-    TimerInSeconds += deltaTime;
-
-    if (TimerInSeconds >= TimeUntilNewEffect)
-    {
-        std::vector<std::string> activeEffectClasses;
-        for (const auto& activeEffect : ActiveEffects)
-        {
-            activeEffectClasses.push_back(activeEffect.Effect->GetClass());
-        }
-
-        std::vector<Effect*> effectPool;
-        for (const auto& enabledEffect : EnabledEffects)
-        {
-            bool addToPool = true;
-
-            for (size_t i = 0; i < activeEffectClasses.size(); i++)
-            {
-                if (enabledEffect->GetClass() == activeEffectClasses[i])
-                {
-                    addToPool = false;
-                    break;
-                }
-            }
-
-            if (addToPool)
-            {
-                effectPool.push_back(enabledEffect);
-            }
-        }
-
-        std::shuffle(effectPool.begin(), effectPool.end(), rng);
-
-        for (auto effect : effectPool)
-        {
-            if (!effect->CanActivate())
-            {
-                printf("Chaos: \"%s\" can't be activated\n", effect->Name.c_str());
-                continue;
-            }
-
-            ActiveEffectInfo newActiveEffectInfo;
-            newActiveEffectInfo.TimeRemaining = DurationTime[(int)effect->DurationType];
-            newActiveEffectInfo.HistoryDuration = TimeShownInHistory;
-            newActiveEffectInfo.Effect = effect;
-
-            effect->DurationTime = newActiveEffectInfo.TimeRemaining;
-            effect->Initialize();
-
-            ActiveEffects.push_back(newActiveEffectInfo);
-            break;
-        }
-
-        TimerInSeconds = 0.0f;
-    }
-
     for (auto it = ActiveEffects.rbegin(); it != ActiveEffects.rend(); it++)
     {
         auto& active = *it;
@@ -500,6 +485,7 @@ static void OnTick(float deltaTime)
         if (!active.ShutdownCorrectly)
         {
             active.ShutdownCorrectly = active.Effect->Shutdown();
+            
             if (!active.ShutdownCorrectly)
             {
                 printf("Chaos: \"%s\" didn't shutdown correctly!\n", active.Effect->Name.c_str());
@@ -508,13 +494,68 @@ static void OnTick(float deltaTime)
         }
 
         active.HistoryDuration -= deltaTime;
-        if (active.HistoryDuration >= 0.0f)
+        if (active.HistoryDuration <= 0.0f)
         {
+            ActiveEffects.erase((it + 1).base());
+        }
+    }
+
+    TimerInSeconds += deltaTime;
+
+    if (TimerInSeconds <= TimeUntilNewEffect)
+    {
+        return;
+    }
+
+    std::vector<std::string> activeEffectClasses;
+    for (const auto& activeEffect : ActiveEffects)
+    {
+        activeEffectClasses.push_back(activeEffect.Effect->GetClass());
+    }
+
+    std::vector<Effect*> effectPool;
+    for (const auto& enabledEffect : EnabledEffects)
+    {
+        bool addToPool = true;
+
+        for (size_t i = 0; i < activeEffectClasses.size(); i++)
+        {
+            if (enabledEffect->GetClass() == activeEffectClasses[i])
+            {
+                addToPool = false;
+                break;
+            }
+        }
+
+        if (addToPool)
+        {
+            effectPool.push_back(enabledEffect);
+        }
+    }
+
+    std::shuffle(effectPool.begin(), effectPool.end(), rng);
+
+    for (auto effect : effectPool)
+    {
+        if (!effect->CanActivate())
+        {
+            printf("Chaos: \"%s\" can't be activated\n", effect->Name.c_str());
             continue;
         }
 
-        ActiveEffects.erase((it + 1).base());
+        ActiveEffectInfo newEffect;
+        newEffect.TimeRemaining = DurationTime[(int)effect->DurationType];
+        newEffect.HistoryDuration = TimeShownInHistory;
+        newEffect.Effect = effect;
+
+        effect->DurationTime = newEffect.TimeRemaining;
+        effect->Initialize();
+
+        ActiveEffects.push_back(newEffect);
+        break;
     }
+
+    TimerInSeconds = 0.0f;
 }
 
 bool Chaos::Initialize() 
