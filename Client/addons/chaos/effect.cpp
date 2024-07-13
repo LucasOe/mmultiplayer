@@ -111,13 +111,7 @@ std::vector<Classes::USequenceObject*> Effect::GetKismetSequenceObjects(const st
 	    return std::vector<Classes::USequenceObject*>();
     }
 
-    const auto mapName = GetLevelName();
-    if (mapName.empty())
-    {
-        return std::vector<Classes::USequenceObject*>();
-    }
-
-    if (mapName == levelName)
+    if (LevelName == levelName)
     {
         // Search in persistent level since some original levels have some kismet in the persistent level
         // and a lot of modded maps uses persistent level for their kismet
@@ -143,26 +137,27 @@ std::vector<Classes::USequenceObject*> Effect::GetKismetSequenceObjects(const st
     return std::vector<Classes::USequenceObject*>();
 }
 
-std::string Effect::GetLevelName() const
+bool Effect::IsSubLevelLoaded(const std::string& levelName)
 {
     const auto world = Engine::GetWorld();
     if (!world)
     {
-        return std::string();
+        return false;
     }
 
-    auto name = world->GetMapName(false);
-    if (!name.IsValid())
+    for (size_t i = 0; i < world->StreamingLevels.Num(); i++)
     {
-        return std::string();
+        const auto level = world->StreamingLevels[i];
+        if (!level || !level->LoadedLevel)
+        {
+            continue;
+        }
+
+        if (level->PackageName.GetName() == levelName)
+        {
+            return true;
+        }
     }
 
-    auto levelName = name.ToString();
-    std::transform(levelName.begin(), levelName.end(), levelName.begin(), [](char c)
-    {
-        return std::tolower(c);
-    });
-
-    return levelName;
+    return false;
 }
-

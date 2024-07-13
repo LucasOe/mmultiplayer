@@ -1,5 +1,6 @@
 #pragma once
 
+#include "chaos.h"
 #include "group.h"
 #include "../../sdk.h"
 #include "../../engine.h"
@@ -71,8 +72,7 @@ protected:
     // NOTE: This will not work if the level's kismet has been moved around
     std::vector<Classes::USequenceObject*> GetKismetSequenceObjects(const std::string& levelName, const ImVec2& pos) const;
 
-    // Gets the level name in lowercase. If it failed, the return will be an empty string
-    std::string GetLevelName() const;
+    bool IsSubLevelLoaded(const std::string& levelName);
 
 // Seeding, you don't need to do anything in your effect with these
 public:
