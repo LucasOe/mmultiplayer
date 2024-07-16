@@ -84,34 +84,42 @@ static void Restart()
     }
 }
 
-static std::string GetGroupNames(EGroup_ group)
+static void ToggleEffects(const bool enable, const int groupIndex)
 {
-    std::vector<std::string> names;
+    EGroup_ group;
 
-    if (group == EGroup_None)
+    if (groupIndex != -1)
     {
-        return GroupNames[0];
+        group = static_cast<EGroup_>(1 << groupIndex);
     }
 
-    for (int i = 0; i < IM_ARRAYSIZE(GroupNames); i++)
+    for (auto effect : Effects())
     {
-        if (group & 1 << i)
+        if (groupIndex != -1 && (effect->GetGroup() & group) == 0)
         {
-            names.push_back(GroupNames[i]);
+            continue;
         }
-    }
 
-    std::string result;
-    for (size_t i = 0; i < names.size(); i++)
-    {
-        result += names[i];
-        if (i < names.size() - 1)
+        const auto it = std::find(EnabledEffects.begin(), EnabledEffects.end(), effect);
+
+        if (enable)
         {
-            result += ", ";
+            if (it == EnabledEffects.end())
+            {
+                EnabledEffects.push_back(effect);
+            }
         }
-    }
+        else
+        {
+            if (it != EnabledEffects.end())
+            {
+                EnabledEffects.erase(it);
+            }
+        }
 
-    return result;
+        effect->Enabled = enable;
+        Settings::SetSetting({ "Chaos", "Effect", effect->Name, "Enabled" }, effect->Enabled);
+    }
 }
 
 static void ChaosTab()
@@ -198,18 +206,21 @@ static void ChaosTab()
 
     ImGui::Text("Timer");
     {
-        if (ImGui::SliderFloat("Time Until New Effect##Chaos-TimeUntilNewEffect", &TimeUntilNewEffect, 5.0f, 60.0f, "%.0f sec", ImGuiSliderFlags_AlwaysClamp))
+        if (ImGui::SliderFloat("Time Until New Effect##Chaos-TimeUntilNewEffect", &TimeUntilNewEffect, 5.0f, 60.0f, "%.0f sec"))
         {
+            TimeUntilNewEffect = ImMax(5.0f, TimeUntilNewEffect);
             Settings::SetSetting({ "Chaos", "Timer", "TimeUntilNewEffect" }, TimeUntilNewEffect);
         }
 
-        if (ImGui::SliderFloat("Time Shown In History##Chaos-TimeShownInHistory", &TimeShownInHistory, 5.0f, 60.0f, "%.0f sec", ImGuiSliderFlags_AlwaysClamp))
+        if (ImGui::SliderFloat("Time Shown In History##Chaos-TimeShownInHistory", &TimeShownInHistory, 5.0f, 60.0f, "%.0f sec"))
         {
+            TimeShownInHistory = ImMax(5.0f, TimeShownInHistory);
             Settings::SetSetting({ "Chaos", "Timer", "TimeShownInHistory" }, TimeShownInHistory);
         }
 
-        if (ImGui::SliderFloat("Timer Height##Chaos-TimerHeight", &TimerHeight, 0.0f, 30.0f, "%.0f", ImGuiSliderFlags_AlwaysClamp))
+        if (ImGui::SliderFloat("Timer Height##Chaos-TimerHeight", &TimerHeight, 0.0f, 30.0f, "%.0f"))
         {
+            TimerHeight = ImMax(0.0f, TimerHeight);
             Settings::SetSetting({ "Chaos", "Timer", "TimerHeight" }, TimerHeight);
         }
 
@@ -233,56 +244,66 @@ static void ChaosTab()
         ImGui::Separator(2.5f); 
     }
 
-    /* TODO: Make UI for group settings
     ImGui::Text("Group Settings");
     {
-        //ImGui::HelpMarker("Select a group to toggle the enabled state. You can also enable or disable all effects");
-        ImGui::Dummy(ImVec2(0.0f, 2.5f));
-        static int selectedGroup = 0;
+        ImGui::HelpMarker(
+            "Select a group to toggle the enabled state. Scroll down to see what each effect has for group flags. "
+            "You can also enable or disable all effects. There's no undo for this"
+        );
 
-        bool clicked = false;
-        bool newState = false;
-        if (ImGui::Button("Enable All Effects##Chaos-EnableAllEffects"))
-        {
-            clicked = true;
-            newState = true;
-        }
+        // ImGui::Text("Effects().size(): %d", Effects().size());
+        // ImGui::Text("EnabledEffects.size(): %d", EnabledEffects.size());
 
-        ImGui::SameLine();
-        if (ImGui::Button("Disable All Effects##Chaos-DisableAllEffects"))
+        static int groupIndex = 0;
+        const char* previewValue = GroupNames[groupIndex];
+
+        ImGui::SetNextItemWidth(128.0f);
+        if (ImGui::BeginCombo("Selected Group", previewValue))
         {
-            clicked = true;
-            newState = false;
-        }
-    
-        if (clicked)
-        {
-            for (auto effect : Effects())
+            for (int i = 0; i < IM_ARRAYSIZE(GroupNames); i++)
             {
-                effect->Enabled = newState;
-                Settings::SetSetting({ "Chaos", "Effect", effect->Name, "Enabled" }, effect->Enabled);
-            }
-        }
-
-        ImGui::Dummy(ImVec2(0.0f, 2.5f));
-        if (ImGui::TreeNode("Toggle Group"))
-        {
-            for (auto effect : Effects())
-            {
-                ImGui::Selectable()
-                if (effect->GetGroup() & 1 << selectedGroup)
+                const bool isSelected = (groupIndex == i);
+                if (ImGui::Selectable(GroupNames[i], isSelected))
                 {
-                    effect->Enabled = !effect->Enabled;
-                    Settings::SetSetting({ "Chaos", "Effect", effect->Name, "Enabled" }, effect->Enabled);
+                    groupIndex = i;
+                }
+
+                if (isSelected)
+                {
+                    ImGui::SetItemDefaultFocus();
                 }
             }
+            ImGui::EndCombo();
+        }
 
-            ImGui::TreePop();
+        ImGui::Dummy(ImVec2(0.0f, 2.5f));
+
+        char buffer[0x80];
+        sprintf_s(buffer, sizeof(buffer), "Enable All \"%s\" Effects##Chaos-EnableAllSpecificGroup", GroupNames[groupIndex]);
+        if (ImGui::Button(buffer))
+        {
+            ToggleEffects(true, groupIndex);
+        }
+
+        sprintf_s(buffer, sizeof(buffer), "Disable All \"%s\" Effects##Chaos-DisableAllSpecificGroup", GroupNames[groupIndex]);
+        if (ImGui::Button(buffer))
+        {
+            ToggleEffects(false, groupIndex);
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, 2.5f));
+        if (ImGui::Button("Enable All Effects##Chaos-EnableAllEffects"))
+        {
+            ToggleEffects(true, -1);
+        }
+
+        if (ImGui::Button("Disable All Effects##Chaos-DisableAllEffects"))
+        {
+            ToggleEffects(false, -1);
         }
 
         ImGui::Separator(2.5f);
     }
-    */
 
     ImGui::Text("Effect Settings");
     {
@@ -317,28 +338,20 @@ static void ChaosTab()
             ImGui::SameLine();
             if (ImGui::Checkbox(effect->Name.c_str(), &effect->Enabled))
             {
-                Settings::SetSetting({ "Chaos", "Effect", effect->Name, "Enabled" }, effect->Enabled);
-
-                const auto it = std::find(EnabledEffects.begin(), EnabledEffects.end(), effect);
-                if (it != EnabledEffects.end())
-                {
-                    EnabledEffects.erase(it);
-                }
-                else
-                {
-                    EnabledEffects.push_back(effect);
-                }
+                ToggleEffects(&effect->Enabled, -1);
             }
+
+            const auto groupNames = GetGroupNames(static_cast<EGroup_>(effect->GetGroup()));
 
             if (!effect->Enabled)
             {
                 ImGui::BeginDisabled();
-                ImGui::Text(GetGroupNames(static_cast<EGroup_>(effect->GetGroup())).c_str());
+                ImGui::Text(groupNames.c_str());
                 ImGui::EndDisabled();
             }
             else
             {
-                ImGui::Text(GetGroupNames(static_cast<EGroup_>(effect->GetGroup())).c_str());
+                ImGui::Text(groupNames.c_str());
             }
 
             ImGui::Dummy(ImVec2(0.0f, 2.5f));

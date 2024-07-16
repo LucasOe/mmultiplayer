@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string.h>
+#include <vector>
+
 #include "../../imgui/imgui.h"
 
 // Using typedef to not having to create custom binary opartions
@@ -44,3 +47,33 @@ static const char* GroupNames[] = {
     "Health",
     "Level",
 };
+
+static std::string GetGroupNames(EGroup_ group)
+{
+    std::vector<std::string> names;
+
+    if (group == EGroup_None)
+    {
+        return GroupNames[0];
+    }
+
+    for (int i = 0; i < IM_ARRAYSIZE(GroupNames); i++)
+    {
+        if (group & 1 << i)
+        {
+            names.push_back(GroupNames[i]);
+        }
+    }
+
+    std::string result;
+    for (size_t i = 0; i < names.size(); i++)
+    {
+        result += names[i];
+        if (i < names.size() - 1)
+        {
+            result += ", ";
+        }
+    }
+
+    return result;
+}
