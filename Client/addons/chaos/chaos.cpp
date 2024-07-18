@@ -7,8 +7,6 @@
 #include "../../settings.h"
 #include "../../util.h"
 
-#pragma warning (disable: 26812)
-
 static bool Enabled = false;
 static bool Paused = false;
 static bool ChaosActive = false;
@@ -350,7 +348,7 @@ static void ChaosTab()
                 ToggleEffects(&effect->Enabled, -1);
             }
 
-            const auto groupNames = GetGroupNames(static_cast<EGroup_>(effect->GetGroup()));
+            const auto groupNames = GetNamesFromGroup(static_cast<EGroup_>(effect->GetGroup()));
 
             if (!effect->Enabled)
             {

@@ -5,6 +5,9 @@
 
 #include "../../imgui/imgui.h"
 
+#pragma warning (push)
+#pragma warning (disable: 26812)
+
 // Using typedef to not having to create custom binary opartions
 typedef int EGroup;
 
@@ -48,15 +51,14 @@ static const char* GroupNames[] = {
     "Level",
 };
 
-static std::string GetGroupNames(EGroup_ group)
+static std::string GetNamesFromGroup(EGroup_ group)
 {
-    std::vector<std::string> names;
-
     if (group == EGroup_None)
     {
         return GroupNames[0];
     }
 
+    std::vector<std::string> names;
     for (int i = 0; i < IM_ARRAYSIZE(GroupNames); i++)
     {
         if (group & 1 << i)
@@ -77,3 +79,5 @@ static std::string GetGroupNames(EGroup_ group)
 
     return result;
 }
+
+#pragma warning (pop)
