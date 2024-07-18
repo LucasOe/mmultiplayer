@@ -84,25 +84,25 @@ static void Restart()
     }
 }
 
-static void ToggleEffects(const bool enable, const int groupIndex)
+static void ToggleEffects(const bool enableEffect, const int groupIndex)
 {
-    EGroup_ group;
+    EGroup_ selectedGroup;
 
     if (groupIndex != -1)
     {
-        group = static_cast<EGroup_>(1 << groupIndex);
+        selectedGroup = static_cast<EGroup_>(1 << groupIndex);
     }
 
     for (auto effect : Effects())
     {
-        if (groupIndex != -1 && (effect->GetGroup() & group) == 0)
+        if (groupIndex != -1 && (effect->GetGroup() & selectedGroup) == 0)
         {
             continue;
         }
 
         const auto it = std::find(EnabledEffects.begin(), EnabledEffects.end(), effect);
 
-        if (enable)
+        if (enableEffect)
         {
             if (it == EnabledEffects.end())
             {
@@ -117,8 +117,7 @@ static void ToggleEffects(const bool enable, const int groupIndex)
             }
         }
 
-        effect->Enabled = enable;
-        Settings::SetSetting({ "Chaos", "Effect", effect->Name, "Enabled" }, effect->Enabled);
+        Settings::SetSetting({ "Chaos", "Effect", effect->Name, "Enabled" }, effect->Enabled = enableEffect);
     }
 }
 
@@ -174,14 +173,14 @@ static void ChaosTab()
         if (ImGui::Button("Start New Game##Chaos-StartNewGameButton"))
         {
             SetNewSeed();
-        
+
             const auto world = Engine::GetWorld();
 
             if (world)
             {
                 const auto gameInfo = static_cast<Classes::ATdGameInfo*>(world->Game);
                 gameInfo->TdGameData->StartNewGameWithTutorial(true);
-            
+
                 Restart();
                 ChaosActive = true;
             }
@@ -224,8 +223,18 @@ static void ChaosTab()
             Settings::SetSetting({ "Chaos", "Timer", "TimerHeight" }, TimerHeight);
         }
 
-        ImGui::ColorEdit4("Timer Color##Chaos-TimerColor", &TimerColor.x);
-        ImGui::ColorEdit4("Background Color##Chaos-TimerBackgroundColor", &TimerBackgroundColor.x);
+        ImGui::ColorEdit4("Timer Color##Chaos-TimerColor", &TimerColor.x, ImGuiColorEditFlags_AlphaPreviewHalf);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+        {
+            Settings::SetSetting({ "Chaos", "Timer", "TimerColor" }, ImVec4ToJson(TimerColor));
+        }
+
+        ImGui::ColorEdit4("Background Color##Chaos-TimerBackgroundColor", &TimerBackgroundColor.x, ImGuiColorEditFlags_AlphaPreviewHalf);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+        {
+            Settings::SetSetting({ "Chaos", "Timer", "TimerBackgroundColor" }, ImVec4ToJson(TimerBackgroundColor));
+        }
+
         ImGui::Separator(2.5f);
     }
 
@@ -237,7 +246,7 @@ static void ChaosTab()
             if (ImGui::SliderFloat(label.c_str(), &DurationTime[i], 5.0f, 120.0f, "%.0f sec"))
             {
                 DurationTime[i] = ImClamp(DurationTime[i], 5.0f, 3600.0f);
-                Settings::SetSetting({ "Chaos", "Duration", DurationTimeStrings[i] }, TimeShownInHistory);
+                Settings::SetSetting({ "Chaos", "Duration", DurationTimeStrings[i] }, DurationTime[i]);
             }
         }
 
@@ -400,7 +409,7 @@ static void OnRender(IDirect3DDevice9* device)
         {
             const auto& active = *it;
 
-            if (active.Effect->Done || active.TimeRemaining <= 0.0f)
+            if (active.TimeRemaining <= 0.0f || active.Effect->Done)
             {
                 ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.75f), active.Effect->DisplayName.c_str());
                 continue;
