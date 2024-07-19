@@ -10,6 +10,7 @@
 #include "menu.h"
 
 static bool ShowMenu = false;
+static bool ShowMenuAtStartup = true;
 static int ShowKeybind = 0;
 static std::vector<MenuTab> Tabs;
 static std::wstring LevelName;
@@ -20,23 +21,35 @@ static struct {
 
 static void RenderMenu(IDirect3DDevice9 *device) 
 {
-	if (ShowMenu)
+	static bool menuShownAtStart = false;
+
+	if (ShowMenuAtStartup && !menuShownAtStart)
 	{
-		ImGui::Begin("MMultiplayer 2.2.0", NULL, ImGuiWindowFlags_NoCollapse);
-		ImGui::BeginTabBar("");
-
-		for (auto tab : Tabs) 
-		{
-			if (ImGui::BeginTabItem(tab.Name.c_str())) 
-			{
-				tab.Callback();
-				ImGui::EndTabItem();
-			}
-		}
-
-		ImGui::EndTabBar();
-		ImGui::End();
+		menuShownAtStart = true;
+		Engine::BlockInput(ShowMenu = true);
 	}
+
+	if (!ShowMenu)
+	{
+		return;
+	}
+
+	ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(720, 420), ImGuiCond_FirstUseEver);
+	ImGui::BeginWindow("MMultiplayer 2.3.0", NULL, ImGuiWindowFlags_NoCollapse);
+	ImGui::BeginTabBar("");
+
+	for (auto tab : Tabs) 
+	{
+		if (ImGui::BeginTabItem(tab.Name.c_str())) 
+		{
+			tab.Callback();
+			ImGui::EndTabItem();
+		}
+	}
+
+	ImGui::EndTabBar();
+	ImGui::End();
 }
 
 static void EngineTab() 
@@ -89,6 +102,11 @@ static void EngineTab()
 
 	ImGui::Separator(5.0f);
 
+	if (ImGui::Checkbox("Show Menu At Startup##menu-show-at-startup", &ShowMenuAtStartup))
+	{
+		Settings::SetSetting({ "Menu", "ShowMenuAtStartup" }, ShowMenuAtStartup);
+	}
+
 	if (ImGui::Hotkey("Menu Keybind##menu-show", &ShowKeybind)) 
 	{
 		Settings::SetSetting({ "Menu", "ShowKeybind" }, ShowKeybind);
@@ -96,19 +114,17 @@ static void EngineTab()
 
 	ImGui::SameLine();
 
-	if (ImGui::Button("Reset##showKeybind")) 
+	if (ImGui::Button("Reset##menu-show-keybind")) 
 	{
 		Settings::SetSetting({ "Menu", "ShowKeybind" }, ShowKeybind = VK_INSERT);
 	}
 
-	ImGui::SameLine();
+	ImGui::Separator(5.0f);
 
 	if (ImGui::Button("Debug Console##client-show-console")) 
 	{
-		Debug::CreateConsole();
+		Debug::ToggleConsole();
 	}
-	
-	ImGui::HelpMarker("Creates a console window that will display debug info from printf(). If you close the debug console, it will close Mirror's Edge too");
 }
 
 static void WorldTab() 
@@ -190,6 +206,7 @@ void Menu::OnVisibilityChange(MenuCallback callback)
 bool Menu::Initialize() 
 {
 	ShowKeybind = Settings::GetSetting({ "Menu", "ShowKeybind" }, VK_INSERT);
+	ShowMenuAtStartup = Settings::GetSetting({ "Menu", "ShowMenuAtStartup" }, true);
 
 	Engine::OnRenderScene(RenderMenu);
 

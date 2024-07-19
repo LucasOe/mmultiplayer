@@ -165,11 +165,38 @@ void Debug::Initialize() {
     }
 }
 
-void Debug::CreateConsole() {
+void Debug::ToggleConsole()
+{
+    if (IsConsoleOpened)
+    {
+        CloseConsole();
+    }
+    else
+    {
+        CreateConsole();
+    }
+}
+
+void Debug::CreateConsole() 
+{
+    IsConsoleOpened = true;
     AllocConsole();
 
-    FILE *old;
-    static_cast<VOID>(freopen_s(&old, "CONIN$", "r", stdin));
-    static_cast<VOID>(freopen_s(&old, "CONOUT$", "w", stdout));
-    static_cast<VOID>(freopen_s(&old, "CONOUT$", "w", stderr));
+    FILE* old;
+    static_cast<void>(freopen_s(&old, "CONIN$", "r", stdin));
+    static_cast<void>(freopen_s(&old, "CONOUT$", "w", stdout));
+    static_cast<void>(freopen_s(&old, "CONOUT$", "w", stderr));
+
+    printf("This window displays stuff from printf(). To properly close me down, click on the \"Debug Console\" in the Engine tab.\n");
+}
+
+void Debug::CloseConsole() 
+{
+    IsConsoleOpened = false;
+    FreeConsole();
+
+    FILE* file;
+    static_cast<void>(freopen_s(&file, "NUL:", "r", stdin));
+    static_cast<void>(freopen_s(&file, "NUL:", "w", stdout));
+    static_cast<void>(freopen_s(&file, "NUL:", "w", stderr));
 }

@@ -110,7 +110,7 @@ public:
             return;
         }
 
-        ImGui::Begin("Speedometer##trainer-speedometer");
+        ImGui::BeginWindow("Speedometer##trainer-speedometer");
 
         ImGui::TextColored(LabelColor, Label.c_str());
         ImGui::SameLine(ValueOffset);
@@ -1022,38 +1022,6 @@ static void TrainerTab()
 
 static void OnRender(IDirect3DDevice9* device)
 {
-    // An attempt to find a solution to #24. If you remove "case Classes::EMovement::MOVE_ZipLine:" in Save function
-    // it will then sort of fix it. But it's random if you can get back to the zipline or not
-
-    /*
-    auto pawn = Engine::GetPlayerPawn();
-    auto controller = Engine::GetPlayerController();
-
-    if (pawn && controller)
-    {
-        ImGui::Begin("Debug##trainer-bugs", NULL);
-
-        ImGui::SeparatorText("Pawn##Debug-Pawn");
-        {
-            ImGui::Text("bCollideWorld: %s", pawn->bCollideWorld ? "True" : "False");
-            ImGui::Text("bConstrainLook: %s", pawn->bConstrainLook ? "True" : "False");
-            ImGui::Text("MovementState: %d", static_cast<int>(pawn->MovementState.GetValue()));
-            ImGui::Text("CollisionType: %d", static_cast<int>(pawn->CollisionType.GetValue()));
-            ImGui::Text("Physics: %d", static_cast<int>(pawn->Physics.GetValue()));
-        }
-
-        ImGui::SeparatorText("Controller##Debug-Controller");
-        {
-            ImGui::Text("bIgnoreLookInput: %s", controller->bIgnoreLookInput ? "True" : "False");
-            ImGui::Text("bIgnoreMoveInput: %s", controller->bIgnoreMoveInput ? "True" : "False");
-            ImGui::Text("bIgnoreButtonInput: %s", controller->bIgnoreButtonInput ? "True" : "False");
-            ImGui::Text("bIgnoreMovementFocus: %s", controller->bIgnoreMovementFocus ? "True" : "False");
-        }
-
-        ImGui::End();
-    }
-    */
-
     if (Speedometer.Show)
     {
         if (Speedometer.ShowEditWindow)
@@ -1062,7 +1030,9 @@ static void OnRender(IDirect3DDevice9* device)
             static ImVec4 valueColor(1.0f, 1.0f, 1.0f, 1.0f);
             static ImVec4 labelColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-            ImGui::Begin("Edit Speedometer Window##speedometer-edit-window", &Speedometer.ShowEditWindow, ImGuiWindowFlags_NoCollapse);
+            ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(470, 478), ImGuiCond_FirstUseEver);
+            ImGui::BeginWindow("Edit Speedometer Window##speedometer-edit-window", &Speedometer.ShowEditWindow, ImGuiWindowFlags_NoCollapse);
             ImGui::SeparatorText("Flags");
             {
                 ImGui::CheckboxFlags("No Title Bar", &Speedometer.WindowFlags, ImGuiWindowFlags_NoTitleBar);
@@ -1151,7 +1121,9 @@ static void OnRender(IDirect3DDevice9* device)
         {
             static size_t selectedIndex = -1;
 
-            ImGui::Begin("Edit Speedometer Items##speedometer-edit-items", &Speedometer.ShowItemEditorWindow, ImGuiWindowFlags_NoCollapse);
+            ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(322, 407), ImGuiCond_FirstUseEver);
+            ImGui::BeginWindow("Edit Speedometer Items##speedometer-edit-items", &Speedometer.ShowItemEditorWindow, ImGuiWindowFlags_NoCollapse);
             ImGui::SeparatorText("Items");
             {
                 int itemIndexSelected = -1;
@@ -1219,7 +1191,7 @@ static void OnRender(IDirect3DDevice9* device)
 
                 if (selectedIndex != -1)
                 {
-                    ImGui::Begin("Edit Item##Speedometer-Edit-Item", NULL, ImGuiWindowFlags_NoCollapse);
+                    ImGui::BeginWindow("Edit Item##Speedometer-Edit-Item", NULL, ImGuiWindowFlags_NoCollapse);
                     {
                         bool needsToReorderItems = false;
                         Items[selectedIndex]->Edit(needsToReorderItems);
@@ -1280,7 +1252,9 @@ static void OnRender(IDirect3DDevice9* device)
             ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, Speedometer.Style.WindowBorderSize);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, Speedometer.Style.WindowRounding);
 
-            ImGui::Begin("Speedometer##trainer-speedometer", Speedometer.HideCloseButton ? NULL : &Speedometer.Show, Speedometer.WindowFlags);
+            ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(190, 345), ImGuiCond_FirstUseEver);
+            ImGui::BeginWindow("Speedometer##trainer-speedometer", Speedometer.HideCloseButton ? NULL : &Speedometer.Show, Speedometer.WindowFlags);
 
             const float speed = sqrtf(powf(pawn->Velocity.X, 2) + powf(pawn->Velocity.Y, 2));
             const float pitch = static_cast<float>(controller->Rotation.Pitch % 0x10000) / static_cast<float>(0x10000) * 360.0f;

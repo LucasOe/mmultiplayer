@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -144,6 +144,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
+      <AdditionalDependencies>d3d9.lib;d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -173,6 +175,9 @@
     <ClInclude Include="addons\dolly.h" />
     <ClInclude Include="addons\misc.h" />
     <ClInclude Include="addons\trainer.h" />
+    <ClInclude Include="addons\chaos\chaos.h" />
+    <ClInclude Include="addons\chaos\effect.h" />
+    <ClInclude Include="addons\chaos\group.h" />
     <ClInclude Include="engine.h" />
     <ClInclude Include="addon.h" />
     <ClInclude Include="hook.h" />
@@ -246,6 +251,31 @@
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="addons\chaos\chaos.cpp" />
+    <ClCompile Include="addons\chaos\effect.cpp" />
+    <ClCompile Include="addons\chaos\effects\aimbot.cpp" />
+    <ClCompile Include="addons\chaos\effects\camerarotation.cpp" />
+    <ClCompile Include="addons\chaos\effects\camerashake.cpp" />
+    <ClCompile Include="addons\chaos\effects\checkpoint.cpp" />
+    <ClCompile Include="addons\chaos\effects\colorscale.cpp" />
+    <ClCompile Include="addons\chaos\effects\disableinput.cpp" />
+    <ClCompile Include="addons\chaos\effects\dvdscreensaver.cpp" />
+    <ClCompile Include="addons\chaos\effects\forcestate.cpp" />
+    <ClCompile Include="addons\chaos\effects\gotomainmenu.cpp" />
+    <ClCompile Include="addons\chaos\effects\jump.cpp" />
+    <ClCompile Include="addons\chaos\effects\fallonback.cpp" />
+    <ClCompile Include="addons\chaos\effects\forcerandomdirection.cpp" />
+    <ClCompile Include="addons\chaos\effects\fov.cpp" />
+    <ClCompile Include="addons\chaos\effects\framerate.cpp" />
+    <ClCompile Include="addons\chaos\effects\gravity.cpp" />
+    <ClCompile Include="addons\chaos\effects\health.cpp" />
+    <ClCompile Include="addons\chaos\effects\invertedcontrols.cpp" />
+    <ClCompile Include="addons\chaos\effects\killbots.cpp" />
+    <ClCompile Include="addons\chaos\effects\level\train.cpp" />
+    <ClCompile Include="addons\chaos\effects\nothing.cpp" />
+    <ClCompile Include="addons\chaos\effects\teleport.cpp" />
+    <ClCompile Include="addons\chaos\effects\gamespeed.cpp" />
+    <ClCompile Include="addons\chaos\effects\toomuchinfo.cpp" />
     <ClCompile Include="addons\client.cpp" />
     <ClCompile Include="addons\dolly.cpp" />
     <ClCompile Include="addons\misc.cpp" />

@@ -1,8 +1,11 @@
 #pragma once
 
-namespace Debug {
+namespace Debug 
+{
+    static bool IsConsoleOpened = false;
 
-void Initialize();
-void CreateConsole();
-
+    void Initialize();
+    void ToggleConsole();
+    void CreateConsole();
+    void CloseConsole();
 } // namespace Debug

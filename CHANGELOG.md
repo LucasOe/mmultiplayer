@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [Unreleased]
+
+### Added
+- Chaos tab
+
+### Fixed
+- The file mmultiplayer.settings are no longer stored in temp folder and now persists where the game's exe is
+- The size and position of the menu is now properly setup when you play on new version for the first time
+- Debug console can now be closed without it closing the game (when closed down correctly)
+
+### Changed
+- Renamed mmultiplayer.settings to mmultiplayer-settings.json
+- Multiplayer menu now shows at startup which can be turned off
+
 ## [2.2.0] - 2024-03-25
 
 ### Added

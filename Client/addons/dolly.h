@@ -9,6 +9,8 @@ class Dolly : public Addon {
     bool Initialize();
     std::string GetName();
 
+    void ForceRoll(bool force);
+
     class Marker {
       public:
         inline Marker(int frame, float fov, Classes::FVector position,
