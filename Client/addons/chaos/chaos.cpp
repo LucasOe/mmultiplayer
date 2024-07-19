@@ -203,6 +203,8 @@ static void ChaosTab()
 
     ImGui::Text("Timer");
     {
+        ImGui::DummyVertical(2.5f);
+
         if (ImGui::SliderFloat("Time Until New Effect##Chaos-TimeUntilNewEffect", &TimeUntilNewEffect, 5.0f, 60.0f, "%.0f sec"))
         {
             TimeUntilNewEffect = ImMax(5.0f, TimeUntilNewEffect);
@@ -238,6 +240,8 @@ static void ChaosTab()
 
     ImGui::Text("Duration Time");
     {
+        ImGui::DummyVertical(2.5f);
+
         for (int i = 0; i < static_cast<int>(EDuration::COUNT); i++)
         {
             const auto label = std::string(DurationTimeStrings[i]) + "##Chaos-" + DurationTimeStrings[i] + "-DurationTime";
@@ -254,12 +258,11 @@ static void ChaosTab()
     ImGui::Text("Group Settings");
     {
         ImGui::HelpMarker(
-            "Select a group to toggle the enabled state. Scroll down to see what each effect has for group flags. "
+            "Select a group to enable or disable it. Scroll down to see what each effect has for group flags. "
             "You can also enable or disable all effects. There's no undo for this"
         );
 
-        // ImGui::Text("Effects().size(): %d", Effects().size());
-        // ImGui::Text("EnabledEffects.size(): %d", EnabledEffects.size());
+        ImGui::DummyVertical(2.5f);
 
         static int groupIndex = 0;
         const char* previewValue = GroupNames[groupIndex];
@@ -283,7 +286,7 @@ static void ChaosTab()
             ImGui::EndCombo();
         }
 
-        ImGui::Dummy(ImVec2(0.0f, 2.5f));
+        ImGui::DummyVertical(2.5f);
 
         char buffer[0x80];
         sprintf_s(buffer, sizeof(buffer), "Enable All \"%s\" Effects##Chaos-EnableAllSpecificGroup", GroupNames[groupIndex]);
@@ -298,7 +301,7 @@ static void ChaosTab()
             ToggleEffects(false, groupIndex);
         }
 
-        ImGui::Dummy(ImVec2(0.0f, 2.5f));
+        ImGui::DummyVertical(2.5f);
         if (ImGui::Button("Enable All Effects##Chaos-EnableAllEffects"))
         {
             ToggleEffects(true, -1);
@@ -318,7 +321,13 @@ static void ChaosTab()
             "Change the duration type and toggle the enabled state. The text below is what group it's in. "
             "You can change these settings while chaos is activated. However, it won't change the setting of active effects"
         );
-        ImGui::Dummy(ImVec2(0.0f, 2.5f));
+
+        ImGui::DummyVertical(2.5f);
+
+        ImGui::Text("All Effects: %d", Effects().size());
+        ImGui::Text("Enabled Effects: %d", EnabledEffects.size());
+
+        ImGui::DummyVertical(2.5f);
 
         for (auto effect : Effects())
         {
@@ -361,7 +370,7 @@ static void ChaosTab()
                 ImGui::Text(groupNames.c_str());
             }
 
-            ImGui::Dummy(ImVec2(0.0f, 2.5f));
+            ImGui::DummyVertical(2.5f);
         }
     }
 
@@ -583,6 +592,9 @@ bool Chaos::Initialize()
     Enabled = Settings::GetSetting({ "Chaos", "Enabled" }, false);
     Seed = Settings::GetSetting({ "Chaos", "Seed" }, 0);
     RandomizeNewSeed = Settings::GetSetting({ "Chaos", "RandomizeNewSeed" }, true);
+
+    DisplayEffectWindow = Settings::GetSetting({ "Chaos", "Timer", "DisplayEffectWindow" }, true);
+    DisplayTimerWindow = Settings::GetSetting({ "Chaos", "Timer", "DisplayTimerWindow" }, true);
 
     TimeUntilNewEffect = Settings::GetSetting({ "Chaos", "Timer", "TimeUntilNewEffect" }, 20.0f);
     TimeShownInHistory = Settings::GetSetting({ "Chaos", "Timer", "TimeShownInHistory" }, 40.0f);
