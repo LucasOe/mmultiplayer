@@ -16,6 +16,7 @@ namespace Classes
 #define CONST_INDEX_NONE                                         -1
 #define CONST_MaxInt                                             0x7fffffff
 #define CONST_Pi                                                 3.1415926535897932f
+#define CONST_Tau                                                6.283185307179586f
 #define CONST_RadToDeg                                           57.295779513082321600f
 #define CONST_RadToUnrRot                                        10430.3783504704527f
 #define CONST_UnrRotToRad                                        0.00009587379924285f
@@ -111,9 +112,9 @@ enum class EDistributionVectorMirrorFlags : uint8_t
 // 0x000C
 struct FRotator
 {
-	unsigned int                                                Pitch;                                           // 0x0000(0x0004) (Edit)
-	unsigned int                                                Yaw;                                             // 0x0004(0x0004) (Edit)
-	unsigned int                                                Roll;                                            // 0x0008(0x0004) (Edit)
+	unsigned int                                       Pitch;                                                    // 0x0000(0x0004) (Edit)
+	unsigned int                                       Yaw;                                                      // 0x0004(0x0004) (Edit)
+	unsigned int                                       Roll;                                                     // 0x0008(0x0004) (Edit)
 };
 
 // ScriptStruct Core.Object.Vector

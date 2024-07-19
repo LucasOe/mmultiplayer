@@ -8,6 +8,8 @@
 
 namespace Classes
 {
+class UObject;
+
 template<typename Fn>
 inline Fn GetVFunction(const void *instance, std::size_t index)
 {
@@ -19,6 +21,9 @@ template<class T>
 struct TArray
 {
 	friend struct FString;
+
+	template <class T>
+	friend struct TTransArray;
 
 public:
 	inline TArray()
@@ -66,6 +71,16 @@ private:
 	T* Data;
 	int32_t Count;
 	int32_t Max;
+};
+
+template<class T>
+struct TTransArray : private TArray<T>
+{
+	inline TTransArray() 
+	{
+	}
+
+	UObject* Owner;
 };
 
 struct FString : private TArray<wchar_t>
@@ -244,8 +259,6 @@ struct FName
 		return Index == other.Index && Number == other.Number;
 	};
 };
-
-class UObject;
 
 class FScriptInterface
 {
