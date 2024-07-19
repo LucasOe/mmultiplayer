@@ -78,6 +78,5 @@ public:
 using CameraRotateOnce = CameraRotation;
 using CameraUpsideDown = CameraRotation;
 
-// These effect might be too much...
-// REGISTER_EFFECT(CameraRotateOnce, "Camera Rotate Once", true);
-// REGISTER_EFFECT(CameraUpsideDown, "Camera Upside Down", false);
+REGISTER_EFFECT(CameraRotateOnce, "Camera Rotate Once", true);
+REGISTER_EFFECT(CameraUpsideDown, "Camera Upside Down", false);
