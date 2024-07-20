@@ -50,10 +50,10 @@ static void SetNewSeed()
         std::uniform_int_distribution<int> dist(INT_MIN, INT_MAX);
 
         Seed = dist(rngEngine);
-        rng.seed(Seed);
-
-        Settings::SetSetting({ "Chaos", "Seed" }, Seed);
     }
+
+    rng.seed(Seed);
+    Settings::SetSetting({ "Chaos", "Seed" }, Seed);
 
     for (auto effect : Effects())
     {
@@ -193,7 +193,7 @@ static void ChaosTab()
     }
     else
     {
-        if (ImGui::InputInt("Seed##Chaos-Seed", &Seed, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue))
+        if (ImGui::InputInt("Seed##Chaos-Seed", &Seed, 0, 0))
         {
             SetNewSeed();
         }
@@ -603,6 +603,8 @@ bool Chaos::Initialize()
     TimerColor = JsonToImVec4(Settings::GetSetting({ "Chaos", "Timer", "TimerColor" }, ImVec4ToJson(ImVec4(0.0f, 0.5f, 1.0f, 1.0f))));
     TimerBackgroundColor = JsonToImVec4(Settings::GetSetting({ "Chaos", "Timer", "TimerBackgroundColor" }, ImVec4ToJson(ImVec4(0.0f, 0.0f, 0.0f, 1.0f))));
 
+    rng.seed(Seed);
+
     for (int i = 0; i < static_cast<int>(EDuration::COUNT); i++)
     {
         DurationTime[i] = Settings::GetSetting({ "Chaos", "Duration", DurationTimeStrings[i] }, DurationTime[i]);
@@ -616,6 +618,8 @@ bool Chaos::Initialize()
         // Clamp it between 0 and Count - 1. If not clamped, it would not get the durationtime
         effect->DurationType = static_cast<EDuration>(ImClamp(static_cast<int>(effect->DurationType), 0, static_cast<int>(EDuration::COUNT) - 1));
         effect->DurationTime = DurationTime[(int)effect->DurationType];
+
+        effect->SetSeed(Seed);
 
         if (effect->Enabled)
         {
