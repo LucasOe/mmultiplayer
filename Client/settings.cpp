@@ -7,6 +7,25 @@ static json settings;
 
 static std::string GetSettingsPath() 
 {
+	static std::string path = "";
+
+	if (!path.empty())
+	{
+		return path;
+	}
+
+	char* buffer = nullptr;
+	if (_dupenv_s(&buffer, 0, "USERPROFILE") == 0 && buffer != nullptr)
+	{
+		std::string userpath(buffer);
+		userpath += "\\Documents\\EA Games\\Mirror's Edge\\mmultiplayer-settings.json";
+
+		free(buffer);
+		path = userpath;
+
+		return path;
+	}
+
 	return "mmultiplayer-settings.json";
 }
 
