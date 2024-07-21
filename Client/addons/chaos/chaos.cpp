@@ -354,7 +354,24 @@ static void ChaosTab()
             ImGui::SameLine();
             if (ImGui::Checkbox(effect->Name.c_str(), &effect->Enabled))
             {
-                ToggleEffects(&effect->Enabled, -1);
+                const auto it = std::find(EnabledEffects.begin(), EnabledEffects.end(), effect);
+
+                if (effect->Enabled)
+                {
+                    if (it == EnabledEffects.end())
+                    {
+                        EnabledEffects.push_back(effect);
+                    }
+                }
+                else
+                {
+                    if (it != EnabledEffects.end())
+                    {
+                        EnabledEffects.erase(it);
+                    }
+                }
+
+                Settings::SetSetting({ "Chaos", "Effect", effect->Name, "Enabled" }, effect->Enabled);
             }
 
             const auto groupNames = GetNamesFromGroup(static_cast<EGroup_>(effect->GetGroup()));
