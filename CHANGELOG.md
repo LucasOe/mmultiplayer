@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - The file mmultiplayer-settings.json now stored in `%userprofile%\Documents\EA Games\Mirror's Edge` 
 - Seeding wasn't setup correctly in chaos
-- Toggling chaos effects was using wrong the function and now works as expected
+- Toggling chaos effects was using the wrong function and now works as expected
 
 ## [2.3.0] - 2024-07-19
 
