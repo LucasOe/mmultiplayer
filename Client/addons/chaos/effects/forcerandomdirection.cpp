@@ -27,6 +27,12 @@ public:
     {
         auto pawn = Engine::GetPlayerPawn();
         auto controller = Engine::GetPlayerController();
+
+        if (!pawn || !controller)
+        {
+            return;
+        }
+
         controller->CurrentLookAtPoint = nullptr;
 
         Time += deltaTime;

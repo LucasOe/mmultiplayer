@@ -27,11 +27,6 @@ public:
 
     void Initialize() override 
     {
-        if (JumpType == EJumpType::Constant)
-        {
-            return;
-        }
-
         TimeDelay = RandomFloat(0.0f, TimeDelayMax);
         TimeActivatedAt = static_cast<float>(GetTickCount64());
     }
@@ -70,14 +65,25 @@ private:
 
     void ForceJump()
     {
+        const auto pawn = Engine::GetPlayerPawn();
         auto controller = Engine::GetPlayerController();
-        controller->bDuck = false;
-        controller->PlayerInput->Jump();
 
-        if (JumpType == EJumpType::Constant)
+        if (!pawn || !controller)
         {
             return;
         }
+
+        if (!controller->PlayerInput)
+        {
+            return;
+        }
+
+        if (pawn->MovementState != Classes::EMovement::MOVE_Grabbing)
+        {
+            controller->bDuck = false;
+        }
+
+        controller->PlayerInput->Jump();
 
         TimeActivatedAt = static_cast<float>(GetTickCount64());
         TimeDelay = RandomFloat(0.0f, TimeDelayMax);

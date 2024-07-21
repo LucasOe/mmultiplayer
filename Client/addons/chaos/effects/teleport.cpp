@@ -42,6 +42,11 @@ public:
         auto pawn = Engine::GetPlayerPawn();
         auto aicontrollers = GetTdAIControllers();
 
+        if (!pawn)
+        {
+            return;
+        }
+
         if (TeleportType == ETeleportType::PlayerToRandomAI)
         {
             for (size_t i = 0; i < aicontrollers.Num(); i++)

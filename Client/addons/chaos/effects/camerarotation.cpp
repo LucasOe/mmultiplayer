@@ -27,6 +27,10 @@ public:
     void Tick(const float deltaTime) override
     {
         auto controller = Engine::GetPlayerController();
+        if (!controller)
+        {
+            return;
+        }
 
         Dolly dolly;
         dolly.ForceRoll(true);
@@ -56,6 +60,11 @@ public:
     bool Shutdown() override
     {
         auto controller = Engine::GetPlayerController();
+        if (!controller)
+        {
+            return false;
+        }
+
         controller->Rotation.Roll = 0;
 
         Dolly dolly;

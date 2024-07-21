@@ -59,7 +59,7 @@ public:
     {
         auto controller = Engine::GetPlayerController();
 
-        if (!controller->PlayerCamera)
+        if (!controller || !controller->PlayerCamera)
         {
             return;
         }
@@ -87,13 +87,13 @@ public:
     bool Shutdown() override
     {
         auto controller = Engine::GetPlayerController();
-        if (controller->PlayerCamera)
+        if (!controller || !controller->PlayerCamera)
         {
-            controller->PlayerCamera->ColorScale = { 1.0f, 1.0f, 1.0f };
-            return true;
+            return false;
         }
 
-        return false;
+        controller->PlayerCamera->ColorScale = { 1.0f, 1.0f, 1.0f };
+        return true;
     }
 
     EGroup GetGroup() override

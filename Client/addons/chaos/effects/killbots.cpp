@@ -13,9 +13,13 @@ public:
 
     void Tick(const float deltaTime) override 
     {
-        const auto world = Engine::GetWorld();
-        const auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
+        const auto world = Engine::GetWorld(); 
+        if (!world)
+        {
+            return;
+        }
 
+        const auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
         if (!tdgame)
         {
             return;
