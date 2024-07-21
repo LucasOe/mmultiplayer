@@ -16,7 +16,7 @@ public:
         const auto world = Engine::GetWorld();
         if (!world)
         {
-            return;
+            return false;
         }
 
         const auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
