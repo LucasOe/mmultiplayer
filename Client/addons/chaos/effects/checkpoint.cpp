@@ -14,8 +14,12 @@ public:
     bool CanActivate() override
     {
         const auto world = Engine::GetWorld();
-        const auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
+        if (!world)
+        {
+            return;
+        }
 
+        const auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
         if (!tdgame)
         {
             return false;
@@ -27,8 +31,12 @@ public:
     void Tick(const float deltaTime) override
     {
         auto world = Engine::GetWorld();
-        auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
+        if (!world)
+        {
+            return;
+        }
 
+        auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
         if (!tdgame)
         {
             return;
@@ -40,8 +48,12 @@ public:
     bool Shutdown() override
     {
         auto world = Engine::GetWorld();
-        auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
+        if (!world)
+        {
+            return false;
+        }
 
+        auto tdgame = static_cast<Classes::ATdSPGame*>(world->Game);
         if (!tdgame)
         {
             return false;

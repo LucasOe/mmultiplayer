@@ -23,8 +23,14 @@ public:
         {
             return;
         }
+        
+        const auto world = Engine::GetWorld();
+        if (!world)
+        {
+            return;
+        }
 
-        const auto gameInfo = static_cast<Classes::ATdGameInfo*>(Engine::GetWorld()->Game);
+        const auto gameInfo = static_cast<Classes::ATdGameInfo*>(world->Game);
         if (!gameInfo->TdGameData)
         {
             return;

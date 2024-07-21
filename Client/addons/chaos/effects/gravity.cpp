@@ -20,7 +20,12 @@ public:
 
     void Initialize() override
     {
-        const auto pawn = Engine::GetPlayerPawn();
+        const auto pawn = Engine::GetPlayerPawn(); 
+        if (!pawn)
+        {
+            return;
+        }
+
         PreviousAccelRate = pawn->AccelRate;
         NewAccelRate = pawn->AccelRate * GravityModifier;
     }

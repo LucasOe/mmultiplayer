@@ -26,13 +26,17 @@ public:
     void Tick(const float deltaTime) override
     {
         const auto pawn = Engine::GetPlayerPawn();
+        auto controller = Engine::GetPlayerController();
+
+        if (!pawn || !controller)
+        {
+            return;
+        }
 
         if (pawn->MovementState != Classes::EMovement::MOVE_Walking && pawn->MovementState != Classes::EMovement::MOVE_Crouch)
         {
             return;
         }
-
-        auto controller = Engine::GetPlayerController();
 
         if (ForcedState == EForcedState::Walking)
         {
@@ -71,10 +75,18 @@ public:
     bool Shutdown() override
     {
         auto controller = Engine::GetPlayerController();
-        
+        if (!controller)
+        {
+            return false;
+        }
+
         if (ForcedState == EForcedState::Walking)
         {
             auto pawn = Engine::GetPlayerPawn();
+            if (!pawn)
+            {
+                return false;
+            }
 
             auto turn180 = static_cast<Classes::UTdMove_180Turn*>(pawn->Moves[static_cast<size_t>(Classes::EMovement::MOVE_180Turn)]);
             if (turn180)

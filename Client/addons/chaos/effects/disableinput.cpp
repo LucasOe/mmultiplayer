@@ -25,6 +25,11 @@ public:
         const auto pawn = Engine::GetPlayerPawn();
         auto controller = Engine::GetPlayerController();
 
+        if (!pawn || !controller)
+        {
+            return;
+        }
+
         controller->bIgnoreButtonInput = TRUE;
         controller->bIgnoreMoveInput = TRUE;
         controller->bIgnoreLookInput = TRUE;
@@ -52,6 +57,11 @@ public:
     {
         const auto pawn = Engine::GetPlayerPawn();
         auto controller = Engine::GetPlayerController();
+
+        if (!pawn || !controller)
+        {
+            return false;
+        }
 
         controller->bIgnoreButtonInput = FALSE;
         controller->bIgnoreMoveInput = FALSE;

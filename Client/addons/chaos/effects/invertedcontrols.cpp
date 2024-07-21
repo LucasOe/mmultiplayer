@@ -18,7 +18,7 @@ public:
     {
         const auto controller = Engine::GetPlayerController();
 
-        if (controller->PlayerInput)
+        if (controller && controller->PlayerInput)
         {
             PreviousbInvertMouse = controller->PlayerInput->bInvertMouse;
         }
@@ -28,7 +28,7 @@ public:
     {
         auto controller = Engine::GetPlayerController();
 
-        if (controller->PlayerInput)
+        if (controller && controller->PlayerInput)
         {
             controller->PlayerInput->bInvertMouse = !PreviousbInvertMouse;
         }
@@ -38,7 +38,7 @@ public:
     {
         auto controller = Engine::GetPlayerController();
 
-        if (!controller->PlayerInput)
+        if (!controller || !controller->PlayerInput)
         {
             return false;
         }

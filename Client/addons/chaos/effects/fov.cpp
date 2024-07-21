@@ -21,7 +21,7 @@ public:
         const auto pawn = Engine::GetPlayerPawn();
         const auto controller = Engine::GetPlayerController();
 
-        if (!controller->PlayerCamera)
+        if (!pawn || !controller || !controller->PlayerCamera)
         {
             return;
         }
@@ -46,7 +46,7 @@ public:
     {
         const auto controller = Engine::GetPlayerController();
 
-        if (!controller->PlayerCamera)
+        if (!controller || !controller->PlayerCamera)
         {
             return false;
         }
@@ -69,6 +69,11 @@ private:
     void SetLockedFov(bool lockFov)
     {
         auto controller = Engine::GetPlayerController();
+        if (!controller)
+        {
+            return;
+        }
+
         controller->PlayerCamera->LockedFOV = lockFov ? NewFov : 0.0f;
         controller->PlayerCamera->bLockedFOV = lockFov;
     }

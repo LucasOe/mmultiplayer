@@ -19,6 +19,11 @@ public:
     void Tick(const float deltaTime) override
     {
         auto controller = Engine::GetPlayerController();
+        if (!controller)
+        {
+            return;
+        }
+
         controller->CurrentLookAtPoint = nullptr;
 
         controller->Rotation.Pitch += RandomInt(-Intensity, Intensity);
