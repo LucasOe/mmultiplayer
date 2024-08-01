@@ -1,6 +1,9 @@
 #include <fstream>
 #include <Windows.h>
 
+#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING 1
+#include <experimental/filesystem>
+
 #include "settings.h"
 
 static json settings;
@@ -15,18 +18,23 @@ static std::string GetSettingsPath()
 	}
 
 	char* buffer = nullptr;
-	if (_dupenv_s(&buffer, 0, "USERPROFILE") == 0 && buffer != nullptr)
+	if (_dupenv_s(&buffer, 0, "APPDATA") == 0 && buffer != nullptr)
 	{
-		std::string userpath(buffer);
-		userpath += "\\Documents\\EA Games\\Mirror's Edge\\mmultiplayer-settings.json";
+		std::string settingsPath(buffer);
+		settingsPath += "\\MMultiplayer";
 
 		free(buffer);
-		path = userpath;
 
-		return path;
+		if (!std::experimental::filesystem::exists(settingsPath))
+		{
+			std::experimental::filesystem::create_directories(settingsPath);
+		}
+
+		settingsPath += "\\mmultiplayer-settings.json";
+		path = settingsPath;
 	}
 
-	return "mmultiplayer-settings.json";
+	return path;
 }
 
 void Settings::SetSetting(const std::vector<std::string> keys, const json value) 
