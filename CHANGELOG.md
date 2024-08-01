@@ -5,10 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.2] - 2024-08-02
+
+### Fixed
+- The file mmultiplayer-settings.json is now stored in `%appdata%\MMultiplayer` as previous method didn't work with OneDrive
+
 ## [2.3.1] - 2024-07-21
 
 ### Fixed
-- The file mmultiplayer-settings.json now stored in `%userprofile%\Documents\EA Games\Mirror's Edge` 
+- The file mmultiplayer-settings.json is now stored in `%userprofile%\Documents\EA Games\Mirror's Edge` 
 - Seeding wasn't setup correctly in chaos
 - Toggling chaos effects was using the wrong function and now works as expected
 
