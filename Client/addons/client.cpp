@@ -26,12 +26,14 @@ static bool IsLoading = false;
 static bool IsMultiplayerDisabled = false;
 static std::string Room;
 
+#ifdef GAMES_ADDON_SUPPORTED
 static bool ShowTagDistanceOverlay = false;
 static bool ShowTagCooldownOverlay = true;
 static bool PlayerDiedAndSentJsonMessage = false;
 static int TagCooldown = 5;
 static ULONGLONG TaggedTimed = 0;
 static int PreviousTaggedId = 0;
+#endif
 
 static sockaddr_in Server = {0};
 static SOCKET TCPSocket = 0;
@@ -349,20 +351,30 @@ static bool Join()
 
     const auto msgType = msg["type"];
     const auto msgId = msg["id"];
-    const auto msgGameMode = msg["gameMode"];
-    const auto msgTaggedPlayerId = msg["taggedPlayerId"];
-    const auto msgCanTag = msg["canTag"];
 
-    if (!msgType.is_string() || msgType != "id" || !msgId.is_number_integer() || !msgGameMode.is_string() || !msgTaggedPlayerId.is_number_integer() || !msgCanTag.is_boolean()) 
+    if (!msgType.is_string() || msgType != "id" || !msgId.is_number_integer())
     {
-        printf("client: malformed connect response\n");
+        printf("client: malformed connect response (1)\n");
         return false;
     }
 
     UserClient.Id = msgId;
+
+#ifdef GAMES_ADDON_SUPPORTED
+    const auto msgGameMode = msg["gameMode"];
+    const auto msgTaggedPlayerId = msg["taggedPlayerId"];
+    const auto msgCanTag = msg["canTag"];
+
+    if (!msgGameMode.is_string() || !msgTaggedPlayerId.is_number_integer() || !msgCanTag.is_boolean()) 
+    {
+        printf("client: malformed connect response (2)\n");
+        return false;
+    }
+
     UserClient.GameMode = msgGameMode.get<std::string>();
     UserClient.TaggedPlayerId = PreviousTaggedId = msgTaggedPlayerId;
     UserClient.CanTag = msgCanTag;
+#endif
 
     printf("client: joined with id %x\n", UserClient.Id);
     return true;
@@ -795,6 +807,8 @@ static void ClientListener()
                 }));
                 Players.Mutex.unlock();
             }
+
+#ifdef GAMES_ADDON_SUPPORTED
             else if (msgType == "gameMode") 
             {
                 const auto msgGameMode = msg["gameMode"];
@@ -875,6 +889,7 @@ static void ClientListener()
                 PreviousTaggedId = msgTaggedPlayerId;
                 IgnorePlayerInput(UserClient.Id == msgTaggedPlayerId);
             }
+#endif
         }
 
         if (statusThread.joinable()) 
@@ -917,62 +932,6 @@ static void OnTick(float deltaTime)
             sendto(UDPSocket, reinterpret_cast<const char *>(&packet), sizeof(packet), 0, reinterpret_cast<const sockaddr *>(&Server), sizeof(Server));
 
             sum = 0;
-        }
-    }
-}
-
-static void OnTickGames(float deltaTime) 
-{
-    if (UserClient.GameMode != GameMode_Tag) 
-    {
-        return;
-    }
-
-    static float sum = 0;
-    sum += deltaTime;
-
-    if (!IsLoading && IsConnected && sum > 0.16f) 
-    {
-        auto pawn = Engine::GetPlayerPawn();
-
-        if (!pawn) 
-        {
-            return;
-        }
-
-        sum = 0;
-
-        if (UserClient.Id != UserClient.TaggedPlayerId) 
-        {
-            if (pawn->Health <= 0 && PlayerDiedAndSentJsonMessage == false) 
-            {
-                SendJsonMessage({
-                    {"type", "dead"},
-                });
-
-                char buffer[0xFF];
-                sprintf_s(buffer, sizeof(buffer), "[Tag] %s died and they will chase instead", UserClient.Name.c_str());
-
-                SendJsonMessage({
-                    {"type", "announce"},
-                    {"body", buffer},
-                });
-
-                PlayerDiedAndSentJsonMessage = true;
-                UserClient.CanTag = false;
-            }
-        }
-        else 
-        {
-            if (!UserClient.CanTag) 
-            {
-                IgnorePlayerInput(true);
-            }
-        }
-
-        if (PlayerDiedAndSentJsonMessage == true && pawn->Health == 100) 
-        {
-            PlayerDiedAndSentJsonMessage = false;
         }
     }
 }
@@ -1093,162 +1052,6 @@ static void OnRender(IDirect3DDevice9 *device)
         ImGui::PushItemWidth(io.DisplaySize.x - inputWidthOffset * 2);
         ImGui::InputText("##client-chat-overlay-input", ChatInput, sizeof(ChatInput));
         ImGui::PopItemWidth();
-
-        ImGui::EndRawScene();
-    }
-}
-
-static void OnRenderGames(IDirect3DDevice9 *device) 
-{
-    if (!ShowTagDistanceOverlay && !ShowTagCooldownOverlay) 
-    {
-        return;
-    }
-
-    auto pawn = Engine::GetPlayerPawn();
-    auto controller = Engine::GetPlayerController();
-
-    if (!pawn || !controller) 
-    {
-        return;
-    }
-
-    if (UserClient.Level.empty() || UserClient.Level == Map_MainMenu) 
-    {
-        return;
-    }
-
-    int playersInTheSameLevel = 0;
-    float longestNameWidth = 0.0f;
-
-    for (const auto &p : Players.List) 
-    {
-        if (p->Level == UserClient.Level && p->Actor) 
-        {
-            playersInTheSameLevel++;
-            float nameWidth = ImGui::CalcTextSize(p->Name.c_str(), nullptr, false).x;
-
-            if (nameWidth > longestNameWidth) 
-            {
-                longestNameWidth = nameWidth;
-            }
-        }
-    }
-
-    if (playersInTheSameLevel == 0) 
-    {
-        return;
-    }
-
-    char buffer[0x200] = {0};
-    auto &io = ImGui::GetIO();
-    float textHeight = ImGui::GetTextLineHeight();
-
-    static float padding = 5.0f;
-    static float maxNameWidth = 192.0f;
-
-    if (ShowTagDistanceOverlay) 
-    {
-        auto window = ImGui::BeginRawScene("##tag-info");
-
-        static float rightPadding = 80.0f;
-        float y = (playersInTheSameLevel * textHeight) - textHeight + (padding / 2);
-        float x = min(maxNameWidth, longestNameWidth);
-
-        window->DrawList->AddRectFilled(ImVec2(), ImVec2(rightPadding + x + padding, y + padding + textHeight), ImColor(ImVec4(0, 0, 0, 0.4f)));
-
-        for (const auto &p : Players.List) 
-        {
-            if (!p->Actor || p->Level != UserClient.Level) 
-            {
-                continue;
-            }
-
-            float dist = Distance(p->Actor->Location, pawn->Location);
-
-            if (dist >= 10.0f) 
-            {
-                sprintf_s(buffer, "%.0f m", dist);
-            } 
-            else 
-            {
-                sprintf_s(buffer, "%.1f m", dist);
-            }
-
-            auto name = p->Name;
-            auto color = ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-            if (UserClient.GameMode == GameMode_Tag && p->Id == UserClient.TaggedPlayerId) {
-                color = ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-            }
-
-            if (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth) {
-                int charactersToRemove = 3;
-                do {
-                    name = p->Name;
-                    name = name.substr(0, name.size() - charactersToRemove++) + "...";
-                } while (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth);
-            }
-
-            window->DrawList->AddText(ImVec2(padding, y), color, buffer);
-            window->DrawList->AddText(ImVec2(rightPadding, y), color, name.c_str());
-
-            y -= textHeight;
-        }
-
-        ImGui::EndRawScene();
-    }
-
-    if (ShowTagCooldownOverlay) 
-    {
-        if (TaggedTimed == 0) 
-        {
-            return;
-        }
-
-        auto timeLeftTick = TaggedTimed + (static_cast<unsigned long long>(UserClient.CoolDownTag) * 1000) - GetTickCount64();
-        auto timeLeft = (float)timeLeftTick / 1000;
-
-        if (timeLeft < 0.0f || timeLeft > UINT_MAX) 
-        {
-            return;
-        }
-
-        auto playerName = UserClient.Name;
-
-        if (UserClient.Id != UserClient.TaggedPlayerId) 
-        {
-            auto player = GetPlayerById(UserClient.TaggedPlayerId);
-
-            if (!player) 
-            {
-                return;
-            }
-
-            playerName = player->Name;
-        }
-
-        auto name = playerName;
-        if (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth) 
-        {
-            int charactersToRemove = 3;
-
-            do 
-            {
-                name = playerName;
-                name = name.substr(0, name.size() - charactersToRemove++) + "...";
-            } while (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth);
-        }
-
-        sprintf_s(buffer, "%s can move in %.1f seconds", name.c_str(), timeLeft);
-
-        auto window = ImGui::BeginRawScene("##tag-timeleft");
-
-        float textSize = ImGui::CalcTextSize(buffer, nullptr, false).x;
-        float topMiddleX = io.DisplaySize.x / 2 - textSize / 2;
-
-        window->DrawList->AddRectFilled(ImVec2(topMiddleX - padding, 0), ImVec2(topMiddleX + textSize + padding, textHeight + padding), ImColor(ImVec4(0, 0, 0, 0.4f)));
-        window->DrawList->AddText(ImVec2(topMiddleX, padding / 2), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), buffer);
 
         ImGui::EndRawScene();
     }
@@ -1470,6 +1273,219 @@ static void MultiplayerTab()
     Players.Mutex.unlock_shared();
 }
 
+#ifdef GAMES_ADDON_SUPPORTED
+static void OnTickGames(float deltaTime) 
+{
+    if (UserClient.GameMode != GameMode_Tag) 
+    {
+        return;
+    }
+
+    static float sum = 0;
+    sum += deltaTime;
+
+    if (!IsLoading && IsConnected && sum > 0.16f) 
+    {
+        auto pawn = Engine::GetPlayerPawn();
+
+        if (!pawn) 
+        {
+            return;
+        }
+
+        sum = 0;
+
+        if (UserClient.Id != UserClient.TaggedPlayerId) 
+        {
+            if (pawn->Health <= 0 && PlayerDiedAndSentJsonMessage == false) 
+            {
+                SendJsonMessage({
+                    {"type", "dead"},
+                });
+
+                char buffer[0xFF];
+                sprintf_s(buffer, sizeof(buffer), "[Tag] %s died and they will chase instead", UserClient.Name.c_str());
+
+                SendJsonMessage({
+                    {"type", "announce"},
+                    {"body", buffer},
+                });
+
+                PlayerDiedAndSentJsonMessage = true;
+                UserClient.CanTag = false;
+            }
+        }
+        else 
+        {
+            if (!UserClient.CanTag) 
+            {
+                IgnorePlayerInput(true);
+            }
+        }
+
+        if (PlayerDiedAndSentJsonMessage == true && pawn->Health == 100) 
+        {
+            PlayerDiedAndSentJsonMessage = false;
+        }
+    }
+}
+
+static void OnRenderGames(IDirect3DDevice9 *device) 
+{
+    if (!ShowTagDistanceOverlay && !ShowTagCooldownOverlay) 
+    {
+        return;
+    }
+
+    auto pawn = Engine::GetPlayerPawn();
+    auto controller = Engine::GetPlayerController();
+
+    if (!pawn || !controller) 
+    {
+        return;
+    }
+
+    if (UserClient.Level.empty() || UserClient.Level == Map_MainMenu) 
+    {
+        return;
+    }
+
+    int playersInTheSameLevel = 0;
+    float longestNameWidth = 0.0f;
+
+    for (const auto &p : Players.List) 
+    {
+        if (p->Level == UserClient.Level && p->Actor) 
+        {
+            playersInTheSameLevel++;
+            float nameWidth = ImGui::CalcTextSize(p->Name.c_str(), nullptr, false).x;
+
+            if (nameWidth > longestNameWidth) 
+            {
+                longestNameWidth = nameWidth;
+            }
+        }
+    }
+
+    if (playersInTheSameLevel == 0) 
+    {
+        return;
+    }
+
+    char buffer[0x200] = {0};
+    auto &io = ImGui::GetIO();
+    float textHeight = ImGui::GetTextLineHeight();
+
+    static float padding = 5.0f;
+    static float maxNameWidth = 192.0f;
+
+    if (ShowTagDistanceOverlay) 
+    {
+        auto window = ImGui::BeginRawScene("##tag-info");
+
+        static float rightPadding = 80.0f;
+        float y = (playersInTheSameLevel * textHeight) - textHeight + (padding / 2);
+        float x = min(maxNameWidth, longestNameWidth);
+
+        window->DrawList->AddRectFilled(ImVec2(), ImVec2(rightPadding + x + padding, y + padding + textHeight), ImColor(ImVec4(0, 0, 0, 0.4f)));
+
+        for (const auto &p : Players.List) 
+        {
+            if (!p->Actor || p->Level != UserClient.Level) 
+            {
+                continue;
+            }
+
+            float dist = Distance(p->Actor->Location, pawn->Location);
+
+            if (dist >= 10.0f) 
+            {
+                sprintf_s(buffer, "%.0f m", dist);
+            } 
+            else 
+            {
+                sprintf_s(buffer, "%.1f m", dist);
+            }
+
+            auto name = p->Name;
+            auto color = ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+            if (UserClient.GameMode == GameMode_Tag && p->Id == UserClient.TaggedPlayerId) {
+                color = ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+            }
+
+            if (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth) {
+                int charactersToRemove = 3;
+                do {
+                    name = p->Name;
+                    name = name.substr(0, name.size() - charactersToRemove++) + "...";
+                } while (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth);
+            }
+
+            window->DrawList->AddText(ImVec2(padding, y), color, buffer);
+            window->DrawList->AddText(ImVec2(rightPadding, y), color, name.c_str());
+
+            y -= textHeight;
+        }
+
+        ImGui::EndRawScene();
+    }
+
+    if (ShowTagCooldownOverlay) 
+    {
+        if (TaggedTimed == 0) 
+        {
+            return;
+        }
+
+        auto timeLeftTick = TaggedTimed + (static_cast<unsigned long long>(UserClient.CoolDownTag) * 1000) - GetTickCount64();
+        auto timeLeft = (float)timeLeftTick / 1000;
+
+        if (timeLeft < 0.0f || timeLeft > UINT_MAX) 
+        {
+            return;
+        }
+
+        auto playerName = UserClient.Name;
+
+        if (UserClient.Id != UserClient.TaggedPlayerId) 
+        {
+            auto player = GetPlayerById(UserClient.TaggedPlayerId);
+
+            if (!player) 
+            {
+                return;
+            }
+
+            playerName = player->Name;
+        }
+
+        auto name = playerName;
+        if (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth) 
+        {
+            int charactersToRemove = 3;
+
+            do 
+            {
+                name = playerName;
+                name = name.substr(0, name.size() - charactersToRemove++) + "...";
+            } while (ImGui::CalcTextSize(name.c_str(), nullptr, false).x > maxNameWidth);
+        }
+
+        sprintf_s(buffer, "%s can move in %.1f seconds", name.c_str(), timeLeft);
+
+        auto window = ImGui::BeginRawScene("##tag-timeleft");
+
+        float textSize = ImGui::CalcTextSize(buffer, nullptr, false).x;
+        float topMiddleX = io.DisplaySize.x / 2 - textSize / 2;
+
+        window->DrawList->AddRectFilled(ImVec2(topMiddleX - padding, 0), ImVec2(topMiddleX + textSize + padding, textHeight + padding), ImColor(ImVec4(0, 0, 0, 0.4f)));
+        window->DrawList->AddText(ImVec2(topMiddleX, padding / 2), ImColor(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), buffer);
+
+        ImGui::EndRawScene();
+    }
+}
+
 static void GamesTab() 
 {
     ImGui::SeparatorText("Tag##Tag");
@@ -1553,6 +1569,8 @@ static void GamesTab()
     }
 }
 
+#endif
+
 bool Client::Initialize() 
 {
     // Settings
@@ -1568,17 +1586,18 @@ bool Client::Initialize()
     Chat.ShowOverlay = Settings::GetSetting({ "Client", "ShowChatOverlay" }, true);
     IsMultiplayerDisabled = Settings::GetSetting({ "Client", "Disabled" }, false);
 
-    ShowTagDistanceOverlay = Settings::GetSetting({ "Games", "Tag", "ShowDistanceOverlay" }, false);
-
     // Functions
     Menu::AddTab("Multiplayer", MultiplayerTab);
-    Menu::AddTab("Games", GamesTab);
-
     Engine::OnTick(OnTick);
-    Engine::OnTick(OnTickGames);
-
     Engine::OnRenderScene(OnRender);
+
+#ifdef GAMES_ADDON_SUPPORTED
+    ShowTagDistanceOverlay = Settings::GetSetting({ "Games", "Tag", "ShowDistanceOverlay" }, false);
+
+    Engine::OnTick(OnTickGames);
+    Menu::AddTab("Games", GamesTab);
     Engine::OnRenderScene(OnRenderGames);
+#endif
 
     Engine::OnInput([](unsigned int &msg, int keycode) 
     {
