@@ -186,8 +186,6 @@ void Debug::CreateConsole()
     static_cast<void>(freopen_s(&old, "CONIN$", "r", stdin));
     static_cast<void>(freopen_s(&old, "CONOUT$", "w", stdout));
     static_cast<void>(freopen_s(&old, "CONOUT$", "w", stderr));
-
-    printf("This window displays stuff from printf(). To properly close me down, click on the \"Debug Console\" in the Engine tab.\n");
 }
 
 void Debug::CloseConsole() 
