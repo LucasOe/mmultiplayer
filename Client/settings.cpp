@@ -1,8 +1,7 @@
 #include <fstream>
 #include <Windows.h>
 
-#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING 1
-#include <experimental/filesystem>
+#include <filesystem>
 
 #include "settings.h"
 
@@ -18,16 +17,16 @@ static std::string GetSettingsPath()
 	}
 
 	char* buffer = nullptr;
-	if (_dupenv_s(&buffer, 0, "APPDATA") == 0 && buffer != nullptr)
+	if (_dupenv_s(&buffer, nullptr, "APPDATA") == 0 && buffer != nullptr)
 	{
 		std::string settingsPath(buffer);
 		settingsPath += "\\MMultiplayer";
 
 		free(buffer);
 
-		if (!std::experimental::filesystem::exists(settingsPath))
+		if (!std::filesystem::exists(settingsPath))
 		{
-			std::experimental::filesystem::create_directories(settingsPath);
+			std::filesystem::create_directories(settingsPath);
 		}
 
 		settingsPath += "\\mmultiplayer-settings.json";
@@ -37,7 +36,7 @@ static std::string GetSettingsPath()
 	return path;
 }
 
-void Settings::SetSetting(const std::vector<std::string> keys, const json value) 
+void Settings::SetSetting(const std::vector<std::string> &keys, const json &value) 
 {
 	json* current = &settings;
 	for (const auto& key : keys) 
@@ -53,7 +52,7 @@ void Settings::SetSetting(const std::vector<std::string> keys, const json value)
 	Settings::Save();
 }
 
-json Settings::GetSetting(const std::vector<std::string> keys, const json defaultValue)
+json Settings::GetSetting(const std::vector<std::string> &keys, const json &defaultValue)
 {
 	json* current = &settings;
 
@@ -82,16 +81,16 @@ void Settings::Load()
 {
 	bool reset = true;
 
-	auto file = new std::ifstream(GetSettingsPath());
+	auto file = std::ifstream(GetSettingsPath()); // no need to be allocated on the heap.
 	if (file)
 	{
 		try 
 		{
-			settings = json::parse(*file);
+			settings = json::parse(file);
 			reset = false;
 		} catch (json::parse_error e) {}
 
-		file->close();
+	        file.close(); // not need due to RAII (Resource Acquisition Is Initialization) principle (https://en.cppreference.com/w/cpp/language/raii)
 	}
 
 	if (reset) 

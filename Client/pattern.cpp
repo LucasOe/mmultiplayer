@@ -14,7 +14,7 @@ bool Pattern::CheckMask(void *base, const char *pattern, const char *mask) {
 }
 
 void *Pattern::FindPattern(const char *pattern, const char *mask) {
-	return FindPattern(0, pattern, mask);
+	return FindPattern(nullptr, pattern, mask);
 }
 
 void *Pattern::FindPattern(const char *module, const char *pattern, const char *mask) {
@@ -23,7 +23,7 @@ void *Pattern::FindPattern(const char *module, const char *pattern, const char *
 		return nullptr;
 	}
 
-	MODULEINFO info = { 0 };
+	MODULEINFO info = { nullptr };
 	if (GetModuleInformation(GetCurrentProcess(), mod, &info, sizeof(info))) {
 		return FindPattern(mod, info.SizeOfImage, pattern, mask);
 	}
