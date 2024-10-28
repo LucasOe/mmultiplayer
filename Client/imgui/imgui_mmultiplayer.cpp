@@ -338,7 +338,7 @@ namespace ImGui
         const ImGuiStyle &style = g.Style;
 
         const ImGuiID id = window->GetID(label);
-        const ImVec2 label_size = CalcTextSize(label, NULL, true);
+        const ImVec2 label_size = CalcTextSize(label, nullptr, true);
         ImVec2 size = CalcItemSize(size_arg, CalcItemWidth(), label_size.y + style.FramePadding.y * 2.0f);
 
         const ImRect frame_bb(window->DC.CursorPos + ImVec2(label_size.x + style.ItemInnerSpacing.x, 0.0f), window->DC.CursorPos + size);
@@ -446,7 +446,7 @@ namespace ImGui
 
         const ImRect clip_rect(frame_bb.Min.x, frame_bb.Min.y, frame_bb.Min.x + size.x,frame_bb.Min.y + size.y);
         ImVec2 render_pos = frame_bb.Min + style.FramePadding;
-        RenderTextClipped(frame_bb.Min + style.FramePadding, frame_bb.Max - style.FramePadding, buf_display, NULL, NULL, style.ButtonTextAlign, &clip_rect);
+        RenderTextClipped(frame_bb.Min + style.FramePadding, frame_bb.Max - style.FramePadding, buf_display, nullptr, nullptr, style.ButtonTextAlign, &clip_rect);
 
         if (label_size.x > 0)
             RenderText(ImVec2(total_bb.Min.x, frame_bb.Min.y + style.FramePadding.y), label);

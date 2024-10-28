@@ -1191,7 +1191,7 @@ static void OnRender(IDirect3DDevice9* device)
 
                 if (selectedIndex != -1)
                 {
-                    ImGui::BeginWindow("Edit Item##Speedometer-Edit-Item", NULL, ImGuiWindowFlags_NoCollapse);
+                    ImGui::BeginWindow("Edit Item##Speedometer-Edit-Item", nullptr, ImGuiWindowFlags_NoCollapse);
                     {
                         bool needsToReorderItems = false;
                         Items[selectedIndex]->Edit(needsToReorderItems);
@@ -1254,7 +1254,7 @@ static void OnRender(IDirect3DDevice9* device)
 
             ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
             ImGui::SetNextWindowSize(ImVec2(190, 345), ImGuiCond_FirstUseEver);
-            ImGui::BeginWindow("Speedometer##trainer-speedometer", Speedometer.HideCloseButton ? NULL : &Speedometer.Show, Speedometer.WindowFlags);
+            ImGui::BeginWindow("Speedometer##trainer-speedometer", Speedometer.HideCloseButton ? nullptr : &Speedometer.Show, Speedometer.WindowFlags);
 
             const float speed = sqrtf(powf(pawn->Velocity.X, 2) + powf(pawn->Velocity.Y, 2));
             const float pitch = static_cast<float>(controller->Rotation.Pitch % 0x10000) / static_cast<float>(0x10000) * 360.0f;
@@ -1725,13 +1725,13 @@ bool Trainer::Initialize()
 
     if (!stateHandler) 
     {
-        MessageBoxA(0, "Failed to find StateHandler", "Failure", 0);
+        MessageBoxA(nullptr, "Failed to find StateHandler", "Failure", 0);
         return false;
     }
 
     if (!Hook::TrampolineHook(StateHandlerHook, stateHandler, reinterpret_cast<void **>(&StateHandlerOriginal))) 
     {
-        MessageBoxA(0, "Failed to hook StateHandler", "Failure", 0);
+        MessageBoxA(nullptr, "Failed to hook StateHandler", "Failure", 0);
         return false;
     }
 

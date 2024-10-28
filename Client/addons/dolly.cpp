@@ -513,14 +513,14 @@ bool Dolly::Initialize() {
     forceRollPatch = Pattern::FindPattern("\x89\x93\x00\x00\x00\x00\xA1\x00\x00\x00\x00\x83\xB8",
                                           "xx????x????xx");
     if (!forceRollPatch) {
-        MessageBoxA(0, "Failed to find forceRollPatch", "Failure", 0);
+        MessageBoxA(nullptr, "Failed to find forceRollPatch", "Failure", 0);
         return false;
     }
 
     unsigned long oldProtect;
     if (!VirtualProtect(forceRollPatch, sizeof(forceRollPatchOriginal), PAGE_EXECUTE_READWRITE,
                         &oldProtect)) {
-        MessageBoxA(0, "Failed to change page protection for rollPatch", "Failure", 0);
+        MessageBoxA(nullptr, "Failed to change page protection for rollPatch", "Failure", 0);
         return false;
     }
 

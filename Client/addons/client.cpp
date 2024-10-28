@@ -1,3 +1,8 @@
+
+#ifndef _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+#endif
+
 #include <codecvt>
 #include <locale>
 #include <mutex>
@@ -15,6 +20,8 @@
 #include "../settings.h"
 
 #include "client.h"
+
+#include "../string_utils.h"
 #include "../util.h"
 
 static char RoomInput[0xFF] = {0};
@@ -315,12 +322,8 @@ static bool Join()
             return false;
         }
 
-        UserClient.Level = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(world->GetMapName(false).c_str());
-
-        std::transform(UserClient.Level.begin(), UserClient.Level.end(), UserClient.Level.begin(), [](char c) 
-        { 
-            return tolower(c); 
-        });
+        UserClient.Level = GetLowercasedLevelName(world->GetMapName(false).c_str());
+        
 
         if (UserClient.Level == Map_MainMenu) 
         {
@@ -1648,12 +1651,7 @@ bool Client::Initialize()
         Players.Mutex.lock_shared();
         IsLoading = true;
 
-        UserClient.Level = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(levelNameW);
-
-        std::transform(UserClient.Level.begin(), UserClient.Level.end(), UserClient.Level.begin(), [](char c) 
-        { 
-            return tolower(c); 
-        });
+        UserClient.Level = GetLowercasedLevelName(levelNameW);
 
         for (const auto &p : Players.List) 
         {

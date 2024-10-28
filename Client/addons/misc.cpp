@@ -1,3 +1,7 @@
+
+#ifndef _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+#endif
 #include <codecvt>
 
 #include "../engine.h"
@@ -6,6 +10,8 @@
 #include "../settings.h"
 #include "../util.h"
 #include "misc.h"
+
+#include "../string_utils.h"
 
 static bool Enabled = false;
 static std::string LevelName;
@@ -313,8 +319,8 @@ static void OnTick(float deltaTime)
 
     if (LevelName.empty()) 
     {
-        LevelName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(pawn->WorldInfo->GetMapName(false).c_str());
-
+        
+        LevelName = GetLowercasedLevelName(pawn->WorldInfo->GetMapName(false).c_str());
         std::transform(LevelName.begin(), LevelName.end(),LevelName.begin(), [](char c) 
         {
             return tolower(c); 
@@ -492,11 +498,8 @@ bool Misc::Initialize()
 
     Engine::OnPostLevelLoad([](const wchar_t *newLevelName) 
     {
-        LevelName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(newLevelName);
-        std::transform(LevelName.begin(), LevelName.end(), LevelName.begin(), [](char c) 
-        { 
-            return tolower(c); 
-        });
+        LevelName = GetLowercasedLevelName(newLevelName);
+        
     });
 
     return true;
