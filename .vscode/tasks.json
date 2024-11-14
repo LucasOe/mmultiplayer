@@ -1,0 +1,51 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Client Build",
+			"command": "msbuild",
+			"args": [
+				"${workspaceFolder}\\Client\\Client.vcxproj",
+				"/p:Configuration=Release",
+				"/p:Platform=x86",
+				"/p:OutDir='${workspaceFolder}\\Release\\'",
+				"/t:Build"
+			],
+			"options": {
+				"env": {
+					"PATH": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\MSBuild\\Current\\Bin"
+				}
+			},
+			"type": "shell",
+			"group": "build",
+			"problemMatcher": ["$msCompile"]
+		},
+		{
+			"label": "Launcher Build",
+			"command": "msbuild",
+			"args": [
+				"${workspaceFolder}\\Launcher\\Launcher.vcxproj",
+				"/p:Configuration=Release",
+				"/p:Platform=x86",
+				"/p:OutDir='${workspaceFolder}\\Release\\'",
+				"/t:Build"
+			],
+			"options": {
+				"env": {
+					"PATH": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\MSBuild\\Current\\Bin"
+				}
+			},
+			"type": "shell",
+			"group": "build",
+			"problemMatcher": ["$msCompile"]
+		},
+		{
+			"label": "Build",
+			"dependsOn": ["Client Build", "Launcher Build"],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		}
+	]
+}
