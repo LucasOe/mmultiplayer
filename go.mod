@@ -1,4 +1,4 @@
-module github.com/Toyro98/mmultiplayer
+module github.com/LucasOe/mmultiplayer
 
 go 1.19
 
