@@ -1,6 +1,6 @@
-#include <Windows.h>
 #include <Psapi.h>
 #include <TlHelp32.h>
+#include <Windows.h>
 #include <conio.h>
 #include <stdio.h>
 #include <string>
@@ -26,7 +26,7 @@ static bool GetImageBase(void *pc, void **base) {
                 if (base) {
                     *base = reinterpret_cast<void *>(entry.modBaseAddr);
                 }
-                
+
                 CloseHandle(snapshot);
                 return true;
             }
@@ -129,7 +129,7 @@ static long WINAPI ExceptionHandler(EXCEPTION_POINTERS *exception) {
     }
 
     printf("\nIf this was unexpected, please copy this output and create an "
-           "issue at:\n\thttps://github.com/Toyro98/mmultiplayer/issues\n\n");
+           "issue at:\n\thttps://github.com/LucasOe/mmultiplayer/issues\n\n");
 
     printf("Press any key to exit...");
     static_cast<void>(_getch());
@@ -165,35 +165,29 @@ void Debug::Initialize() {
     }
 }
 
-void Debug::ToggleConsole()
-{
-    if (IsConsoleOpened)
-    {
+void Debug::ToggleConsole() {
+    if (IsConsoleOpened) {
         CloseConsole();
-    }
-    else
-    {
+    } else {
         CreateConsole();
     }
 }
 
-void Debug::CreateConsole() 
-{
+void Debug::CreateConsole() {
     IsConsoleOpened = true;
     AllocConsole();
 
-    FILE* old;
+    FILE *old;
     static_cast<void>(freopen_s(&old, "CONIN$", "r", stdin));
     static_cast<void>(freopen_s(&old, "CONOUT$", "w", stdout));
     static_cast<void>(freopen_s(&old, "CONOUT$", "w", stderr));
 }
 
-void Debug::CloseConsole() 
-{
+void Debug::CloseConsole() {
     IsConsoleOpened = false;
     FreeConsole();
 
-    FILE* file;
+    FILE *file;
     static_cast<void>(freopen_s(&file, "NUL:", "r", stdin));
     static_cast<void>(freopen_s(&file, "NUL:", "w", stdout));
     static_cast<void>(freopen_s(&file, "NUL:", "w", stderr));
