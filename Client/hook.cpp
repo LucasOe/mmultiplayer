@@ -136,7 +136,7 @@ bool Hook::SetJMP(void *dest, void *src, int nops) {
 
 	memcpy(src, jmp, JMP_SIZE);
 	for (auto i = 0; i < nops; ++i) {
-		*(reinterpret_cast<byte *>(src) + JMP_SIZE + i) = 0x90;
+		*(static_cast<byte *>(src) + JMP_SIZE + i) = 0x90;
 	}
 
 	VirtualProtect(src, JMP_SIZE + nops, protection, &protection);
@@ -148,8 +148,8 @@ bool Hook::TrampolineHook(void *dest, void *src, void **original) {
 		return false;
 	}
 
-	if (*reinterpret_cast<byte *>(src) == 0xE9) {
-		void *copy = VirtualAlloc(0, JMP_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	if (*static_cast<byte *>(src) == 0xE9) {
+		void *copy = VirtualAlloc(nullptr, JMP_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 		if (!copy) {
 			return false;
 		}
@@ -165,7 +165,7 @@ bool Hook::TrampolineHook(void *dest, void *src, void **original) {
 	
 		if (!SetJMP(dest, src, 0)) {
 			if (original) {
-				*original = 0;
+				*original = nullptr;
 			}
 
 			VirtualFree(copy, 0, MEM_RELEASE);
@@ -173,7 +173,7 @@ bool Hook::TrampolineHook(void *dest, void *src, void **original) {
 		}
 	} else {
 		byte length = 0;
-		if (*reinterpret_cast<unsigned long *>(src) == 0x05100FF3UL) {
+		if (*static_cast<unsigned long *>(src) == 0x05100FF3UL) {
 			length = 8;
 		} else {
 			for (auto inst = reinterpret_cast<byte *>(src); length < JMP_SIZE; ) {
@@ -187,13 +187,13 @@ bool Hook::TrampolineHook(void *dest, void *src, void **original) {
 			}
 		}
 
-		auto copy = reinterpret_cast<byte *>(VirtualAlloc(0, length + JMP_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
+		auto copy = static_cast<byte *>(VirtualAlloc(nullptr, length + JMP_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
 		if (!copy) {
 			return false;
 		}
 
 		memcpy(copy, src, length);
-		if (!SetJMP(reinterpret_cast<byte *>(src) + length, copy + length, 0)) {
+		if (!SetJMP(static_cast<byte *>(src) + length, copy + length, 0)) {
 			VirtualFree(copy, 0, MEM_RELEASE);
 			return false;
 		}
@@ -204,7 +204,7 @@ bool Hook::TrampolineHook(void *dest, void *src, void **original) {
 
 		if (!SetJMP(dest, src, length - JMP_SIZE)) {
 			if (original) {
-				*original = 0;
+				*original = nullptr;
 			}
 
 			VirtualFree(copy, 0, MEM_RELEASE);
@@ -217,7 +217,7 @@ bool Hook::TrampolineHook(void *dest, void *src, void **original) {
 
 bool Hook::UnTrampolineHook(void *src, void *original) {
 	byte length = 0;
-	for (auto inst = reinterpret_cast<byte *>(original); length < JMP_SIZE; ) {
+	for (auto inst = static_cast<byte *>(original); length < JMP_SIZE; ) {
 		byte l = GetInstructionLength(INSTRUCTION_TABLE, inst);
 		if (!l) {
 			return false;

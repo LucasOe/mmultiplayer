@@ -1,10 +1,11 @@
 #include "chaos.h"
 #include "group.h"
 
-#include <codecvt>
+
 #include "../chaos/effect.h"
 #include "../../menu.h"
 #include "../../settings.h"
+#include "../../string_utils.h"
 #include "../../util.h"
 
 static bool Enabled = false;
@@ -651,11 +652,9 @@ bool Chaos::Initialize()
 
     Engine::OnPostLevelLoad([](const wchar_t* newLevelName)
     {
-        LevelName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(newLevelName);
-        std::transform(LevelName.begin(), LevelName.end(), LevelName.begin(), [](char c)
-        {
-            return tolower(c);
-        });
+        // codecvt is deprecated in C++17, use Windows API instead.
+        // LevelName = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().to_bytes(newLevelName);
+        LevelName = GetLowercasedLevelName(newLevelName);
     });
 
     return true;

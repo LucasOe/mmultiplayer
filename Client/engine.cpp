@@ -133,7 +133,7 @@ HRESULT WINAPI EndSceneHook(IDirect3DDevice9 *device) {
     device->SetRenderState(D3DRS_ZENABLE, false);
     device->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
     device->SetRenderState(D3DRS_SCISSORTESTENABLE, false);
-    device->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
+    device->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
                   D3DCOLOR_RGBA(0, 0, 0, 0), 1.0f, 0);
 
     ImGui::Render();
@@ -488,8 +488,8 @@ SpawnCharacter(Engine::Character character) {
     }
 
     const auto actor = static_cast<Classes::ASkeletalMeshActorSpawnable *>(
-        player->Spawn(Classes::ASkeletalMeshActorSpawnable::StaticClass(), 0, 0,
-                      {0}, {0}, 0, true));
+        player->Spawn(Classes::ASkeletalMeshActorSpawnable::StaticClass(), nullptr, 0,
+                      {0}, {0}, nullptr, true));
 
     actor->SetCollisionType(Classes::ECollisionType::COLLIDE_NoCollision);
 
@@ -958,7 +958,7 @@ bool Engine::Initialize() {
                                      "\x00\x00\x00\x8B\x04\x81",
                                      "xx????xxx????xxx"))) {
 
-        MessageBoxA(0, "Failed to find GNames", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to find GNames", "Failure", MB_ICONERROR);
         return false;
     }
 
@@ -970,7 +970,7 @@ bool Engine::Initialize() {
               "\x8B\x15\x00\x00\x00\x00\x8B\x0C\xB2\x8D\x44\x24\x30",
               "xx????xxxxxxx"))) {
 
-        MessageBoxA(0, "Failed to find GObjects", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to find GObjects", "Failure", MB_ICONERROR);
         return false;
     }
 
@@ -988,7 +988,7 @@ bool Engine::Initialize() {
               "\xC7\x06\x00\x00\x00\x00\x89\x86\x00\x00\x00\x00\x89\x86",
               "xx????xx????xx"))) {
 
-        MessageBoxA(0, "Failed to find D3D9 exports", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to find D3D9 exports", "Failure", MB_ICONERROR);
         return false;
     }
 
@@ -997,7 +997,7 @@ bool Engine::Initialize() {
             EndSceneHook, ((void **)ptr)[D3D9_EXPORT_ENDSCENE],
             reinterpret_cast<void **>(&renderScene.Original))) {
 
-        MessageBoxA(0, "Failed to hook D3D9 EndScene", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to hook D3D9 EndScene", "Failure", MB_ICONERROR);
         return false;
     }
 
@@ -1006,7 +1006,7 @@ bool Engine::Initialize() {
             ResetHook, ((void **)ptr)[D3D9_EXPORT_RESET],
             reinterpret_cast<void **>(&resetScene.Original))) {
 
-        MessageBoxA(0, "Failed to hook D3D9 Reset", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to hook D3D9 Reset", "Failure", MB_ICONERROR);
         return false;
     }
 
@@ -1014,7 +1014,7 @@ bool Engine::Initialize() {
     if (!Hook::TrampolineHook(PeekMessageHook, PeekMessageW,
                               reinterpret_cast<void **>(&window.PeekMessage))) {
 
-        MessageBoxA(0, "Failed to hook D3D9 Reset", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to hook D3D9 Reset", "Failure", MB_ICONERROR);
         return false;
     }
 
@@ -1023,7 +1023,7 @@ bool Engine::Initialize() {
               "\x56\x8B\xF1\x8B\x0D\x00\x00\x00\x00\x85\xC9\x74\x09",
               "xxxxx????xxxx"))) {
 
-        MessageBoxA(0, "Failed to find ProcessEvent", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to find ProcessEvent", "Failure", MB_ICONERROR);
         return false;
     }
 
@@ -1031,7 +1031,7 @@ bool Engine::Initialize() {
             ProcessEventHook, ptr,
             reinterpret_cast<void **>(&processEvent.Original))) {
 
-        MessageBoxA(0, "Failed to hook ProcessEvent", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to hook ProcessEvent", "Failure", MB_ICONERROR);
         return false;
     }
 
@@ -1043,14 +1043,14 @@ bool Engine::Initialize() {
               "\x6C\x24\x00\x00\xFF\x89",
               "???????xxxxxxxxx?xxxxxxxx????xxxxxx?xxxxxxxxxxxxxx??xx"))) {
 
-        MessageBoxA(0, "Failed to find LevelLoad", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to find LevelLoad", "Failure", MB_ICONERROR);
         return false;
     }
 
     if (!Hook::TrampolineHook(LevelLoadHook, ptr,
                               reinterpret_cast<void **>(&levelLoad.Original))) {
 
-        MessageBoxA(0, "Failed to hook LevelLoad", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to hook LevelLoad", "Failure", MB_ICONERROR);
         return false;
     }
 
@@ -1061,7 +1061,7 @@ bool Engine::Initialize() {
               "\x00\x00\x00\x00\x33\xD2\x0B\xC2\x75\xD6\xE9\x00\x00\x00\x00",
               "xxxxx????xxxxxxxxxxxx????xxxxxxx????xxxxxxx????"))) {
 
-        MessageBoxA(0, "Failed to find PreDeath (1)", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to find PreDeath (1)", "Failure", MB_ICONERROR);
         return false;
     }
 
@@ -1071,14 +1071,14 @@ bool Engine::Initialize() {
               "\xB8\x00\x00\x00\x00\xC3",
               "xx????????x????xx????x"))) {
 
-        MessageBoxA(0, "Failed to find PreDeath (2)", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to find PreDeath (2)", "Failure", MB_ICONERROR);
         return false;
     }
 
     if (!Hook::TrampolineHook(PreDeathHook, ptr,
                               reinterpret_cast<void **>(&death.PreOriginal))) {
 
-        MessageBoxA(0, "Failed to hook PreDeath", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to hook PreDeath", "Failure", MB_ICONERROR);
         return false;
     }
 
@@ -1090,14 +1090,14 @@ bool Engine::Initialize() {
               "\x8B\xC1\xC7\x00\x00\x00\x00\x00\xC3",
               "??????xx????????xxxx????xxx????xxxxx????x"))) {
 
-        MessageBoxA(0, "Failed to find PostDeath", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to find PostDeath", "Failure", MB_ICONERROR);
         return false;
     }
 
     if (!Hook::TrampolineHook(PostDeathHook, ptr,
                               reinterpret_cast<void **>(&death.PostOriginal))) {
 
-        MessageBoxA(0, "Failed to hook PreDeath", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to hook PreDeath", "Failure", MB_ICONERROR);
         return false;
     }
 
@@ -1106,14 +1106,14 @@ bool Engine::Initialize() {
               "\x55\x8B\xEC\x83\xE4\xF0\x83\xEC\x38\x56\x57\x8B\x81",
               "xxxxxxxxxxxxx"))) {
 
-        MessageBoxA(0, "Failed to find ActorTick", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to find ActorTick", "Failure", MB_ICONERROR);
         return false;
     }
 
     if (!Hook::TrampolineHook(ActorTickHook, ptr,
                               reinterpret_cast<void **>(&actorTick.Original))) {
 
-        MessageBoxA(0, "Failed to hook ActorTick", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to hook ActorTick", "Failure", MB_ICONERROR);
         return false;
     }
 
@@ -1122,21 +1122,21 @@ bool Engine::Initialize() {
               "\xE8\x00\x00\x00\x00\x8B\x74\x24\x14\x8D\x7B\x68",
               "x????xxxxxxx"))) {
 
-        MessageBoxA(0, "Failed to find BonesTick", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to find BonesTick", "Failure", MB_ICONERROR);
         return false;
     }
 
     if (!Hook::TrampolineHook(BonesTickHook, RELATIVE_ADDR(ptr, 5),
                               reinterpret_cast<void **>(&bonesTick.Original))) {
 
-        MessageBoxA(0, "Failed to hook BonesTick", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to hook BonesTick", "Failure", MB_ICONERROR);
         return false;
     }
 
     // ProjectionTick
     if (!(ptr = Pattern::FindPattern("\x83\xEC\x3C\xD9\x44\x24\x44",
                                      "xxxxxxx"))) {
-        MessageBoxA(0, "Failed to find ProjectionTick", "Failure",
+        MessageBoxA(nullptr, "Failed to find ProjectionTick", "Failure",
                     MB_ICONERROR);
         return false;
     }
@@ -1145,7 +1145,7 @@ bool Engine::Initialize() {
             ProjectionTick, ptr,
             reinterpret_cast<void **>(&projectionTick.Original))) {
 
-        MessageBoxA(0, "Failed to hook ProjectionTick", "Failure",
+        MessageBoxA(nullptr, "Failed to hook ProjectionTick", "Failure",
                     MB_ICONERROR);
         return false;
     }
@@ -1156,14 +1156,14 @@ bool Engine::Initialize() {
               "\x00\x00\x00\x00\x8B\x15\x00\x00\x00\x00\x8B\xE8",
               "xxxxxxxxxx????xx????xx????xx"))) {
 
-        MessageBoxA(0, "Failed to find Tick", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to find Tick", "Failure", MB_ICONERROR);
         return false;
     }
 
     if (!Hook::TrampolineHook(TickHook, ptr,
                               reinterpret_cast<void **>(&tick.Original))) {
 
-        MessageBoxA(0, "Failed to hook Tick", "Failure", MB_ICONERROR);
+        MessageBoxA(nullptr, "Failed to hook Tick", "Failure", MB_ICONERROR);
         return false;
     }
 

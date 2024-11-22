@@ -44,7 +44,7 @@ static int CompressedBoneOffsets[] = {
 class Client : public Addon 
 {
   public:
-    static const int Port = 5222;
+    static constexpr int Port = 5222;
 
     bool Initialize();
     std::string GetName();
