@@ -5,13 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [2.3.3] - Unreleased
 
 ### Fixed
 
 - Fix crash when removing the hotkey for "Sidestep Beamer Left/Right"
 
-### [2.3.3] - Unreleased
+### Changed
 
 - Internal code cleanup. Thanks to @Toyro98 and @Jvp2001 for the help!
 - Update the link in the error message to reflect new repository ownership
