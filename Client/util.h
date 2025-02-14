@@ -1,6 +1,7 @@
+#pragma once
 #include <WinUser.h>
 
-#pragma once
+
 
 /*
 * Virtual key codes defined which you can't find in winuser.h
@@ -61,14 +62,14 @@
 #define GameMode_Tag            "tag"
 
 // Calculates the distance and returns a float value in meters
-inline static float Distance(Classes::FVector from, Classes::FVector to) 
+static float Distance(const Classes::FVector &from, const Classes::FVector &to) 
 { 
 	return sqrt(((from.X - to.X) * (from.X - to.X)) + ((from.Y - to.Y) * (from.Y - to.Y)) + ((from.Z - to.Z) * (from.Z - to.Z))) / 100;
 }
 
 static INPUT Input = {0};
 
-inline static void PressKey(int keyCode) 
+static void PressKey(int keyCode) 
 {
     Input.type = INPUT_KEYBOARD;
     Input.ki.wScan = 0;
@@ -80,7 +81,7 @@ inline static void PressKey(int keyCode)
     SendInput(1, &Input, sizeof(INPUT));
 }
 
-inline static void ReleaseKey() 
+static void ReleaseKey() 
 {
     Input.type = INPUT_KEYBOARD;
     Input.ki.wScan = 0;
@@ -119,3 +120,5 @@ static Classes::FVector JsonToFVector(const json& j)
     v.Z = j.at("B").get<float>();
     return v;
 }
+
+

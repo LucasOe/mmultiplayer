@@ -1,6 +1,6 @@
+
 #include <vector>
 #include <locale>
-#include <codecvt>
 #include <d3d9.h>
 
 #include "debug.h"
@@ -8,6 +8,8 @@
 #include "settings.h"
 #include "imgui/imgui.h"
 #include "menu.h"
+
+#include "string_utils.h"
 
 static bool ShowMenu = false;
 static bool ShowMenuAtStartup = true;
@@ -36,7 +38,7 @@ static void RenderMenu(IDirect3DDevice9 *device)
 
 	ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ImVec2(720, 420), ImGuiCond_FirstUseEver);
-	ImGui::BeginWindow("MMultiplayer 2.3.2", NULL, ImGuiWindowFlags_NoCollapse);
+	ImGui::BeginWindow("MMultiplayer 2.3.2", nullptr, ImGuiWindowFlags_NoCollapse);
 	ImGui::BeginTabBar("");
 
 	for (auto tab : Tabs) 
@@ -66,7 +68,8 @@ static void EngineTab()
 	{
 		if (command[0]) 
 		{
-			Engine::ExecuteCommand(std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>().from_bytes(command).c_str());
+		    
+			Engine::ExecuteCommand(ConvertUtf8ToWideString(command).c_str());
 
 			command[0] = 0;
 		}
