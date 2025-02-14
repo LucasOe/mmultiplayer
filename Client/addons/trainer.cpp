@@ -1015,8 +1015,8 @@ static void TrainerTab()
         ProcessHotkey("Kickglitch##Trainer-Kickglitch", &KickglitchKeybind, { "Trainer", "Tools", "KickglitchKeybind" }, VK_NONE);
         ProcessHotkey("Beamer##Trainer-Beamer", &BeamerKeybind, { "Trainer", "Tools", "BeamerKeybind" }, VK_NONE);
         ProcessHotkey("Strang##Trainer-Strang", &StrangKeybind, { "Trainer", "Tools", "StrangKeybind" }, VK_NONE);
-        ProcessHotkey("Sidestep Beamer Left Keybind##Trainer-SidestepBeamerLeftKeybind", &SidestepBeamerLeftKeybind, { "Trainer", "SidestepBeamer", "PressLeftKeybind" }, VK_A);
-        ProcessHotkey("Sidestep Beamer Right Keybind##Trainer-SidestepBeamerRightKeybind", &SidestepBeamerRightKeybind, { "Trainer", "SidestepBeamer", "PressRightKeybind" }, VK_D);
+        ProcessHotkey("Sidestep Beamer Left Keybind##Trainer-SidestepBeamerLeftKeybind", &SidestepBeamerLeftKeybind, { "Trainer", "SidestepBeamer", "LeftKeybind" }, VK_A);
+        ProcessHotkey("Sidestep Beamer Right Keybind##Trainer-SidestepBeamerRightKeybind", &SidestepBeamerRightKeybind, { "Trainer", "SidestepBeamer", "RightKeybind" }, VK_D);
     } 
 }
 
