@@ -1,7 +1,5 @@
 #pragma once
 
-#include "addons/client.h"
-
 #include <Windows.h>
 
 #define JMP_SIZE (5)
