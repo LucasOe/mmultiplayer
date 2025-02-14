@@ -371,7 +371,7 @@ void ImGui_ImplDX9_InvalidateDeviceObjects()
         return;
     if (bd->pVB) { bd->pVB->Release(); bd->pVB = nullptr; }
     if (bd->pIB) { bd->pIB->Release(); bd->pIB = nullptr; }
-    if (bd->FontTexture) { bd->FontTexture->Release(); bd->FontTexture = nullptr; ImGui::GetIO().Fonts->SetTexID(nullptr); } // We copied bd->pFontTextureView to io.Fonts->TexID so let's clear that as well.
+    if (bd->FontTexture) { bd->FontTexture->Release(); bd->FontTexture = nullptr; ImGui::GetIO().Fonts->SetTexID(0); } // We copied bd->pFontTextureView to io.Fonts->TexID so let's clear that as well.
 }
 
 void ImGui_ImplDX9_NewFrame()
