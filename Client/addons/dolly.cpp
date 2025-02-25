@@ -4,6 +4,7 @@
 #include "../menu.h"
 #include "../pattern.h"
 #include "dolly.h"
+#include <fstream>
 
 static auto recording = false, playing = false, cameraView = false;
 
@@ -19,6 +20,8 @@ static byte forceRollPatchOriginal[6];
 
 static bool hideQueued = false;
 
+static unsigned long oldProtect;
+
 void Dolly::ForceRoll(bool force) {
     if (force) {
         memcpy(forceRollPatch, "\x90\x90\x90\x90\x90\x90", 6);
@@ -26,6 +29,11 @@ void Dolly::ForceRoll(bool force) {
         memcpy(forceRollPatch, forceRollPatchOriginal, 6);
     }
 }
+
+void SaveMarkers();
+void LoadMarkers();
+void SaveRecordings();
+void LoadRecordings();
 
 static Classes::FRotator VectorToRotator(Classes::FVector vector) {
     auto convert = [](float r) {
@@ -323,6 +331,16 @@ static void DollyTab() {
                 FixTimeline();
             }
         }
+        
+        if (ImGui::Button("Save Markers")) {
+            SaveMarkers();
+        }
+
+        
+        if (ImGui::Button("Load Markers")) {
+            LoadMarkers();
+            FixTimeline();
+        }
     }
 
     if (ImGui::CollapsingHeader("Recordings##dolly")) {
@@ -359,6 +377,113 @@ static void DollyTab() {
                 FixTimeline();
             }
         }
+        
+        if (ImGui::Button("Save Recordings")) {
+            SaveRecordings();
+        }
+
+       
+        if (ImGui::Button("Load Recordings")) {
+            LoadRecordings();
+            FixTimeline();
+        }
+    }
+    
+}
+
+void SaveMarkers() {
+    std::ofstream outFile("markers.dat", std::ios::binary);
+    if (outFile.is_open()) {
+        size_t markerCount = markers.size();
+        outFile.write(reinterpret_cast<char *>(&markerCount), sizeof(markerCount));
+        for (const auto &marker : markers) {
+            outFile.write(reinterpret_cast<const char *>(&marker.Frame), sizeof(marker.Frame));
+            outFile.write(reinterpret_cast<const char *>(&marker.FOV), sizeof(marker.FOV));
+            outFile.write(reinterpret_cast<const char *>(&marker.Position),
+                          sizeof(marker.Position));
+            outFile.write(reinterpret_cast<const char *>(&marker.Rotation),
+                          sizeof(marker.Rotation));
+        }
+        outFile.close();
+    }
+}
+
+void LoadMarkers() {
+    std::ifstream inFile("markers.dat", std::ios::binary);
+    if (inFile.is_open()) {
+        size_t markerCount;
+        inFile.read(reinterpret_cast<char *>(&markerCount), sizeof(markerCount));
+
+        markers.clear();
+        for (size_t i = 0; i < markerCount; ++i) {
+            int frame;
+            float fov;
+            Classes::FVector position;
+            Classes::FVector rotation;
+
+            inFile.read(reinterpret_cast<char *>(&frame), sizeof(frame));
+            inFile.read(reinterpret_cast<char *>(&fov), sizeof(fov));
+            inFile.read(reinterpret_cast<char *>(&position), sizeof(position));
+            inFile.read(reinterpret_cast<char *>(&rotation), sizeof(rotation));
+
+            Dolly::Marker marker(frame, fov, position, rotation);
+            markers.push_back(marker);
+        }
+        inFile.close();
+    }
+}
+
+void SaveRecordings() {
+    std::ofstream outFile("recordings.dat", std::ios::binary);
+    if (outFile.is_open()) {
+        size_t recordingCount = recordings.size();
+        outFile.write(reinterpret_cast<char *>(&recordingCount), sizeof(recordingCount));
+        for (const auto &recording : recordings) {
+            outFile.write(reinterpret_cast<const char *>(&recording.StartFrame),
+                          sizeof(recording.StartFrame));
+            outFile.write(reinterpret_cast<const char *>(&recording.Character),
+                          sizeof(recording.Character));
+            size_t frameCount = recording.Frames.size();
+            outFile.write(reinterpret_cast<char *>(&frameCount), sizeof(frameCount));
+            for (const auto &frame : recording.Frames) {
+                outFile.write(reinterpret_cast<const char *>(&frame.Position),
+                              sizeof(frame.Position));
+                outFile.write(reinterpret_cast<const char *>(&frame.Rotation),
+                              sizeof(frame.Rotation));
+                outFile.write(reinterpret_cast<const char *>(frame.Bones), sizeof(frame.Bones));
+            }
+        }
+        outFile.close();
+    }
+}
+
+void LoadRecordings() {
+    std::ifstream inFile("recordings.dat", std::ios::binary);
+    if (inFile.is_open()) {
+        size_t recordingCount;
+        inFile.read(reinterpret_cast<char *>(&recordingCount), sizeof(recordingCount));
+
+        recordings.clear();
+        for (size_t i = 0; i < recordingCount; ++i) {
+            Dolly::Recording recording;
+            inFile.read(reinterpret_cast<char *>(&recording.StartFrame),
+                        sizeof(recording.StartFrame));
+            inFile.read(reinterpret_cast<char *>(&recording.Character),
+                        sizeof(recording.Character));
+            size_t frameCount;
+            inFile.read(reinterpret_cast<char *>(&frameCount), sizeof(frameCount));
+            recording.Frames.resize(frameCount);
+            for (size_t j = 0; j < frameCount; ++j) {
+                inFile.read(reinterpret_cast<char *>(&recording.Frames[j].Position),
+                            sizeof(recording.Frames[j].Position));
+                inFile.read(reinterpret_cast<char *>(&recording.Frames[j].Rotation),
+                            sizeof(recording.Frames[j].Rotation));
+                inFile.read(reinterpret_cast<char *>(recording.Frames[j].Bones),
+                            sizeof(recording.Frames[j].Bones));
+            }
+            recordings.push_back(recording);
+        }
+        inFile.close();
     }
 }
 
@@ -507,6 +632,17 @@ static void OnRender(IDirect3DDevice9 *device) {
 
         ImGui::EndRawScene();
     }
+}
+
+Dolly::~Dolly() {
+   // Ensure proper cleanup of resources
+   //markers.clear();
+   //recordings.clear();
+   //currentRecording.Frames.clear();
+   if (forceRollPatch) {
+       VirtualProtect(forceRollPatch, sizeof(forceRollPatchOriginal), PAGE_EXECUTE_READWRITE, &oldProtect);
+       memcpy(forceRollPatch, forceRollPatchOriginal, sizeof(forceRollPatchOriginal));
+   }
 }
 
 bool Dolly::Initialize() {
