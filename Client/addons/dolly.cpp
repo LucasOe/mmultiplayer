@@ -640,8 +640,8 @@ Dolly::~Dolly() {
    //recordings.clear();
    //currentRecording.Frames.clear();
    if (forceRollPatch) {
-       VirtualProtect(forceRollPatch, sizeof(forceRollPatchOriginal), PAGE_EXECUTE_READWRITE, &oldProtect);
-       memcpy(forceRollPatch, forceRollPatchOriginal, sizeof(forceRollPatchOriginal));
+       //VirtualProtect(forceRollPatch, sizeof(forceRollPatchOriginal), PAGE_EXECUTE_READWRITE, &oldProtect);
+       //memcpy(forceRollPatch, forceRollPatchOriginal, sizeof(forceRollPatchOriginal));
    }
 }
 
