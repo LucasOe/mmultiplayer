@@ -5,6 +5,7 @@
 #include "../pattern.h"
 #include "dolly.h"
 #include <fstream>
+#include <shlobj.h>
 
 static auto recording = false, playing = false, cameraView = false;
 
@@ -21,6 +22,14 @@ static byte forceRollPatchOriginal[6];
 static bool hideQueued = false;
 
 static unsigned long oldProtect;
+
+std::string GetAppDataPath() {
+    char path[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_APPDATA, nullptr, 0, path))) {
+        return std::string(path) + "\\MMultiplayer\\";
+    }
+    return "";
+}
 
 void Dolly::ForceRoll(bool force) {
     if (force) {
@@ -392,7 +401,8 @@ static void DollyTab() {
 }
 
 void SaveMarkers() {
-    std::ofstream outFile("markers.dat", std::ios::binary);
+    std::string path = GetAppDataPath() + "markers.dat";
+    std::ofstream outFile(path, std::ios::binary);
     if (outFile.is_open()) {
         size_t markerCount = markers.size();
         outFile.write(reinterpret_cast<char *>(&markerCount), sizeof(markerCount));
@@ -409,7 +419,8 @@ void SaveMarkers() {
 }
 
 void LoadMarkers() {
-    std::ifstream inFile("markers.dat", std::ios::binary);
+    std::string path = GetAppDataPath() + "markers.dat";
+    std::ifstream inFile(path, std::ios::binary);
     if (inFile.is_open()) {
         size_t markerCount;
         inFile.read(reinterpret_cast<char *>(&markerCount), sizeof(markerCount));
@@ -434,7 +445,8 @@ void LoadMarkers() {
 }
 
 void SaveRecordings() {
-    std::ofstream outFile("recordings.dat", std::ios::binary);
+    std::string path = GetAppDataPath() + "recordings.dat";
+    std::ofstream outFile(path, std::ios::binary);
     if (outFile.is_open()) {
         size_t recordingCount = recordings.size();
         outFile.write(reinterpret_cast<char *>(&recordingCount), sizeof(recordingCount));
@@ -458,7 +470,8 @@ void SaveRecordings() {
 }
 
 void LoadRecordings() {
-    std::ifstream inFile("recordings.dat", std::ios::binary);
+    std::string path = GetAppDataPath() + "recordings.dat";
+    std::ifstream inFile(path, std::ios::binary);
     if (inFile.is_open()) {
         size_t recordingCount;
         inFile.read(reinterpret_cast<char *>(&recordingCount), sizeof(recordingCount));
@@ -634,7 +647,7 @@ static void OnRender(IDirect3DDevice9 *device) {
     }
 }
 
-Dolly::~Dolly() {
+Dolly::~Dolly() { // IF I REMOVE THIS FUNCTION, THE GAME CRASHES ON EXIT
    // Ensure proper cleanup of resources
    //markers.clear();
    //recordings.clear();
