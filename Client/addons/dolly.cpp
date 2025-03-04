@@ -7,7 +7,7 @@
 #include <fstream>
 #include <shlobj.h>
 
-static auto recording = false, playing = false, cameraView = false;
+static auto recording = false, playing = false, cameraView = false, pathDisplay = false;
 
 static int duration = 0, frame = 0;
 static std::vector<Dolly::Marker> markers;
@@ -214,6 +214,9 @@ static void DollyTab() {
     if (ImGui::Checkbox("Camera View##dolly", &cameraView)) {
         FixPlayer();
     }
+
+    ImGui::SameLine();
+    ImGui::Checkbox("Display Dolly Path##dolly", &pathDisplay);
 
     ImGui::SameLine();
     ImGui::Text("|");
@@ -595,7 +598,7 @@ static void OnTick(float) {
 }
 
 static void OnRender(IDirect3DDevice9 *device) {
-    if (!playing) {
+    if (!playing && pathDisplay) {
         auto window = ImGui::BeginRawScene("##dolly-backbuffer");
 
         if (markers.size() > 1) {
