@@ -3,11 +3,14 @@
 #include "../imgui/imgui.h"
 #include "../menu.h"
 #include "../pattern.h"
+#include "../settings.h"
 #include "dolly.h"
 #include <fstream>
 #include <shlobj.h>
 
-static auto recording = false, playing = false, cameraView = false, pathDisplay = false;
+static auto recording = false, playing = false, cameraView = false, pathDisplay = true;
+
+static bool ToggleResetKeybinds = false;
 
 static int duration = 0, frame = 0;
 static std::vector<Dolly::Marker> markers;
@@ -22,6 +25,13 @@ static byte forceRollPatchOriginal[6];
 static bool hideQueued = false;
 
 static unsigned long oldProtect;
+
+static int MarkerKeybind = 0;
+static int RecordKeybind = 0;
+static int JumpFramesKeybind = 0;
+static int StartStopKeybind = 0;
+
+static int FrameJumpAmount = 100;
 
 std::string GetAppDataPath() {
     char path[MAX_PATH];
@@ -43,6 +53,24 @@ void SaveMarkers();
 void LoadMarkers();
 void SaveRecordings();
 void LoadRecordings();
+
+static void ProcessHotkey(const char *label, int *key, const std::vector<std::string> settings, const int defaultValue) {
+    if (settings.empty()) {
+        return;
+    }
+
+    if (ImGui::Hotkey(label, key)) {
+        Settings::SetSetting(settings, *key);
+    }
+
+    if (ToggleResetKeybinds) {
+        ImGui::SameLine();
+
+        if (ImGui::Button(("Reset##" + settings.back()).c_str())) {
+            Settings::SetSetting(settings, *key = defaultValue);
+        }
+    }
+}
 
 static Classes::FRotator VectorToRotator(Classes::FVector vector) {
     auto convert = [](float r) {
@@ -185,6 +213,46 @@ static void FixPlayer() {
     }
 }
 
+static void AddMarker() {
+    auto pawn = Engine::GetPlayerPawn();
+    auto controller = Engine::GetPlayerController();
+    if (pawn && controller) {
+        Dolly::Marker marker(frame, controller->PlayerCamera->GetFOVAngle(), pawn->Location,
+                             RotatorToVector(pawn->Controller->Rotation));
+
+        auto replaced = false;
+        for (auto &m : markers) {
+            if (m.Frame == marker.Frame) {
+                m = marker;
+                replaced = true;
+                break;
+            }
+        }
+
+        if (!replaced) {
+            markers.push_back(marker);
+        }
+
+        if (marker.Frame < 0) {
+            ShiftTimeline(-marker.Frame);
+        }
+
+        FixTimeline();
+    }
+}
+
+static void JumpFrames(int toJump) 
+{
+    if (frame + toJump > duration) {
+        frame = duration;
+        return;
+    } else if (frame + toJump < 0) {
+        frame = 0;
+        return;
+    }
+    frame += toJump; 
+}
+
 static void DollyTab() {
     auto pawn = Engine::GetPlayerPawn();
     auto controller = Engine::GetPlayerController();
@@ -265,29 +333,7 @@ static void DollyTab() {
 
     ImGui::SameLine();
     if (ImGui::Button("Add Marker##dolly")) {
-        if (pawn && controller) {
-            Dolly::Marker marker(frame, controller->PlayerCamera->GetFOVAngle(), pawn->Location,
-                                 RotatorToVector(pawn->Controller->Rotation));
-
-            auto replaced = false;
-            for (auto &m : markers) {
-                if (m.Frame == marker.Frame) {
-                    m = marker;
-                    replaced = true;
-                    break;
-                }
-            }
-
-            if (!replaced) {
-                markers.push_back(marker);
-            }
-
-            if (marker.Frame < 0) {
-                ShiftTimeline(-marker.Frame);
-            }
-
-            FixTimeline();
-        }
+        AddMarker();
     }
 
     ImGui::SliderInt("Timeline##dolly", &frame, 0, duration);
@@ -400,7 +446,23 @@ static void DollyTab() {
             FixTimeline();
         }
     }
-    
+
+     ImGui::SeparatorText("Keybinds##Keybinds-Separator");
+    {
+        ImGui::Checkbox("Toggle Reset Keybinds##Keybinds-ToggleResetKeybinds",
+                        &ToggleResetKeybinds);
+        ImGui::Separator(5.0f);
+
+        // The last 2 parameters in ProcessHotkey needs to match the one in Initialize() function!
+        ProcessHotkey("Add Marker##Dolly-maker", &MarkerKeybind, {"Dolly", "Tools", "MarkerKeybind"}, VK_F5);
+        ProcessHotkey("Jump Frames (hold ctrl to jump back)##Dolly-jumpframes", &JumpFramesKeybind,{"Dolly", "Tools", "JumpFramesKeybind"}, VK_F6);
+        ProcessHotkey("Start/stop##Dolly-startstop", &StartStopKeybind,{"Dolly", "Tools", "StartStopKeybind"}, VK_F7);
+        ProcessHotkey("Start/stop Recording##Dolly-record", &RecordKeybind, {"Dolly", "Tools", "RecordKeybind"}, VK_F9);
+
+        if (ImGui::InputInt("Frame Jump Amount##dolly", &FrameJumpAmount)) {
+            Settings::SetSetting({"Dolly", "Tools", "FrameJumpAmount"}, FrameJumpAmount);
+        }
+    }
 }
 
 void SaveMarkers() {
@@ -650,6 +712,50 @@ static void OnRender(IDirect3DDevice9 *device) {
     }
 }
 
+static void OnInput(unsigned int &msg, int keycode) {
+    if (msg == WM_KEYDOWN) {
+        if (keycode == MarkerKeybind) {
+            AddMarker();
+        }
+
+        if (keycode == JumpFramesKeybind && !(GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
+            JumpFrames(FrameJumpAmount);
+        }
+        if (keycode == JumpFramesKeybind && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
+            JumpFrames(-FrameJumpAmount);
+        }
+        
+        if (keycode == StartStopKeybind) {
+            if (playing) {
+                playing = false;
+                FixPlayer();
+            } else if(!playing){
+                if (frame >= duration) {
+                    frame = 0;
+                }
+
+                playing = true;
+                FixPlayer();
+            }
+        }
+
+        if (keycode == RecordKeybind) {
+            if (recording) {
+                recording = false;
+                recordings.push_back(currentRecording);
+                currentRecording.Frames.clear();
+                currentRecording.Frames.shrink_to_fit();
+                FixTimeline();
+            } else {
+                currentRecording.StartFrame = frame;
+                currentRecording.Character = character;
+                Engine::SpawnCharacter(currentRecording.Character, currentRecording.Actor);
+                recording = true;
+            }
+        }
+    }
+}
+
 Dolly::~Dolly() { // IF I REMOVE THIS FUNCTION, THE GAME CRASHES ON EXIT
    // Ensure proper cleanup of resources
    //markers.clear();
@@ -662,6 +768,13 @@ Dolly::~Dolly() { // IF I REMOVE THIS FUNCTION, THE GAME CRASHES ON EXIT
 }
 
 bool Dolly::Initialize() {
+
+    MarkerKeybind = Settings::GetSetting({"Dolly", "Tools", "MarkerKeybind"}, VK_F5);
+    JumpFramesKeybind = Settings::GetSetting({"Dolly", "Tools", "JumpFramesKeybind"}, VK_F6);
+    RecordKeybind = Settings::GetSetting({"Dolly", "Tools", "RecordKeybind"}, VK_F9);
+    StartStopKeybind = Settings::GetSetting({"Dolly", "Tools", "StartStopKeybind"}, VK_F9);
+    FrameJumpAmount = Settings::GetSetting({"Dolly", "Tools", "FrameJumpAmount"}, 100);
+
     forceRollPatch = Pattern::FindPattern("\x89\x93\x00\x00\x00\x00\xA1\x00\x00\x00\x00\x83\xB8",
                                           "xx????x????xx");
     if (!forceRollPatch) {
@@ -681,6 +794,7 @@ bool Dolly::Initialize() {
     Menu::AddTab("Dolly", DollyTab);
     Engine::OnTick(OnTick);
     Engine::OnRenderScene(OnRender);
+    Engine::OnInput(OnInput);
 
     Engine::OnActorTick([](Classes::AActor *actor) {
         if (!actor) {
