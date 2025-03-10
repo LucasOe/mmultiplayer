@@ -31,6 +31,9 @@ static int RecordKeybind = 0;
 static int JumpFramesKeybind = 0;
 static int StartStopKeybind = 0;
 
+static int FOVPlusKeybind = 0;
+static int FOVMinusKeybind = 0;
+
 static int FrameJumpAmount = 100;
 
 std::string GetAppDataPath() {
@@ -458,6 +461,8 @@ static void DollyTab() {
         ProcessHotkey("Jump Frames (hold ctrl to jump back)##Dolly-jumpframes", &JumpFramesKeybind,{"Dolly", "Tools", "JumpFramesKeybind"}, VK_F6);
         ProcessHotkey("Start/stop##Dolly-startstop", &StartStopKeybind,{"Dolly", "Tools", "StartStopKeybind"}, VK_F7);
         ProcessHotkey("Start/stop Recording##Dolly-record", &RecordKeybind, {"Dolly", "Tools", "RecordKeybind"}, VK_F9);
+        ProcessHotkey("FOV Increase##Dolly-fovplus", &FOVPlusKeybind, {"Dolly", "Tools", "FOVplus"},  VK_ADD);
+        ProcessHotkey("FOV Decrease##Dolly-fovplus", &FOVMinusKeybind, {"Dolly", "Tools", "FOVminus"},  VK_SUBTRACT);
 
         if (ImGui::InputInt("Frame Jump Amount##dolly", &FrameJumpAmount)) {
             Settings::SetSetting({"Dolly", "Tools", "FrameJumpAmount"}, FrameJumpAmount);
@@ -753,6 +758,20 @@ static void OnInput(unsigned int &msg, int keycode) {
                 recording = true;
             }
         }
+
+        // THIS IS VERY INEFFICIENT, CUZ IT'S SETTING THE CONTROLLER ON EVERY SINGLE KEYPRESS!! (but i'm lazy as fuck so wontfix)
+        if (keycode = FOVPlusKeybind) {
+            auto controller = Engine::GetPlayerController();
+            auto fov = controller->PlayerCamera->GetFOVAngle();
+            fov += 1;
+            controller->PlayerCamera->SetFOV(fov);
+        }
+        if (keycode = FOVMinusKeybind) {
+            auto controller = Engine::GetPlayerController();
+            auto fov = controller->PlayerCamera->GetFOVAngle();
+            fov -= 1;
+            controller->PlayerCamera->SetFOV(fov);
+        }
     }
 }
 
@@ -774,6 +793,8 @@ bool Dolly::Initialize() {
     RecordKeybind = Settings::GetSetting({"Dolly", "Tools", "RecordKeybind"}, VK_F9);
     StartStopKeybind = Settings::GetSetting({"Dolly", "Tools", "StartStopKeybind"}, VK_F9);
     FrameJumpAmount = Settings::GetSetting({"Dolly", "Tools", "FrameJumpAmount"}, 100);
+    FOVPlusKeybind = Settings::GetSetting({"Dolly", "Tools", "FOVplus"}, VK_ADD);
+    FOVMinusKeybind = Settings::GetSetting({"Dolly", "Tools", "FOVminus"}, VK_SUBTRACT);
 
     forceRollPatch = Pattern::FindPattern("\x89\x93\x00\x00\x00\x00\xA1\x00\x00\x00\x00\x83\xB8",
                                           "xx????x????xx");
