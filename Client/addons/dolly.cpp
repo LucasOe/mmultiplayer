@@ -33,8 +33,12 @@ static int StartStopKeybind = 0;
 
 static int FOVPlusKeybind = 0;
 static int FOVMinusKeybind = 0;
+static int RollPlusKeybind = 0;
+static int RollMinusKeybind = 0;
 
 static int FrameJumpAmount = 100;
+
+static auto forceRoll = false;
 
 std::string GetAppDataPath() {
     char path[MAX_PATH];
@@ -346,7 +350,6 @@ static void DollyTab() {
         controller->PlayerCamera->SetFOV(fov);
     }
 
-    static auto forceRoll = false;
     auto roll = static_cast<int>(controller->Rotation.Roll % 0x10000);
     if (ImGui::SliderInt("Roll##dolly", &roll, 0, 0x10000 - 1) && !cameraView) {
         forceRoll = true;
@@ -461,8 +464,11 @@ static void DollyTab() {
         ProcessHotkey("Jump Frames (hold ctrl to jump back)##Dolly-jumpframes", &JumpFramesKeybind,{"Dolly", "Tools", "JumpFramesKeybind"}, VK_F6);
         ProcessHotkey("Start/stop##Dolly-startstop", &StartStopKeybind,{"Dolly", "Tools", "StartStopKeybind"}, VK_F7);
         ProcessHotkey("Start/stop Recording##Dolly-record", &RecordKeybind, {"Dolly", "Tools", "RecordKeybind"}, VK_F9);
+
         ProcessHotkey("FOV Increase##Dolly-fovplus", &FOVPlusKeybind, {"Dolly", "Tools", "FOVplus"},  VK_ADD);
         ProcessHotkey("FOV Decrease##Dolly-fovplus", &FOVMinusKeybind, {"Dolly", "Tools", "FOVminus"},  VK_SUBTRACT);
+        ProcessHotkey("Roll Increase##Dolly-rollplus", &RollPlusKeybind,{"Dolly", "Tools", "Rollplus"}, VK_UP);
+        ProcessHotkey("Roll Decrease##Dolly-rollminus", &RollMinusKeybind,{"Dolly", "Tools", "Rollminus"}, VK_DOWN);
 
         if (ImGui::InputInt("Frame Jump Amount##dolly", &FrameJumpAmount)) {
             Settings::SetSetting({"Dolly", "Tools", "FrameJumpAmount"}, FrameJumpAmount);
@@ -744,6 +750,39 @@ static void OnInput(unsigned int &msg, int keycode) {
             }
         }
 
+        // THIS IS VERY INEFFICIENT, CUZ IT'S SETTING THE CONTROLLER ON EVERY SINGLE KEYPRESS!! (but
+        // i'm lazy as fuck so wontfix)
+        if (keycode == FOVPlusKeybind) {
+            auto controller = Engine::GetPlayerController();
+            auto fov = controller->PlayerCamera->GetFOVAngle();
+            if ((fov + 1) >= 160) {
+                return;
+            }
+            fov += 1;
+            controller->PlayerCamera->SetFOV(fov);
+        }
+        if (keycode == FOVMinusKeybind) {
+            auto controller = Engine::GetPlayerController();
+            auto fov = controller->PlayerCamera->GetFOVAngle();
+            if (fov - 1 <= 0) return;
+            fov -= 1;
+            controller->PlayerCamera->SetFOV(fov);
+        }
+        if (keycode == RollPlusKeybind) {
+            forceRoll = true;
+            auto controller = Engine::GetPlayerController();
+            auto roll = controller->Rotation.Roll;
+            roll += 50;
+            controller->Rotation.Roll = roll;
+        }
+        if (keycode == RollMinusKeybind) {
+            forceRoll = true;
+            auto controller = Engine::GetPlayerController();
+            auto roll = controller->Rotation.Roll;
+            roll -= 50;
+            controller->Rotation.Roll = roll;
+        }
+
         if (keycode == RecordKeybind) {
             if (recording) {
                 recording = false;
@@ -757,20 +796,6 @@ static void OnInput(unsigned int &msg, int keycode) {
                 Engine::SpawnCharacter(currentRecording.Character, currentRecording.Actor);
                 recording = true;
             }
-        }
-
-        // THIS IS VERY INEFFICIENT, CUZ IT'S SETTING THE CONTROLLER ON EVERY SINGLE KEYPRESS!! (but i'm lazy as fuck so wontfix)
-        if (keycode = FOVPlusKeybind) {
-            auto controller = Engine::GetPlayerController();
-            auto fov = controller->PlayerCamera->GetFOVAngle();
-            fov += 1;
-            controller->PlayerCamera->SetFOV(fov);
-        }
-        if (keycode = FOVMinusKeybind) {
-            auto controller = Engine::GetPlayerController();
-            auto fov = controller->PlayerCamera->GetFOVAngle();
-            fov -= 1;
-            controller->PlayerCamera->SetFOV(fov);
         }
     }
 }
@@ -795,6 +820,8 @@ bool Dolly::Initialize() {
     FrameJumpAmount = Settings::GetSetting({"Dolly", "Tools", "FrameJumpAmount"}, 100);
     FOVPlusKeybind = Settings::GetSetting({"Dolly", "Tools", "FOVplus"}, VK_ADD);
     FOVMinusKeybind = Settings::GetSetting({"Dolly", "Tools", "FOVminus"}, VK_SUBTRACT);
+    RollPlusKeybind = Settings::GetSetting({"Dolly", "Tools", "Rollplus"}, VK_UP);
+    RollMinusKeybind = Settings::GetSetting({"Dolly", "Tools", "Rollminus"}, VK_DOWN);
 
     forceRollPatch = Pattern::FindPattern("\x89\x93\x00\x00\x00\x00\xA1\x00\x00\x00\x00\x83\xB8",
                                           "xx????x????xx");
