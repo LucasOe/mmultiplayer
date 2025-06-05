@@ -1699,7 +1699,6 @@ static UClass *StaticClass() {
                     }
                 }
 				
-                //static auto ptr = UObject::FindClass("Class TdGame.SpeedrunPlayerController");
                 return ptr;
         }
 
