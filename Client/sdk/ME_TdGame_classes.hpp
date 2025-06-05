@@ -1688,11 +1688,20 @@ public:
 	float                                              LastYAxisTilt;                                            // 0x0688(0x0004)
 	TArray<class USeqEvt_TdWeaponFired*>               WeaponFiredEvents;                                        // 0x068C(0x000C) (NeedCtorLink)
 
-	static UClass* StaticClass()
-	{
-		static auto ptr = UObject::FindClass("Class TdGame.TdPlayerController");
-		return ptr;
-	}
+static UClass *StaticClass() {
+                static auto *ptr = nullptr;
+                
+                if (!ptr) {
+                    ptr = UObject::FindClass("Class MirrorsEdgeTweaksScripts.SofTimerHUDSetup");
+
+                    if (!ptr) {
+                        ptr = UObject::FindClass("Class TdGame.TdPlayerController");
+                    }
+                }
+				
+                return ptr;
+        }
+
 
 
 	void SetUseTiltForwardAndBack(bool bActive);
