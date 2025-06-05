@@ -11,6 +11,8 @@ class Dolly : public Addon {
 
     void ForceRoll(bool force);
 
+    ~Dolly();
+
     class Marker {
       public:
         inline Marker(int frame, float fov, Classes::FVector position,
