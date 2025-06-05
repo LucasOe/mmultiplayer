@@ -5,7 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.3.3] - Unreleased
+## [2.3.0] - Unreleased
+
+### Added
+
+- Added Support for Softimer. Thanks to @CodeNameMeteor!
+- Add Save/Load option for recordings and dolly paths. Recordings are saved in `%AppData%`. Thanks to @AdyStudios!
+  - **Known Issue:** You have to load recordings before the map.
+  - **Known Issue:** When loading a recording the camera rotation is messed up until changed.
+- Add a toggle for the camera path display
+- Add Dolly keybinds for: Record, Marker, Jump Frame, Play, Pause , FoV and Roll
 
 ### Fixed
 
@@ -15,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Internal code cleanup. Thanks to @Toyro98 and @Jvp2001 for the help!
 - Update the link in the error message to reflect new repository ownership
+- Removed x64 configurations because the game is in 32bit and there's no need for 64bit configs
 
 ## [2.3.2] - 2024-08-02
 
