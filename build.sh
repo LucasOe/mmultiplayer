@@ -2,14 +2,5 @@
 
 set -ex
 
-buildDir='build/app'
-mkdir -p "${buildDir}"
-
-(
-    cd Client
-    MSBuild.exe Client.vcxproj -property:Configuration=Release -property:Platform=x86 -t:Build
-)
-(
-    cd Launcher
-    MSBuild.exe Launcher.vcxproj -property:Configuration=Release -property:Platform=x86 -t:Build
-)
+MSBuild.exe Client/Client.vcxproj -property:Configuration=Release -property:Platform=x86 -property:OutDir=../Release/ -t:Build
+MSBuild.exe Launcher/Launcher.vcxproj -property:Configuration=Release -property:Platform=x86 -property:OutDir=../Release/ -t:Build
