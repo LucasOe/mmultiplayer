@@ -1015,30 +1015,69 @@ bool Engine::Initialize() {
     Hook::TrampolineHook(LoadLibraryAHook, LoadLibraryA,
                          reinterpret_cast<void **>(&LoadLibraryAOriginal));
 
-    // EndScene
-    if (!(ptr = Pattern::FindPattern(
-              "d3d9.dll",
-              "\xC7\x06\x00\x00\x00\x00\x89\x86\x00\x00\x00\x00\x89\x86",
-              "xx????xx????xx"))) {
-
-        MessageBoxA(nullptr, "Failed to find D3D9 exports", "Failure", MB_ICONERROR);
+    // D3D9 init
+    auto d3d9 = Direct3DCreate9(D3D_SDK_VERSION);
+    if (!d3d9) {
+        MessageBoxA(nullptr, "Direct3DCreate9 failed", "Failure", MB_ICONERROR);
         return false;
     }
 
-    ptr = *reinterpret_cast<void **>(reinterpret_cast<byte *>(ptr) + 2);
-    if (!Hook::TrampolineHook(
-            EndSceneHook, ((void **)ptr)[D3D9_EXPORT_ENDSCENE],
-            reinterpret_cast<void **>(&renderScene.Original))) {
+    D3DPRESENT_PARAMETERS d3dpp;
+    ZeroMemory(&d3dpp, sizeof(d3dpp));
+    d3dpp.Windowed = TRUE;
+    d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+    d3dpp.BackBufferFormat = D3DFMT_UNKNOWN;
+    
+    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, DefWindowProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, TEXT("D3D fake window"), NULL };
+    RegisterClassEx(&wc);
+    HWND hWnd = CreateWindow(wc.lpszClassName, TEXT("D3D fake window"), WS_OVERLAPPEDWINDOW, 100, 100, 100, 100, NULL, NULL, wc.hInstance, NULL);
 
+    IDirect3DDevice9* dummyDevice = nullptr;
+    
+    // Fixes D3DERR_DEVICELOST - for DXVK / other wrappers.
+    d3dpp.hDeviceWindow = NULL;
+    HRESULT hr = d3d9->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, d3dpp.hDeviceWindow,
+        D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, &dummyDevice);
+
+    // Fix for Reshade
+    if (FAILED(hr) || !dummyDevice) {
+        d3dpp.hDeviceWindow = hWnd;
+        hr = d3d9->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, d3dpp.hDeviceWindow,
+            D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, &dummyDevice);
+    }
+
+    // Last resort - ref device
+    if (FAILED(hr) || !dummyDevice) {
+         d3dpp.hDeviceWindow = NULL;
+         hr = d3d9->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_REF, d3dpp.hDeviceWindow,
+            D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, &dummyDevice);
+    }
+    
+    if (FAILED(hr) || !dummyDevice) {
+        char buf[128];
+        snprintf(buf, sizeof(buf), "CreateDevice failed. HRESULT: 0x%08lX", hr);
+        
+        DestroyWindow(hWnd);
+        UnregisterClass(wc.lpszClassName, wc.hInstance);
+        d3d9->Release();
+        MessageBoxA(nullptr, buf, "Failure", MB_ICONERROR);
+        return false;
+    }
+
+    void** vtable = *reinterpret_cast<void***>(dummyDevice);
+    
+    // EndScene
+    if (!Hook::TrampolineHook(
+            EndSceneHook, vtable[D3D9_EXPORT_ENDSCENE],
+            reinterpret_cast<void **>(&renderScene.Original))) {
         MessageBoxA(nullptr, "Failed to hook D3D9 EndScene", "Failure", MB_ICONERROR);
         return false;
     }
 
     // Reset
     if (!Hook::TrampolineHook(
-            ResetHook, ((void **)ptr)[D3D9_EXPORT_RESET],
+            ResetHook, vtable[D3D9_EXPORT_RESET],
             reinterpret_cast<void **>(&resetScene.Original))) {
-
         MessageBoxA(nullptr, "Failed to hook D3D9 Reset", "Failure", MB_ICONERROR);
         return false;
     }
