@@ -266,6 +266,8 @@ int __fastcall ProcessEventHook(Classes::UObject *object, void *idle,
 int __fastcall LevelLoadHook(void *this_, void *idle, void **levelInfo,
                              unsigned long long arg) {
 
+    Classes::ATdPlayerController::bNeedSofTimerCheck = true;
+
     const auto levelName = reinterpret_cast<const wchar_t *>(levelInfo[7]);
 
     for (const auto &callback : levelLoad.PreCallbacks) {
@@ -640,13 +642,24 @@ Classes::AWorldInfo *Engine::GetWorld(bool update) {
             const auto world = static_cast<Classes::AWorldInfo *>(object);
 
             for (auto controller = world->ControllerList; controller;
-                 controller = controller->NextController) {
+                controller = controller->NextController) {
 
                 if (controller->IsA(
                         Classes::ATdPlayerController::StaticClass())) {
 
                     cache = world;
                     return cache;
+                }
+            }
+
+            static auto tdClass = Classes::UObject::FindClass("Class TdGame.TdPlayerController");
+            if (tdClass && Classes::ATdPlayerController::StaticClass() != tdClass) {
+                for (auto controller = world->ControllerList; controller;
+                    controller = controller->NextController) {
+                    if (controller->IsA(tdClass)) {
+                        cache = world;
+                        return cache;
+                    }
                 }
             }
         }
@@ -665,6 +678,8 @@ Classes::ATdPlayerController *Engine::GetPlayerController(bool update) {
     if (!cache || update) {
         auto world = GetWorld(update);
         if (world) {
+            bool found = false;
+
             for (auto controller = world->ControllerList; controller;
                  controller = controller->NextController) {
 
@@ -672,14 +687,32 @@ Classes::ATdPlayerController *Engine::GetPlayerController(bool update) {
                         Classes::ATdPlayerController::StaticClass())) {
 
                     if (!static_cast<Classes::ATdPlayerController *>(controller)
-                             ->PlayerCamera) {
+                            ->PlayerCamera) {
                         return nullptr;
                     }
 
-                    cache =
-                        static_cast<Classes::ATdPlayerController *>(controller);
-
+                    cache = static_cast<Classes::ATdPlayerController *>(controller);
+                    found = true;
                     break;
+                }
+            }
+
+            if (!found) {
+                static auto tdClass = Classes::UObject::FindClass("Class TdGame.TdPlayerController");
+                if (tdClass && Classes::ATdPlayerController::StaticClass() != tdClass) {
+                    for (auto controller = world->ControllerList; controller;
+                        controller = controller->NextController) {
+
+                        if (controller->IsA(tdClass)) {
+                            if (!static_cast<Classes::ATdPlayerController *>(controller)
+                                    ->PlayerCamera) {
+                                return nullptr;
+                            }
+
+                            cache = static_cast<Classes::ATdPlayerController *>(controller);
+                            break;
+                        }
+                    }
                 }
             }
         }

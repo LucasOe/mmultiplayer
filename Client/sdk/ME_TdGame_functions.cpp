@@ -12,6 +12,8 @@ namespace Classes
 //Functions
 //---------------------------------------------------------------------------
 
+bool ATdPlayerController::bNeedSofTimerCheck = true;
+
 // Function TdGame.TdCrowdPathNode.CanBeSeenFrom
 // (Native, Public)
 // Parameters:
