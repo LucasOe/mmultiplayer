@@ -11,15 +11,20 @@
 - Full multiplayer client with custom names, rooms, and characters
 - General purpose engine and world menus
 - Trainer
-    - Save/load state
-    - God mode
-    - Fly mode
-    - KG tool
-    - Beamer tool
-    - Strang tool
+  - Save/load state
+  - God mode
+  - Fly mode
+  - KG tool
+  - Beamer tool
+  - Strang tool
 - Dolly camera
-    - Supports player recordings
+  - Supports player recordings
 
 ## About This Fork
 
 Read the <a href="./CHANGELOG.md">CHANGELOG.md</a> to see what has been changed in this fork from the original mmultiplayer mod.
+
+## Contributors
+
+A heartfelt thank you to all the [contributors](https://github.com/LucasOe/mmultiplayer/graphs/contributors).
+I primarily maintain the project and merge pull requests; credit for the actual contributions belongs to the people listed above.
