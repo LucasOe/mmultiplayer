@@ -1,5 +1,12 @@
 # Mirror's Edge Multiplayer Mod
 
+> [!WARNING]
+> This repository is no longer actively maintained.
+> The project depended on Windows-specific tooling and workflows, and I no longer develop on Windows. As a result, no further updates, fixes, or support should be expected.
+> The code remains available for reference, experimentation, or for others who may wish to fork and continue development.
+>
+> Version 2.5.0 is the final release of this project. If you experience issues with 2.5.0, please try version 2.4.0 instead.
+
 ## Setup
 
 1. Download the latest installer from <a href="https://github.com/LucasOe/mmultiplayer/releases">here</a>.
